@@ -1,0 +1,22 @@
+# This file contains helper methods to test assertions on policy machines
+
+# Make sure each expected privilege has been returned
+def assert_pm_privilege_expectations(actual_privileges, expected_privileges)
+  expected_privileges.each do |ep|
+    u_id = ep[0].unique_identifier
+    op_id = ep[1].unique_identifier
+    obj_id = ep[2].unique_identifier
+
+    found_actual_priv = actual_privileges.find do |priv|
+      priv[0].unique_identifier == u_id &&
+      priv[1].unique_identifier == op_id &&
+      priv[2].unique_identifier == obj_id
+    end
+
+    pp("expected to find #{[u_id, op_id, obj_id]}") if found_actual_priv.nil?
+
+    found_actual_priv.should_not be_nil
+  end
+
+  actual_privileges.count.should == expected_privileges.size
+end
