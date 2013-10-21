@@ -24,8 +24,17 @@ module PolicyMachineStorageAdapter
         persisted_pe
       end
 
-      define_method("find_all_of_type_#{pe_type}") do
-        policy_elements.select{ |pe| pe.pe_type == pe_type }
+      define_method("find_all_of_type_#{pe_type}") do |options = {}|
+        conditions = options.merge(pe_type: pe_type)
+        policy_elements.select do |pe|
+          conditions.all? do |k,v|
+            if v.nil?
+              !pe.respond_to?(k) || pe.send(k) == nil
+            else
+              pe.respond_to?(k) && pe.send(k) == v
+            end
+          end
+        end
       end
     end
 

@@ -261,6 +261,17 @@ shared_examples "a policy machine" do
         policy_machine.users.last.foo.should == 'bar'
       end
 
+      it 'allows searching on any extra attribute keys' do
+        policy_machine.create_user('u1', foo: 'bar')
+        policy_machine.create_user('u2', foo: nil, attitude: 'sassy')
+        silence_warnings do
+          policy_machine.users(foo: 'bar').should be_one
+          policy_machine.users(foo: nil).should be_one
+          policy_machine.users(foo: 'baz').should be_none
+          policy_machine.users(foo: 'bar', attitude: 'sassy').should be_none
+        end
+      end
+
     end
 
   end

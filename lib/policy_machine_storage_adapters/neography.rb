@@ -35,9 +35,18 @@ module PolicyMachineStorageAdapter
         persisted_pe
       end
       
-      define_method("find_all_of_type_#{pe_type}") do
+      define_method("find_all_of_type_#{pe_type}") do |options = {}|
         found_elts = ::Neography::Node.find('policy_element_types', 'pe_type', pe_type)
-        found_elts.nil? ? [] : [found_elts].flatten
+        found_elts = found_elts.nil? ? [] : [found_elts].flatten
+        found_elts.select do |elt|
+          options.all? do |k,v|
+            if v.nil?
+              !elt.respond_to?(k)
+            else
+              elt.respond_to?(k) && elt.send(k) == v
+            end
+          end
+        end
       end
     end
     

@@ -173,15 +173,16 @@ class PolicyMachine
 
     ##
     # Define an "all" method for each policy element type, as in .users or .object_attributes
-    # This will return all persisted of the elements of this type.
+    # This will return all persisted of the elements of this type. If an options hash is passed
+    # then only elements that match all specified attributes will be returned.
     #
-    define_method(pe_type.pluralize) do
+    define_method(pe_type.pluralize) do |options = {}|
       # TODO:  We might want to scope by the uuid of this policy machine in the request to the persistent store, rather than
       # here, after records have already been retrieved.
       # TODO: When the policy machine raises a NoMethoError, we should log a nice message
       # saying that the underlying policy element class doesn't implement 'all'.  Do
       # it when we have a logger, though.
-      all_found = pm_class.send(:all, @policy_machine_storage_adapter)
+      all_found = pm_class.send(:all, @policy_machine_storage_adapter, options)
       all_found.select{ |pe| pe.policy_machine_uuid == uuid }
     end
   end

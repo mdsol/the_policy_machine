@@ -46,6 +46,9 @@ module PolicyMachineStorageAdapter
       def methodize_extra_attributes_hash
         @extra_attributes_hash = JSON.parse(self.extra_attributes, quirks_mode: true) if self.extra_attributes
         @extra_attributes_hash ||= {}
+        @extra_attributes_hash.extract!(*self.class.column_names).each do |key, value|
+          send("#{key}=", value) unless value.nil?
+        end
         @extra_attributes_hash.each do |key, value|
           define_singleton_method key, lambda {@extra_attributes_hash[key.to_s]}
           define_singleton_method "#{key}=", lambda { | value | @extra_attributes_hash[key.to_s] = value }
@@ -151,16 +154,27 @@ module PolicyMachineStorageAdapter
       # The policy_machine_uuid is the uuid of the containing policy machine.
       #
       define_method("add_#{pe_type}") do |unique_identifier, policy_machine_uuid, extra_attributes = {}|
+        active_record_attributes = extra_attributes.stringify_keys
+        extra_attributes = active_record_attributes.slice!(*PolicyElement.column_names)
         element_attrs = {
           :unique_identifier => unique_identifier,
           :policy_machine_uuid => policy_machine_uuid,
           :extra_attributes => extra_attributes.to_json
-        }
-        class_for_type(pe_type).create(element_attrs)
+        }.merge(active_record_attributes)
+        class_for_type(pe_type).create(element_attrs, without_protection: true)
       end
 
-      define_method("find_all_of_type_#{pe_type}") do
-        class_for_type(pe_type).all
+      define_method("find_all_of_type_#{pe_type}") do |options = {}|
+        conditions = options.stringify_keys
+        extra_attribute_conditions = conditions.slice!(*PolicyElement.column_names)
+        all = class_for_type(pe_type).where(conditions)
+        extra_attribute_conditions.each do |key, value|
+          warn "WARNING: #{self.class} is filtering #{pe_type} on #{key} in memory, which won't scale well. " <<
+            "To move this query to the database, add a '#{key}' column to the policy_elements table " <<
+            "and re-save existing records"
+          all.select!{ |pe| pe.methodize_extra_attributes_hash and pe.extra_attributes_hash[key] == value }
+        end
+        all
       end
     end
 
