@@ -11,7 +11,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20131015214828) do
+ActiveRecord::Schema.define(:version => 20131021221759) do
 
   create_table "assignments", :force => true do |t|
     t.integer "parent_id", :null => false
@@ -40,6 +40,7 @@ ActiveRecord::Schema.define(:version => 20131015214828) do
     t.string "policy_machine_uuid"
     t.string "type",                :null => false
     t.text   "extra_attributes"
+    t.string "color"
   end
 
   add_index "policy_elements", ["type"], :name => "index_policy_elements_on_type"

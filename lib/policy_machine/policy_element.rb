@@ -139,8 +139,8 @@ module PM
     end
 
     # Return all policy elements of a particular type (e.g. all users)
-    def self.all(pm_storage_adapter)
-      pm_storage_adapter.find_all_of_type_user.map do |stored_pe|
+    def self.all(pm_storage_adapter, options = {})
+      pm_storage_adapter.find_all_of_type_user(options).map do |stored_pe|
         convert_stored_pe_to_pe(stored_pe, pm_storage_adapter, PM::User)
       end
     end
@@ -160,8 +160,8 @@ module PM
     end
 
      # Return all policy elements of a particular type (e.g. all users)
-    def self.all(pm_storage_adapter)
-      pm_storage_adapter.find_all_of_type_user_attribute.map do |stored_pe|
+    def self.all(pm_storage_adapter, options = {})
+      pm_storage_adapter.find_all_of_type_user_attribute(options).map do |stored_pe|
         convert_stored_pe_to_pe(stored_pe, pm_storage_adapter, PM::UserAttribute)
       end
     end
@@ -189,8 +189,8 @@ module PM
       end
     end
 
-    def self.all(pm_storage_adapter)
-      pm_storage_adapter.find_all_of_type_object_attribute.map do |stored_pe|
+    def self.all(pm_storage_adapter, options = {})
+      pm_storage_adapter.find_all_of_type_object_attribute(options).map do |stored_pe|
         convert_stored_pe_to_pe(stored_pe, pm_storage_adapter, PM::ObjectAttribute)
       end
     end
@@ -210,8 +210,8 @@ module PM
     end
 
     # Return all policy elements of a particular type (e.g. all users)
-    def self.all(pm_storage_adapter)
-      pm_storage_adapter.find_all_of_type_object.map do |stored_pe|
+    def self.all(pm_storage_adapter, options = {})
+      pm_storage_adapter.find_all_of_type_object(options).map do |stored_pe|
         convert_stored_pe_to_pe(stored_pe, pm_storage_adapter, PM::Object)
       end
     end
@@ -231,8 +231,8 @@ module PM
     end
 
     # Return all policy elements of a particular type (e.g. all users)
-    def self.all(pm_storage_adapter)
-      pm_storage_adapter.find_all_of_type_operation.map do |stored_pe|
+    def self.all(pm_storage_adapter, options = {})
+      pm_storage_adapter.find_all_of_type_operation(options).map do |stored_pe|
         convert_stored_pe_to_pe(stored_pe, pm_storage_adapter, PM::Operation)
       end
     end

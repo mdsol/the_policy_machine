@@ -42,26 +42,26 @@ module PolicyMachineStorageAdapter
 
     ##
     # The following find_* methods should return an array of persisted
-    # policy elements of the given type (e.g. user or object_attribute).
+    # policy elements of the given type (e.g. user or object_attribute) and extra attributes.
     # If no such persisted policy elements are found, the empty array should
     # be returned.
     #
-    def find_all_of_type_user
+    def find_all_of_type_user(options = {})
 
     end
-    def find_all_of_type_user_attribute
+    def find_all_of_type_user_attribute(options = {})
 
     end
-    def find_all_of_type_object
+    def find_all_of_type_object(options = {})
 
     end
-    def find_all_of_type_object_attribute
+    def find_all_of_type_object_attribute(options = {})
 
     end
-    def find_all_of_type_operation
+    def find_all_of_type_operation(options = {})
 
     end
-    def find_all_of_type_policy_class
+    def find_all_of_type_policy_class(options = {})
 
     end
 
