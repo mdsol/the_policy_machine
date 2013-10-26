@@ -212,6 +212,13 @@ module PolicyMachineStorageAdapter
       end
     end
 
+    ##
+    # Execute the passed-in block transactionally: any error raised out of the block causes
+    # all the block's changes to be rolled back.
+    def transaction
+      raise NotImplementedError, "transactions are only available in neo4j 2.0 which #{self.class} is not compatible with"
+    end
+
     private
     
       # Raise argument error if argument is not suitable for consumption in

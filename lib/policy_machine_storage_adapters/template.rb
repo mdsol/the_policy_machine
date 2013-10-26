@@ -158,5 +158,12 @@ module PolicyMachineStorageAdapter
     def user_attributes_for_user(user)
     end
 
+    ##
+    # Execute the passed-in block transactionally: any error raised out of the block causes
+    # all the block's changes to be rolled back. Should raise NotImplementedError if the
+    # persistence layer does not support this.
+    def transaction
+    end
+
   end
 end

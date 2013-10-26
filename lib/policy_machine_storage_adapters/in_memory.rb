@@ -141,6 +141,31 @@ module PolicyMachineStorageAdapter
       end
     end
 
+    ##
+    # Execute the passed-in block transactionally: any error raised out of the block causes
+    # all the block's changes to be rolled back.
+    def transaction
+      old_state = dup
+      instance_variables.each do |var|
+        value = instance_variable_get(var)
+
+        if (value.respond_to?(:dup))
+          old_state.instance_variable_set(var, value.dup)
+        end
+      end
+
+      begin
+        yield
+      rescue Exception
+        instance_variables.each do |var|
+          value = old_state.instance_variable_get(var)
+          instance_variable_set(var, value)
+        end
+        raise
+      end
+    end
+
+
     private
 
       # Raise argument error if argument is not suitable for consumption in

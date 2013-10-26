@@ -187,6 +187,14 @@ class PolicyMachine
     end
   end
 
+  ##
+  # Execute the passed-in block transactionally: any error raised out of the block causes
+  # all the block's changes to be rolled back.
+  # TODO: Possibly rescue NotImplementError and warn.
+  def transaction(&block)
+    policy_machine_storage_adapter.transaction(&block)
+  end
+
   private
 
     # Raise unless the argument is a policy element.

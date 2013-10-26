@@ -1,4 +1,5 @@
 require 'spec_helper'
+require_relative 'storage_adapter_helpers.rb'
 
 policy_element_types = ::PolicyMachine::POLICY_ELEMENT_TYPES
 
@@ -446,6 +447,28 @@ shared_examples "a policy machine" do
       policy_machine.list_user_attributes(@u1).should =~ [@group1, @subgroup1a]
     end
 
+  end
+
+  describe '#transaction' do
+    it 'executes the block' do
+      if_implements(policy_machine.policy_machine_storage_adapter, :transaction){}
+      policy_machine.transaction do
+        @oa = policy_machine.create_object_attribute('some_oa')
+      end
+      policy_machine.object_attributes.should == [@oa]
+    end
+
+    it 'rolls back the block on error' do
+      if_implements(policy_machine.policy_machine_storage_adapter, :transaction){}
+      @oa1 = policy_machine.create_object_attribute('some_oa')
+      expect do
+        policy_machine.transaction do
+          @oa2 = policy_machine.create_object_attribute('some_other_oa')
+          policy_machine.add_assignment(@oa2, :invalid_policy_class)
+        end
+      end.to raise_error(ArgumentError)
+      policy_machine.object_attributes.should == [@oa1]
+    end
   end
 
   describe '#privileges' do
