@@ -4,7 +4,7 @@ Gem::Specification.new do |s|
   s.summary     = "Policy Machine!"
   s.description = "A ruby implementation of the Policy Machine authorization formalism."
   s.authors     = ['Matthew Szenher', 'Aaron Weiner']
-  s.email       = ""
+  s.email       = s.authors.map{|name|name.sub(/(.).* (.*)/,'\1\2@mdsol.com')}
   s.homepage    = 'https://github.com/mdsol/the_policy_machine'
   s.files         = `git ls-files`.split("\n")
   s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
