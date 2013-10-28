@@ -1,5 +1,8 @@
 # Policy Machines are directed acyclic graphs (DAG).  These shared examples describe the
 # API for these DAGs, which could be persisted in memory, in a graph database, etc.
+
+require_relative 'storage_adapter_helpers.rb'
+
 shared_examples "a policy machine storage adapter" do
   let(:policy_machine_storage_adapter) { described_class.new }
 
@@ -242,6 +245,34 @@ shared_examples "a policy machine storage adapter" do
       policy_machine_storage_adapter.policy_classes_for_object_attribute(@oa).should == [@pc1, @pc3]
     end
 
+  end
+
+  describe '#transaction' do
+    it 'executes the block' do
+      if_implements(policy_machine_storage_adapter, :transaction){}
+      policy_machine_storage_adapter.transaction do
+        @oa = policy_machine_storage_adapter.add_object_attribute('some_oa', 'some_policy_machine_uuid1')
+        @pc1 = policy_machine_storage_adapter.add_policy_class('some_pc1', 'some_policy_machine_uuid1')
+        policy_machine_storage_adapter.assign(@oa, @pc1)
+      end
+      policy_machine_storage_adapter.policy_classes_for_object_attribute(@oa).should == [@pc1]
+    end
+
+    it 'rolls back the block on error' do
+      if_implements(policy_machine_storage_adapter, :transaction){}
+      @oa = policy_machine_storage_adapter.add_object_attribute('some_oa', 'some_policy_machine_uuid1')
+      @pc1 = policy_machine_storage_adapter.add_policy_class('some_pc1', 'some_policy_machine_uuid1')
+      policy_machine_storage_adapter.assign(@oa, @pc1)
+      expect do
+        policy_machine_storage_adapter.transaction do
+          @pc2 = policy_machine_storage_adapter.add_policy_class('some_pc2', 'some_policy_machine_uuid1')
+          policy_machine_storage_adapter.assign(@oa, @pc2)
+          policy_machine_storage_adapter.assign(@oa, :invalid_policy_class)
+        end
+      end.to raise_error(ArgumentError)
+      policy_machine_storage_adapter.find_all_of_type_policy_class.should == [@pc1]
+      policy_machine_storage_adapter.policy_classes_for_object_attribute(@oa).should == [@pc1]
+    end
   end
 
 end

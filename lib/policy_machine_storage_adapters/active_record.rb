@@ -287,6 +287,13 @@ module PolicyMachineStorageAdapter
       user.descendants.where(type: class_for_type('user_attribute'))
     end
 
+    ##
+    # Execute the passed-in block transactionally: any error raised out of the block causes
+    # all the block's changes to be rolled back.
+    def transaction(&block)
+      PolicyElement.transaction(&block)
+    end
+
     private
 
     def assert_persisted_policy_element(*arguments)
