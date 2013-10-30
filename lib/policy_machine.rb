@@ -148,6 +148,22 @@ class PolicyMachine
   end
 
   ##
+  # Returns an array of all privileges encoded in this
+  # policy machine for the given user (attribute) on the given
+  # object.
+  #
+  # TODO:  might make privilege a class of its own
+  def scoped_privileges(user_or_attribute, object)
+    if policy_machine_storage_adapter.respond_to?(:scoped_privileges)
+      policy_machine_storage_adapter.scoped_privileges(user_or_attribute, object)
+    else
+      operations.grep(->operation{is_privilege?(user_or_attribute, operation, object)}) do |op|
+        [user_or_attribute, op, object]
+      end
+    end
+  end
+
+  ##
   # Returns an array of all user_attributes a PM::User is assigned to,
   # directly or indirectly.
   def list_user_attributes(user)

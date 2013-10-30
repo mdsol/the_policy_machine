@@ -106,6 +106,10 @@ module PM
       stored_pe.respond_to?(meth, include_private) || super
     end
 
+    def inspect
+      "#<#{self.class} #{unique_identifier}>"
+    end
+
     protected
       def allowed_assignee_classes
         raise "Must override this method in a subclass"

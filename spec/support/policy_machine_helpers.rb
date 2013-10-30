@@ -19,4 +19,18 @@ def assert_pm_privilege_expectations(actual_privileges, expected_privileges)
   end
 
   actual_privileges.count.should == expected_privileges.size
+  assert_pm_scoped_privilege_expectations(expected_privileges)
+end
+
+# Make sure all scoped_privileges calls behave as expected
+def assert_pm_scoped_privilege_expectations(expected_privileges)
+  users = policy_machine.users
+  objects = policy_machine.objects
+  users.product(objects) do |user, object|
+    expected_scoped_privileges = expected_privileges.select do |u,_,o|
+      u.unique_identifier == user.unique_identifier &&
+      o.unique_identifier ==object.unique_identifier
+    end
+    policy_machine.scoped_privileges(user,object).should =~ expected_scoped_privileges
+  end
 end
