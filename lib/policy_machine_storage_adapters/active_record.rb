@@ -313,7 +313,7 @@ module PolicyMachineStorageAdapter
       associations = class_for_type('policy_element_association').where(
         object_attribute_id: object_or_attribute.descendants | [object_or_attribute],
         user_attribute_id: user_or_attribute.descendants | [user_or_attribute]
-        ).joins(:operations)
+        ).includes(:operations)
 
       associations.flat_map(&:operations).uniq
     end
