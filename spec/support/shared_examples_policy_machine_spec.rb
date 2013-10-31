@@ -187,6 +187,12 @@ shared_examples "a policy machine" do
       it 'allows an association to be made between an existing user_attribute, operation set and object attribute (returns true)' do
         policy_machine.add_association(@user_attribute, @operation_set, @object_attribute).should be_true
       end
+
+      it 'handles non-unique operation sets' do
+        @operation_set << @operation1.dup
+        policy_machine.add_association(@user_attribute, @operation_set, @object_attribute).should be_true
+      end
+
     end
   end
 
