@@ -150,7 +150,7 @@ class PolicyMachine
   ##
   # Returns an array of all privileges encoded in this
   # policy machine for the given user (attribute) on the given
-  # object.
+  # object (attribute).
   #
   # TODO:  might make privilege a class of its own
   def scoped_privileges(user_or_attribute, object_or_attribute)
