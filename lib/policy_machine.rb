@@ -153,12 +153,15 @@ class PolicyMachine
   # object.
   #
   # TODO:  might make privilege a class of its own
-  def scoped_privileges(user_or_attribute, object)
+  def scoped_privileges(user_or_attribute, object_or_attribute)
     if policy_machine_storage_adapter.respond_to?(:scoped_privileges)
-      policy_machine_storage_adapter.scoped_privileges(user_or_attribute, object)
+      policy_machine_storage_adapter.scoped_privileges(user_or_attribute.stored_pe, object_or_attribute.stored_pe).map do |op|
+        operation = PM::Operation.convert_stored_pe_to_pe(op, policy_machine_storage_adapter, PM::Operation)
+        [user_or_attribute, operation, object_or_attribute]
+      end
     else
-      operations.grep(->operation{is_privilege?(user_or_attribute, operation, object)}) do |op|
-        [user_or_attribute, op, object]
+      operations.grep(->operation{is_privilege?(user_or_attribute, operation, object_or_attribute)}) do |op|
+        [user_or_attribute, op, object_or_attribute]
       end
     end
   end
