@@ -1,10 +1,11 @@
-require_relative '../test/test_helper.rb'
-
 require 'simplecov'
 SimpleCov.start do
   add_group 'lib', 'lib'
   add_filter 'spec'
+  add_filter 'test'
 end
+
+require_relative '../test/test_helper.rb'
 
 require 'rspec'
 require 'debugger'
