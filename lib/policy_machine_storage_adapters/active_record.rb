@@ -21,7 +21,9 @@ module PolicyMachineStorageAdapter
       has_many :assignments, foreign_key: :parent_id, dependent: :destroy
       has_many :children, through: :assignments, dependent: :destroy #this doesn't actually destroy the children, just the assignment
       has_many :transitive_closure, foreign_key: :ancestor_id
+      has_many :inverse_transitive_closure, class_name: :"PolicyMachineStorageAdapter::ActiveRecord::TransitiveClosure", foreign_key: :descendant_id
       has_many :descendants, through: :transitive_closure
+      has_many :ancestors, through: :inverse_transitive_closure
       attr_accessible :unique_identifier, :policy_machine_uuid, :extra_attributes
       attr_accessor :extra_attributes_hash
       before_save :serialize_extra_attributes_hash
@@ -294,7 +296,39 @@ module PolicyMachineStorageAdapter
       PolicyElement.transaction(&block)
     end
 
+    ## Optimized version of PolicyMachine#scoped_privileges
+    # Returns all operations the user has on the object
+    def scoped_privileges(user_or_attribute, object_or_attribute)
+      policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
+      if policy_classes_containing_object.count < 2
+        scoped_privileges_single_policy_class(user_or_attribute, object_or_attribute)
+      else
+        scoped_privileges_multiple_policy_classes(user_or_attribute, object_or_attribute, policy_classes_containing_object)
+      end
+    end
+
     private
+
+    def scoped_privileges_single_policy_class(user_or_attribute, object_or_attribute)
+      associations = class_for_type('policy_element_association').where(
+        object_attribute_id: object_or_attribute.descendants | [object_or_attribute],
+        user_attribute_id: user_or_attribute.descendants | [user_or_attribute]
+        ).includes(:operations)
+
+      associations.flat_map(&:operations).uniq
+    end
+
+    def scoped_privileges_multiple_policy_classes(user_or_attribute, object_or_attribute, policy_classes_containing_object)
+      base_scope = class_for_type('policy_element_association').where(
+        object_attribute_id: object_or_attribute.descendants | [object_or_attribute],
+        user_attribute_id: user_or_attribute.descendants | [user_or_attribute]
+        )
+      operations_for_policy_classes = policy_classes_containing_object.map do |pc|
+        associations = base_scope.where(object_attribute_id: pc.ancestors).includes(:operations)
+        associations.flat_map(&:operations)
+      end
+      operations_for_policy_classes.inject(:&) || []
+    end
 
     def assert_persisted_policy_element(*arguments)
       arguments.each do |argument|

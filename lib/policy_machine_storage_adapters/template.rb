@@ -163,6 +163,14 @@ module PolicyMachineStorageAdapter
     # all the block's changes to be rolled back. Should raise NotImplementedError if the
     # persistence layer does not support this.
     def transaction
+
+    end
+
+    ## Optimized version of PolicyMachine#scoped_privileges
+    # Return all operations the user has on the object
+    # Optional: only add this method if you can do it better than policy_machine.rb
+    def scoped_privileges(user_or_attribute, object_or_attribute)
+
     end
 
   end
