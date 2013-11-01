@@ -6,6 +6,7 @@ Gem::Specification.new do |s|
   s.authors     = ['Matthew Szenher', 'Aaron Weiner']
   s.email       = s.authors.map{|name|name.sub(/(.).* (.*)/,'\1\2@mdsol.com')}
   s.homepage    = 'https://github.com/mdsol/the_policy_machine'
+  s.license     = 'MIT'
   s.files         = `git ls-files`.split("\n")
   s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
   s.require_paths = ["lib"]
