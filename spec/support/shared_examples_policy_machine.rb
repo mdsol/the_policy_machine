@@ -453,6 +453,10 @@ shared_examples "a policy machine" do
       policy_machine.list_user_attributes(@u1).should =~ [@group1, @subgroup1a]
     end
 
+    it 'raises an argument error when passed anything other than a user' do
+      expect {policy_machine.list_user_attributes(@group1)}.to raise_error ArgumentError, /Expected a PM::User/
+    end
+
   end
 
   describe '#transaction' do

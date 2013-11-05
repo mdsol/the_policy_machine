@@ -23,8 +23,8 @@ Run all rspec with:
 ```
 
 Simplecov code coverage is generated automatically.  Any changes you make to this repository should
-ensure that code coverage remains at 100%.  **No pull request will be merged unless proof is given 
-(i.e. a PR comment) that code coverage remains at 100% in the PR branch.**
+ensure that code coverage remains at at least 99.5%.  **No pull request will be merged that reduces
+code coverage.**
 
 ## Making Your Own Policy Machine Storage Adapter
 

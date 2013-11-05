@@ -44,6 +44,23 @@ describe 'ActiveRecord' do
 
     end
 
+    describe 'method_missing' do
+
+      before do
+        @o1 = policy_machine_storage_adapter.add_object('some_uuid1','some_policy_machine_uuid1')
+      end
+
+      it 'calls super when the method is not an attribute' do
+        expect {@o1.sabe}.to raise_error NameError
+      end
+
+      it 'retrieves the attribute value' do
+        @o1.extra_attributes = {foo: 'bar'}.to_json
+        @o1.foo.should == 'bar'
+      end
+
+    end
+
   end
 
   describe 'PolicyMachine integration with PolicyMachineStorageAdapter::ActiveRecord' do
