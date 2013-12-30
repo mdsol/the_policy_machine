@@ -78,6 +78,10 @@ class PolicyMachine
       raise(ArgumentError, "object_or_attribute must either be an Object or ObjectAttribute.")
     end
 
+    if options.empty? && policy_machine_storage_adapter.respond_to?(:is_privilege?)
+      return policy_machine_storage_adapter.is_privilege?(*[user_or_attribute, operation, object_or_attribute].map(&:stored_pe))
+    end
+
     # Try to get associations to check from options
     associations = options[:associations] || options['associations']
     if associations

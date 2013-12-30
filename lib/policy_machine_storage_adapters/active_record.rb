@@ -296,6 +296,12 @@ module PolicyMachineStorageAdapter
       PolicyElement.transaction(&block)
     end
 
+    ## Optimized version of PolicyMachine#is_privilege?
+    # Returns true if the user has the operation on the object
+    def is_privilege?(user_or_attribute, operation, object_or_attribute)
+      scoped_privileges(user_or_attribute, object_or_attribute).include?(operation)
+    end
+
     ## Optimized version of PolicyMachine#scoped_privileges
     # Returns all operations the user has on the object
     def scoped_privileges(user_or_attribute, object_or_attribute)
