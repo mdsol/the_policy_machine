@@ -299,7 +299,12 @@ module PolicyMachineStorageAdapter
     ## Optimized version of PolicyMachine#is_privilege?
     # Returns true if the user has the operation on the object
     def is_privilege?(user_or_attribute, operation, object_or_attribute)
-      scoped_privileges(user_or_attribute, object_or_attribute).include?(operation)
+      policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
+      if policy_classes_containing_object.count < 2
+        is_privilege_single_policy_class(user_or_attribute, operation, object_or_attribute)
+      else
+        is_privilege_multiple_policy_classes(user_or_attribute, operation, object_or_attribute, policy_classes_containing_object)
+      end
     end
 
     ## Optimized version of PolicyMachine#scoped_privileges
@@ -315,25 +320,36 @@ module PolicyMachineStorageAdapter
 
     private
 
-    def scoped_privileges_single_policy_class(user_or_attribute, object_or_attribute)
-      associations = class_for_type('policy_element_association').where(
-        object_attribute_id: object_or_attribute.descendants | [object_or_attribute],
-        user_attribute_id: user_or_attribute.descendants | [user_or_attribute]
-        ).includes(:operations)
+    def is_privilege_single_policy_class(user_or_attribute, operation, object_or_attribute)
+      associations_between(user_or_attribute, object_or_attribute).where(id: operation.policy_element_associations).any?
+    end
 
+    def is_privilege_multiple_policy_classes(user_or_attribute, operation, object_or_attribute, policy_classes_containing_object)
+      base_scope = associations_between(user_or_attribute, object_or_attribute).where(id: operation.policy_element_associations)
+      policy_classes_containing_object.all? do |pc|
+        base_scope.where(object_attribute_id: pc.ancestors).any?
+      end
+    end
+
+    def scoped_privileges_single_policy_class(user_or_attribute, object_or_attribute)
+      associations = associations_between(user_or_attribute, object_or_attribute).includes(:operations)
       associations.flat_map(&:operations).uniq
     end
 
     def scoped_privileges_multiple_policy_classes(user_or_attribute, object_or_attribute, policy_classes_containing_object)
-      base_scope = class_for_type('policy_element_association').where(
-        object_attribute_id: object_or_attribute.descendants | [object_or_attribute],
-        user_attribute_id: user_or_attribute.descendants | [user_or_attribute]
-        )
+      base_scope = associations_between(user_or_attribute, object_or_attribute)
       operations_for_policy_classes = policy_classes_containing_object.map do |pc|
         associations = base_scope.where(object_attribute_id: pc.ancestors).includes(:operations)
         associations.flat_map(&:operations)
       end
       operations_for_policy_classes.inject(:&) || []
+    end
+
+    def associations_between(user_or_attribute, object_or_attribute)
+      class_for_type('policy_element_association').where(
+        object_attribute_id: object_or_attribute.descendants | [object_or_attribute],
+        user_attribute_id: user_or_attribute.descendants | [user_or_attribute]
+      )
     end
 
     def assert_persisted_policy_element(*arguments)

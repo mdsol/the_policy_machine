@@ -61,6 +61,29 @@ describe 'ActiveRecord' do
 
     end
 
+    context 'when there is a lot of data' do
+
+      before do
+        n = 20
+        @pm = PolicyMachine.new(:name => 'ActiveRecord PM', :storage_adapter => PolicyMachineStorageAdapter::ActiveRecord)
+        @u1 = @pm.create_user('u1')
+        @op = @pm.create_operation('own')
+        @user_attributes = (1..n).map { |i| @pm.create_user_attribute("ua#{i}") }
+        @object_attributes = (1..n).map { |i| @pm.create_object_attribute("oa#{i}") }
+        @objects = (1..n).map { |i| @pm.create_object("o#{i}") }
+        @user_attributes.each { |ua| @pm.add_assignment(@u1, ua) }
+        @object_attributes.product(@user_attributes) { |oa, ua| @pm.add_association(ua, Set.new([@op]), oa) }
+        @object_attributes.zip(@objects) { |oa, o| @pm.add_assignment(o, oa) }
+      end
+
+      it 'does not have O(n) database calls' do
+        #TODO: Find a way to count all database calls that doesn't conflict with ActiveRecord magic
+        PolicyMachineStorageAdapter::ActiveRecord::TransitiveClosure.should_receive(:exists?).at_most(10).times
+        @pm.is_privilege?(@u1, @op, @objects.first).should be
+      end
+
+    end
+
   end
 
   describe 'PolicyMachine integration with PolicyMachineStorageAdapter::ActiveRecord' do
