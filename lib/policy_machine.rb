@@ -70,8 +70,8 @@ class PolicyMachine
       raise(ArgumentError, "user_attribute_pe must be a User or UserAttribute.")
     end
 
-    unless operation.is_a?(PM::Operation)
-      raise(ArgumentError, "operation must be an Operation.")
+    unless [PM::Operation, Symbol, String].any? { |allowed_type| operation.is_a?(allowed_type) }
+      raise(ArgumentError, "operation must be an Operation, Symbol, or String.")
     end
 
     unless object_or_attribute.is_a?(PM::Object) || object_or_attribute.is_a?(PM::ObjectAttribute)
@@ -79,7 +79,12 @@ class PolicyMachine
     end
 
     if options.empty? && policy_machine_storage_adapter.respond_to?(:is_privilege?)
-      return policy_machine_storage_adapter.is_privilege?(*[user_or_attribute, operation, object_or_attribute].map(&:stored_pe))
+      privilege = [user_or_attribute, operation, object_or_attribute].map { |obj| obj.respond_to?(:stored_pe) ? obj.stored_pe : obj }
+      return policy_machine_storage_adapter.is_privilege?(*privilege)
+    end
+
+    unless operation.is_a?(PM::Operation)
+      operation = operations(unique_identifier: operation.to_s).first or return false
     end
 
     # Try to get associations to check from options
