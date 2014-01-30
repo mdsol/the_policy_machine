@@ -321,11 +321,19 @@ module PolicyMachineStorageAdapter
     private
 
     def is_privilege_single_policy_class(user_or_attribute, operation, object_or_attribute)
-      associations_between(user_or_attribute, object_or_attribute).where(id: operation.policy_element_associations).any?
+      if operation.is_a?(class_for_type('operation'))
+        associations_between(user_or_attribute, object_or_attribute).where(id: operation.policy_element_associations).any?
+      else
+        associations_between(user_or_attribute, object_or_attribute).joins(:operations).where(policy_elements: {unique_identifier: operation}).any?
+      end
     end
 
     def is_privilege_multiple_policy_classes(user_or_attribute, operation, object_or_attribute, policy_classes_containing_object)
-      base_scope = associations_between(user_or_attribute, object_or_attribute).where(id: operation.policy_element_associations)
+      base_scope =  if operation.is_a?(class_for_type('operation'))
+        associations_between(user_or_attribute, object_or_attribute).where(id: operation.policy_element_associations)
+      else
+        associations_between(user_or_attribute, object_or_attribute).joins(:operations).where(policy_elements: {unique_identifier: operation})
+      end
       policy_classes_containing_object.all? do |pc|
         base_scope.where(object_attribute_id: pc.ancestors).any?
       end

@@ -306,9 +306,9 @@ shared_examples "a policy machine" do
         to raise_error(ArgumentError, "user_attribute_pe must be a User or UserAttribute.")
     end
 
-    it 'raises when the second argument is not an operation' do
+    it 'raises when the second argument is not an operation, symbol, or string' do
       expect{ policy_machine.is_privilege?(@u1, @u1, @o1)}.
-        to raise_error(ArgumentError, "operation must be an Operation.")
+        to raise_error(ArgumentError, "operation must be an Operation, Symbol, or String.")
     end
 
     it 'raises when the third argument is not an object or object_attribute' do
@@ -330,6 +330,22 @@ shared_examples "a policy machine" do
 
     it 'returns false if privilege cannot be inferred from arguments' do
       policy_machine.is_privilege?(@u1, @w, @o2).should be_false
+    end
+
+    it 'accepts the unique identifier for an operation in place of the operation' do
+      policy_machine.is_privilege?(@u1, @w.unique_identifier, @o1).should be_true
+    end
+
+    it 'accepts the unique identifier in symbol form for an operation in place of the operation' do
+      policy_machine.is_privilege?(@u1, @w.unique_identifier.to_sym, @o1).should be_true
+    end
+
+    it 'returns false on string input when the operation exists but the privilege does not' do
+      policy_machine.is_privilege?(@u1, @w.unique_identifier, @o2).should be_false
+    end
+
+    it 'returns false on string input when the operation does not exist' do
+      policy_machine.is_privilege?(@u1, 'non-existent-operation', @o2).should be_false
     end
 
     it 'does not infer privileges from deleted attributes' do
