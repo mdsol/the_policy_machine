@@ -64,6 +64,12 @@ describe 'ActiveRecord' do
           results.first.unique_identifier.should == "uuid_0"
           results.last.unique_identifier.should == "uuid_1"
         end
+        
+        it 'does not paginate if no offset and no limit' do
+          results = policy_machine_storage_adapter.find_all_of_type_object(color: 'red')
+          results.first.unique_identifier.should == "uuid_0"
+          results.last.unique_identifier.should == "uuid_9"
+        end
       end
 
     end
