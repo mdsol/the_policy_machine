@@ -171,7 +171,7 @@ module PolicyMachineStorageAdapter
         conditions = options.slice!(:per_page, :page).stringify_keys
         extra_attribute_conditions = conditions.slice!(*PolicyElement.column_names)
         all = class_for_type(pe_type).where(conditions)
-        all = all.order.paginate(options.slice(:page, :per_page)) if options.slice(:page, :per_page)
+        all = all.order.paginate(options.slice(:page, :per_page)) if options[:page] && options[:per_page]
         extra_attribute_conditions.each do |key, value|
           warn "WARNING: #{self.class} is filtering #{pe_type} on #{key} in memory, which won't scale well. " <<
             "To move this query to the database, add a '#{key}' column to the policy_elements table " <<

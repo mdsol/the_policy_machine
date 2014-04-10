@@ -53,6 +53,7 @@ describe 'ActiveRecord' do
           results.last.unique_identifier.should == "uuid_5"
         end
 
+        # TODO: Investigate why this doesn't fail when not slicing params
         it 'does not paginate if no page or per_page' do
           results = policy_machine_storage_adapter.find_all_of_type_object(color: 'red')
           results.first.unique_identifier.should == "uuid_0"
