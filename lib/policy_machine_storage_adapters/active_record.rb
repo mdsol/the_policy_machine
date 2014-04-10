@@ -168,9 +168,9 @@ module PolicyMachineStorageAdapter
       end
 
       define_method("find_all_of_type_#{pe_type}") do |options = {}|
-        conditions = options.stringify_keys
+        conditions = options.slice!(:limit, :offset).stringify_keys
         extra_attribute_conditions = conditions.slice!(*PolicyElement.column_names)
-        all = class_for_type(pe_type).where(conditions)
+        all = class_for_type(pe_type).where(conditions).order.limit(options[:limit]).offset(options[:offset])
         extra_attribute_conditions.each do |key, value|
           warn "WARNING: #{self.class} is filtering #{pe_type} on #{key} in memory, which won't scale well. " <<
             "To move this query to the database, add a '#{key}' column to the policy_elements table " <<
