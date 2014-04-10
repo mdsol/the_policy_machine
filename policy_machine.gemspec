@@ -11,13 +11,13 @@ Gem::Specification.new do |s|
   s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
   s.require_paths = ["lib"]
 
-  s.add_dependency('activesupport')
+  s.add_dependency('activesupport', '~> 3.2')
 
   s.add_development_dependency('rspec', '~> 2.13.0')
   s.add_development_dependency('simplecov', '~> 0.7.1')
   s.add_development_dependency('debugger', '~> 1.6.0')
   s.add_development_dependency('neography', '~> 1.1')
-  s.add_development_dependency('rails')
+  s.add_development_dependency('rails', '~> 3.2')
   s.add_development_dependency('mysql2')
   s.add_development_dependency('database_cleaner')
 

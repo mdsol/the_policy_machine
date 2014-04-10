@@ -100,6 +100,7 @@ module PolicyMachineStorageAdapter
     end
 
     class Assignment < ::ActiveRecord::Base
+      attr_accessible :child_id
       # needs parent_id, child_id columns
       after_create :add_to_transitive_closure
       after_destroy :remove_from_transitive_closure
