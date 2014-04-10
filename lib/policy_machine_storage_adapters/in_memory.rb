@@ -25,8 +25,8 @@ module PolicyMachineStorageAdapter
       end
 
       define_method("find_all_of_type_#{pe_type}") do |options = {}|
-        conditions = options.merge(pe_type: pe_type)
-        policy_elements.select do |pe|
+        conditions = options.slice!(:per_page, :page).merge(pe_type: pe_type)
+        policy_elements.paginate(options.slice(:per_page, :page)).select do |pe|
           conditions.all? do |k,v|
             if v.nil?
               !pe.respond_to?(k) || pe.send(k) == nil

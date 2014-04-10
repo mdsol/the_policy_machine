@@ -3,6 +3,7 @@ require 'policy_machine/association'
 require 'securerandom'
 require 'active_support/inflector'
 require 'set'
+require 'will_paginate/array'
 
 # require all adapters
 Dir.glob(File.dirname(File.absolute_path(__FILE__)) + '/policy_machine_storage_adapters/*.rb').each{ |f| require f }
