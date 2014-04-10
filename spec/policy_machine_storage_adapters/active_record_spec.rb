@@ -47,25 +47,13 @@ describe 'ActiveRecord' do
           10.times {|i| policy_machine_storage_adapter.add_object("uuid_#{i}", 'some_policy_machine_uuid1', color: 'red') }
         end
         
-        it 'paginates the results based on limit and offset' do
-          results = policy_machine_storage_adapter.find_all_of_type_object(color: 'red', limit: 3, offset: 2)
-          results.first.unique_identifier.should == "uuid_2"
-          results.last.unique_identifier.should == "uuid_4"
+        it 'paginates the results based on page and per_page' do
+          results = policy_machine_storage_adapter.find_all_of_type_object(color: 'red', per_page: 2, page: 3)
+          results.first.unique_identifier.should == "uuid_4"
+          results.last.unique_identifier.should == "uuid_5"
         end
-        
-        it 'paginates the results if no limit' do
-          results = policy_machine_storage_adapter.find_all_of_type_object(color: 'red', offset: 2)
-          results.first.unique_identifier.should == "uuid_2"
-          results.last.unique_identifier.should == "uuid_9"
-        end
-        
-        it 'paginates the results if no offset' do
-          results = policy_machine_storage_adapter.find_all_of_type_object(color: 'red', limit: 2)
-          results.first.unique_identifier.should == "uuid_0"
-          results.last.unique_identifier.should == "uuid_1"
-        end
-        
-        it 'does not paginate if no offset and no limit' do
+
+        it 'does not paginate if no page or per_page' do
           results = policy_machine_storage_adapter.find_all_of_type_object(color: 'red')
           results.first.unique_identifier.should == "uuid_0"
           results.last.unique_identifier.should == "uuid_9"

@@ -20,5 +20,6 @@ Gem::Specification.new do |s|
   s.add_development_dependency('rails', '~> 3.2')
   s.add_development_dependency('mysql2')
   s.add_development_dependency('database_cleaner')
+  s.add_development_dependency('will_paginate', '~> 3.0.5')
 
 end
