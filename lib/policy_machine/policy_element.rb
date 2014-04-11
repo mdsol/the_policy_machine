@@ -144,9 +144,13 @@ module PM
 
     # Return all policy elements of a particular type (e.g. all users)
     def self.all(pm_storage_adapter, options = {})
-      pm_storage_adapter.find_all_of_type_user(options).map do |stored_pe|
+      result = pm_storage_adapter.find_all_of_type_user(options)
+      all_result = result.map do |stored_pe|
         convert_stored_pe_to_pe(stored_pe, pm_storage_adapter, PM::User)
       end
+      all_result.define_singleton_method(:total_entries) {result.total_entries}
+      all_result
+      
     end
 
     protected
@@ -165,9 +169,12 @@ module PM
 
      # Return all policy elements of a particular type (e.g. all users)
     def self.all(pm_storage_adapter, options = {})
-      pm_storage_adapter.find_all_of_type_user_attribute(options).map do |stored_pe|
+      result = pm_storage_adapter.find_all_of_type_user_attribute(options)
+      all_result = result.map do |stored_pe|
         convert_stored_pe_to_pe(stored_pe, pm_storage_adapter, PM::UserAttribute)
       end
+      all_result.define_singleton_method(:total_entries) {result.total_entries}
+      all_result
     end
 
     protected
@@ -194,9 +201,13 @@ module PM
     end
 
     def self.all(pm_storage_adapter, options = {})
-      pm_storage_adapter.find_all_of_type_object_attribute(options).map do |stored_pe|
+      result = pm_storage_adapter.find_all_of_type_object_attribute(options)
+      all_result = result.map do |stored_pe|
         convert_stored_pe_to_pe(stored_pe, pm_storage_adapter, PM::ObjectAttribute)
       end
+      all_result.define_singleton_method(:total_entries) {result.total_entries}
+      all_result
+      
     end
 
     protected
@@ -215,9 +226,13 @@ module PM
 
     # Return all policy elements of a particular type (e.g. all users)
     def self.all(pm_storage_adapter, options = {})
-      pm_storage_adapter.find_all_of_type_object(options).map do |stored_pe|
+      result = pm_storage_adapter.find_all_of_type_object(options)
+      all_result = result.map do |stored_pe|
         convert_stored_pe_to_pe(stored_pe, pm_storage_adapter, PM::Object)
       end
+      all_result.define_singleton_method(:total_entries) {result.total_entries}
+      all_result
+      
     end
 
     protected
@@ -236,9 +251,13 @@ module PM
 
     # Return all policy elements of a particular type (e.g. all users)
     def self.all(pm_storage_adapter, options = {})
-      pm_storage_adapter.find_all_of_type_operation(options).map do |stored_pe|
+      result = pm_storage_adapter.find_all_of_type_operation(options)
+      all_result = result.map do |stored_pe|
         convert_stored_pe_to_pe(stored_pe, pm_storage_adapter, PM::Operation)
       end
+      all_result.define_singleton_method(:total_entries) {result.total_entries}
+      all_result
+      
     end
 
     # Return all associations in which this Operation is included

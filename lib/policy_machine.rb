@@ -211,8 +211,7 @@ class PolicyMachine
       # TODO: When the policy machine raises a NoMethoError, we should log a nice message
       # saying that the underlying policy element class doesn't implement 'all'.  Do
       # it when we have a logger, though.
-      all_found = pm_class.send(:all, @policy_machine_storage_adapter, options)
-      all_found.select{ |pe| pe.policy_machine_uuid == uuid }
+      all_found = pm_class.send(:all, @policy_machine_storage_adapter, options.merge(policy_machine_uuid: uuid))
     end
   end
 
