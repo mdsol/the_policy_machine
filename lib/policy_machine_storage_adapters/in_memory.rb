@@ -32,7 +32,7 @@ module PolicyMachineStorageAdapter
         else
           elements = policy_elements
         end
-        elements.select do |pe|
+        paginated_elements = elements.select do |pe|
           conditions.all? do |k,v|
             if v.nil?
               !pe.respond_to?(k) || pe.send(k) == nil
@@ -41,6 +41,12 @@ module PolicyMachineStorageAdapter
             end
           end
         end
+        unless paginated_elements.respond_to? :total_entries
+          paginated_elements.define_singleton_method(:total_entries) do
+            elements.count
+          end
+        end
+        paginated_elements
       end
     end
 
