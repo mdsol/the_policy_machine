@@ -26,13 +26,7 @@ module PolicyMachineStorageAdapter
 
       define_method("find_all_of_type_#{pe_type}") do |options = {}|
         conditions = options.slice!(:per_page, :page).merge(pe_type: pe_type)
-        if options[:per_page]
-          page = options[:page] ? options[:page] : 1
-          elements = policy_elements.paginate(options.slice(:per_page, :page))
-        else
-          elements = policy_elements
-        end
-        paginated_elements = elements.select do |pe|
+        elements = policy_elements.select do |pe|
           conditions.all? do |k,v|
             if v.nil?
               !pe.respond_to?(k) || pe.send(k) == nil
@@ -40,6 +34,12 @@ module PolicyMachineStorageAdapter
               pe.respond_to?(k) && pe.send(k) == v
             end
           end
+        end
+        if options[:per_page]
+          page = options[:page] ? options[:page] : 1
+          paginated_elements = elements.paginate(options.slice(:per_page, :page))
+        else
+          paginated_elements = elements
         end
         unless paginated_elements.respond_to? :total_entries
           paginated_elements.define_singleton_method(:total_entries) do
