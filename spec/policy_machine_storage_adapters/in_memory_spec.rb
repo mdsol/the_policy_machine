@@ -8,6 +8,14 @@ describe PolicyMachineStorageAdapter::InMemory do
   describe 'find_all_of_type' do
     let(:policy_machine_storage_adapter) { described_class.new }
     
+    it 'finds without case sensitivity' do
+      ['abcde', 'object1'].each do |name| 
+        policy_machine_storage_adapter.add_object("#{name}_uuid", 'some_policy_machine_uuid', name: name) 
+      end
+      policy_machine_storage_adapter.find_all_of_type_object(name: 'ABCDE').first.unique_identifier.should == 'abcde_uuid'
+      policy_machine_storage_adapter.find_all_of_type_object(name: 'oBJeCT1').first.unique_identifier.should == 'object1_uuid'
+    end
+    
     context 'pagination' do
       before do
         10.times {|i| policy_machine_storage_adapter.add_object("uuid_#{i}", 'some_policy_machine_uuid1', color: 'red') }

@@ -31,7 +31,7 @@ module PolicyMachineStorageAdapter
             if v.nil?
               !pe.respond_to?(k) || pe.send(k) == nil
             else
-              pe.respond_to?(k) && pe.send(k) == v
+              pe.respond_to?(k) && pe.send(k).to_s.downcase == v.to_s.downcase
             end
           end
         end

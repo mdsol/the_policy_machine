@@ -143,6 +143,7 @@ module PM
     end
 
     # Return all policy elements of a particular type (e.g. all users)
+    # TODO: Move all overrides of self.all to the base class
     def self.all(pm_storage_adapter, options = {})
       result = pm_storage_adapter.find_all_of_type_user(options)
       all_result = result.map do |stored_pe|
@@ -150,7 +151,7 @@ module PM
       end
       all_result.define_singleton_method(:total_entries) {result.total_entries}
       all_result
-      
+
     end
 
     protected
