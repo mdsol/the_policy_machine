@@ -24,6 +24,9 @@ module PolicyMachineStorageAdapter
         persisted_pe
       end
 
+      # Find all policy elements of type pe_type 
+      # The results are paginated via will_paginate using the pagination params in the params hash
+      # The find is case insensitive to the conditions
       define_method("find_all_of_type_#{pe_type}") do |options = {}|
         conditions = options.slice!(:per_page, :page).merge(pe_type: pe_type)
         elements = policy_elements.select do |pe|
@@ -31,7 +34,6 @@ module PolicyMachineStorageAdapter
             if v.nil?
               !pe.respond_to?(k) || pe.send(k) == nil
             else
-              # This is case insensitive matching
               pe.respond_to?(k) && pe.send(k).to_s.downcase == v.to_s.downcase
             end
           end

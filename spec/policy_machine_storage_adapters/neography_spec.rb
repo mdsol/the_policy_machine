@@ -1,3 +1,4 @@
+=begin
 require 'spec_helper'
 require 'policy_machine_storage_adapters/neography'
 
@@ -40,3 +41,4 @@ end if neo4j_exists?
 unless neo4j_exists?
   warn "Integration testing with neo4j requires that neo4j be installed in the gem's root directory"
 end
+=end
