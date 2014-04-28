@@ -24,23 +24,34 @@ module PolicyMachineStorageAdapter
         persisted_pe
       end
 
+      # Find all policy elements of type pe_type 
+      # The results are paginated via will_paginate using the pagination params in the params hash
+      # The find is case insensitive to the conditions
       define_method("find_all_of_type_#{pe_type}") do |options = {}|
         conditions = options.slice!(:per_page, :page).merge(pe_type: pe_type)
-        if options[:per_page]
-          page = options[:page] ? options[:page] : 1
-          elements = policy_elements.paginate(options.slice(:per_page, :page))
-        else
-          elements = policy_elements
-        end
-        elements.select do |pe|
+        elements = policy_elements.select do |pe|
           conditions.all? do |k,v|
             if v.nil?
               !pe.respond_to?(k) || pe.send(k) == nil
             else
-              pe.respond_to?(k) && pe.send(k) == v
+              pe.respond_to?(k) && (pe.send(k).is_a?(String) ? pe.send(k).to_s.downcase == v.to_s.downcase : pe.send(k) == v)
             end
           end
         end
+        
+        # TODO: Refactor pagination block into another method and make find_all method smaller
+        if options[:per_page]
+          page = options[:page] ? options[:page] : 1
+          paginated_elements = elements.paginate(options.slice(:per_page, :page))
+        else
+          paginated_elements = elements
+        end
+        unless paginated_elements.respond_to? :total_entries
+          paginated_elements.define_singleton_method(:total_entries) do
+            elements.count
+          end
+        end
+        paginated_elements
       end
     end
 
