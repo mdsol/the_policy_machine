@@ -34,10 +34,12 @@ module PolicyMachineStorageAdapter
             if v.nil?
               !pe.respond_to?(k) || pe.send(k) == nil
             else
-              pe.respond_to?(k) && pe.send(k).to_s.downcase == v.to_s.downcase
+              pe.respond_to?(k) && (pe.send(k).is_a?(String) ? pe.send(k).to_s.downcase == v.to_s.downcase : pe.send(k) == v)
             end
           end
         end
+        
+        # TODO: Refactor pagination block into another method and make find_all method smaller
         if options[:per_page]
           page = options[:page] ? options[:page] : 1
           paginated_elements = elements.paginate(options.slice(:per_page, :page))
