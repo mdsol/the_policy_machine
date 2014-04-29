@@ -168,14 +168,16 @@ module PolicyMachineStorageAdapter
       end
 
       define_method("find_all_of_type_#{pe_type}") do |options = {}|
-        conditions = options.slice!(:per_page, :page).stringify_keys
+        # Look into implementing case insensitivty for databases other than mysql
+        conditions = options.slice!(:per_page, :page, :ignore_case).stringify_keys
         extra_attribute_conditions = conditions.slice!(*PolicyElement.column_names)
         all = class_for_type(pe_type).where(conditions)
         extra_attribute_conditions.each do |key, value|
           warn "WARNING: #{self.class} is filtering #{pe_type} on #{key} in memory, which won't scale well. " <<
             "To move this query to the database, add a '#{key}' column to the policy_elements table " <<
             "and re-save existing records"
-          all.select!{ |pe| pe.methodize_extra_attributes_hash and pe.extra_attributes_hash[key].to_s.downcase == value.to_s.downcase }
+          all.select!{ |pe| pe.methodize_extra_attributes_hash and 
+            ((attr_value = pe.extra_attributes_hash[key]).is_a?(String) and value.is_a?(String) and options[:ignore_case]) ? attr_value.downcase == value.downcase : attr_value == value}
         end
         # Default to first page if not specified
         if options[:per_page]
