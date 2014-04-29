@@ -36,7 +36,7 @@ module PolicyMachineStorageAdapter
               !pe.respond_to?(k) || pe.send(k) == nil
             else
               pe.respond_to?(k) && 
-                ((pe.send(k).is_a?(String) && v.is_a?(String) && options[:ignore_case] == true) ? pe.send(k).to_s.downcase == v.to_s.downcase : pe.send(k) == v)
+                ((pe.send(k).is_a?(String) && v.is_a?(String) && options[:ignore_case]) ? pe.send(k).downcase == v.downcase : pe.send(k) == v)
             end
           end
         end
