@@ -44,12 +44,12 @@ shared_examples "a policy machine storage adapter" do
         
         it 'finds with case sensitivity by default' do
           expect(policy_machine_storage_adapter.find_all_of_type_object(name: 'ABCDE')).to eq([])
-          expect(uuid2 = policy_machine_storage_adapter.find_all_of_type_object(name: 'oBJECt1')).to eq([])
+          expect(policy_machine_storage_adapter.find_all_of_type_object(name: 'oBJECt1')).to eq([])
         end
         
         it 'finds without case sensitivity if the option is passed' do
           expect(policy_machine_storage_adapter.find_all_of_type_object(name: 'ABCDE', ignore_case: true).first.unique_identifier).to eq('abcde_uuid')
-          expect(uuid2 = policy_machine_storage_adapter.find_all_of_type_object(name: 'oBJECt1', ignore_case: true).first.unique_identifier).to eq('object1_uuid')
+          expect(policy_machine_storage_adapter.find_all_of_type_object(name: 'oBJECt1', ignore_case: true).first.unique_identifier).to eq('object1_uuid')
         end
       end
     end
