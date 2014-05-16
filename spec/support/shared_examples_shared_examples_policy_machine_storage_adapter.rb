@@ -35,7 +35,7 @@ shared_examples "a policy machine storage adapter" do
         policy_machine_storage_adapter.send("find_all_of_type_#{pe_type}").should == [node1, node2]
       end
       
-      context 'case sensitivity' do
+      context 'finding matches strings' do
         before do
           ['abcde', 'object1'].each do |name| 
             policy_machine_storage_adapter.add_object("#{name}_uuid", 'some_policy_machine_uuid', name: name) 
@@ -50,6 +50,13 @@ shared_examples "a policy machine storage adapter" do
         it 'finds without case sensitivity if the option is passed' do
           expect(policy_machine_storage_adapter.find_all_of_type_object(name: 'ABCDE', ignore_case: true).first.unique_identifier).to eq('abcde_uuid')
           expect(policy_machine_storage_adapter.find_all_of_type_object(name: 'oBJECt1', ignore_case: true).first.unique_identifier).to eq('object1_uuid')
+        end
+        
+        it 'finds with whitespace trimming' do
+          expect(policy_machine_storage_adapter.find_all_of_type_object(name: '  abcde  ').first.unique_identifier).to eq('abcde_uuid')
+          expect(policy_machine_storage_adapter.find_all_of_type_object(name: '   object1').first.unique_identifier).to eq('object1_uuid')
+          expect(policy_machine_storage_adapter.find_all_of_type_object(name: '  ABCDE  ', ignore_case: true).first.unique_identifier).to eq('abcde_uuid')
+          expect(policy_machine_storage_adapter.find_all_of_type_object(name: '   oBJECt1', ignore_case: true).first.unique_identifier).to eq('object1_uuid')
         end
       end
     end
