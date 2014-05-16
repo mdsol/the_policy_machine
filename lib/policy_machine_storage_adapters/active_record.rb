@@ -176,8 +176,15 @@ module PolicyMachineStorageAdapter
           warn "WARNING: #{self.class} is filtering #{pe_type} on #{key} in memory, which won't scale well. " <<
             "To move this query to the database, add a '#{key}' column to the policy_elements table " <<
             "and re-save existing records"
-          all.select!{ |pe| pe.methodize_extra_attributes_hash and 
-            ((attr_value = pe.extra_attributes_hash[key]).is_a?(String) and value.is_a?(String) and options[:ignore_case]) ? attr_value.downcase == value.downcase : attr_value == value}
+          all.select! do |pe| 
+            if pe.methodize_extra_attributes_hash
+              if (attr_value = pe.extra_attributes_hash[key]).is_a?(String) and value.is_a?(String) 
+                options[:ignore_case] ? attr_value.strip.downcase == value.strip.downcase : attr_value.strip == value.strip
+              else
+                attr_value == value
+              end
+            end
+          end
         end
         # Default to first page if not specified
         if options[:per_page]
