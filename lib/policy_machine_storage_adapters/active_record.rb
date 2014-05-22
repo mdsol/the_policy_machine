@@ -26,7 +26,20 @@ module PolicyMachineStorageAdapter
       has_many :ancestors, through: :inverse_transitive_closure
       attr_accessible :unique_identifier, :policy_machine_uuid
       attr_accessor :extra_attributes_hash
-      store :extra_attributes
+
+      class ExtraAttributesHash < Hash
+
+        def self.load(data)
+          self[JSON.parse(data, quirks_mode: true)]
+        end
+
+        def self.dump(data)
+          data.to_json
+        end
+
+      end
+
+      serialize :extra_attributes, ExtraAttributesHash
 
       def method_missing(meth, *args, &block)
         store_attributes
@@ -46,7 +59,7 @@ module PolicyMachineStorageAdapter
 
       # Uses ActiveRecord's store method to methodize new attribute keys in extra_attributes
       def store_attributes
-        @extra_attributes_hash = self.extra_attributes.is_a?(Hash) ? self.extra_attributes : JSON.parse(self.extra_attributes, quirks_mode: true)
+        @extra_attributes_hash = ExtraAttributesHash[self.extra_attributes.is_a?(Hash) ? self.extra_attributes : JSON.parse(self.extra_attributes, quirks_mode: true)]
         ::ActiveRecord::Base.store_accessor(:extra_attributes, @extra_attributes_hash.keys)
       end
 
