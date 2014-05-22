@@ -18,7 +18,6 @@ module PM
       @pm_storage_adapter = pm_storage_adapter
       @stored_pe = stored_pe
       @extra_attributes = extra_attributes
-      methodize_extra_attributes!
     end
 
     ##
@@ -64,7 +63,6 @@ module PM
     #
     def update(attr_hash)
       @extra_attributes.merge!(attr_hash)
-      methodize_extra_attributes!
       if self.stored_pe && self.stored_pe.persisted
         @pm_storage_adapter.update(self.stored_pe, attr_hash)
         true
@@ -114,16 +112,6 @@ module PM
       def allowed_assignee_classes
         raise "Must override this method in a subclass"
       end
-
-      ##
-      # Allow magic attribute methods like in ActiveRecord
-      #
-      def methodize_extra_attributes!
-        @extra_attributes.keys.each do |attr|
-          define_singleton_method attr, lambda {@extra_attributes[attr]} unless respond_to?(attr)
-        end
-      end
-
   end
 
   # TODO:  there is repeated code in the following subclasses which I will DRY in the
