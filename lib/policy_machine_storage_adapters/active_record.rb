@@ -114,12 +114,13 @@ module PolicyMachineStorageAdapter
       def add_to_transitive_closure
         connection.execute("Insert ignore into transitive_closure values (#{parent_id}, #{child_id})")
         connection.execute("Insert ignore into transitive_closure
-             select parents_ancestors.ancestor_id, childs_descendants.descendant_id from
+             select distinct parents_ancestors.ancestor_id, childs_descendants.descendant_id from
               transitive_closure parents_ancestors,
               transitive_closure childs_descendants
              where
               (parents_ancestors.descendant_id = #{parent_id} or parents_ancestors.ancestor_id = #{parent_id})
-              and (childs_descendants.ancestor_id = #{child_id} or childs_descendants.descendant_id = #{child_id})")
+              and (childs_descendants.ancestor_id = #{child_id} or childs_descendants.descendant_id = #{child_id})
+              and not exists (select null from transitive_closure where ancestor_id = parents_ancestors.ancestor_id and descendant_id = childs_descendants.descendant_id) ")
       end
 
       def remove_from_transitive_closure
