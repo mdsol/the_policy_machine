@@ -27,6 +27,9 @@ module PolicyMachineStorageAdapter
       attr_accessible :unique_identifier, :policy_machine_uuid
       attr_accessor :extra_attributes_hash
 
+      # A regular Hash type column is encoded as YAML in Rails 3,
+      # but we prefer JSON. So this subclass exposes the methods ActiveRecord needs
+      # to serialize and deserialize as JSON.
       class ExtraAttributesHash < Hash
 
         def self.load(data)
