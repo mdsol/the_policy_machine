@@ -78,7 +78,7 @@ describe 'ActiveRecord' do
       end
 
       it 'retrieves the attribute value' do
-        @o1.extra_attributes = {foo: 'bar'}.to_json
+        @o1.extra_attributes = {foo: 'bar'}
         @o1.foo.should == 'bar'
       end
 

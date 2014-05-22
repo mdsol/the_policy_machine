@@ -24,42 +24,46 @@ module PolicyMachineStorageAdapter
       has_many :inverse_transitive_closure, class_name: :"PolicyMachineStorageAdapter::ActiveRecord::TransitiveClosure", foreign_key: :descendant_id
       has_many :descendants, through: :transitive_closure
       has_many :ancestors, through: :inverse_transitive_closure
-      attr_accessible :unique_identifier, :policy_machine_uuid, :extra_attributes
+      attr_accessible :unique_identifier, :policy_machine_uuid
       attr_accessor :extra_attributes_hash
-      before_save :serialize_extra_attributes_hash
+
+      # A regular Hash type column is encoded as YAML in Rails 3,
+      # but we prefer JSON. So this subclass exposes the methods ActiveRecord needs
+      # to serialize and deserialize as JSON.
+      class ExtraAttributesHash < Hash
+
+        def self.load(data)
+          self[JSON.parse(data, quirks_mode: true)]
+        end
+
+        def self.dump(data)
+          data.to_json
+        end
+
+      end
+
+      serialize :extra_attributes, ExtraAttributesHash
 
       def method_missing(meth, *args, &block)
-        methodize_extra_attributes_hash
+        store_attributes
         if respond_to?(meth)
           send(meth, *args)
         elsif meth.to_s[-1] == '='
           @extra_attributes_hash[meth.to_s] = args.first
-          methodize_extra_attributes_hash
         else
           super
         end
       end
 
       def respond_to_missing?(meth, *args)
-        methodize_extra_attributes_hash unless @extra_attributes_hash
+        store_attributes unless @extra_attributes_hash
         @extra_attributes_hash[meth.to_s] || super
       end
 
-      def methodize_extra_attributes_hash
-        @extra_attributes_hash = JSON.parse(self.extra_attributes, quirks_mode: true) if self.extra_attributes
-        @extra_attributes_hash ||= {}
-        @extra_attributes_hash.extract!(*self.class.column_names).each do |key, value|
-          send("#{key}=", value) unless value.nil?
-        end
-        @extra_attributes_hash.each do |key, value|
-          define_singleton_method key, lambda {@extra_attributes_hash[key.to_s]}
-          define_singleton_method "#{key}=", lambda { | value | @extra_attributes_hash[key.to_s] = value }
-        end
-      end
-
-      def serialize_extra_attributes_hash
-        methodize_extra_attributes_hash unless @extra_attributes_hash
-        self.extra_attributes = extra_attributes_hash.to_json
+      # Uses ActiveRecord's store method to methodize new attribute keys in extra_attributes
+      def store_attributes
+        @extra_attributes_hash = ExtraAttributesHash[self.extra_attributes.is_a?(Hash) ? self.extra_attributes : JSON.parse(self.extra_attributes, quirks_mode: true)]
+        ::ActiveRecord::Base.store_accessor(:extra_attributes, @extra_attributes_hash.keys)
       end
 
     end
@@ -71,7 +75,7 @@ module PolicyMachineStorageAdapter
       has_many :policy_element_associations, dependent: :destroy
     end
 
-    class ObjectAttribute < PolicyElement
+     class ObjectAttribute < PolicyElement
       has_many :policy_element_associations, dependent: :destroy
     end
 
@@ -162,7 +166,7 @@ module PolicyMachineStorageAdapter
         element_attrs = {
           :unique_identifier => unique_identifier,
           :policy_machine_uuid => policy_machine_uuid,
-          :extra_attributes => extra_attributes.to_json
+          :extra_attributes => extra_attributes
         }.merge(active_record_attributes)
         class_for_type(pe_type).create(element_attrs, without_protection: true)
       end
@@ -176,8 +180,9 @@ module PolicyMachineStorageAdapter
           warn "WARNING: #{self.class} is filtering #{pe_type} on #{key} in memory, which won't scale well. " <<
             "To move this query to the database, add a '#{key}' column to the policy_elements table " <<
             "and re-save existing records"
-          all.select!{ |pe| pe.methodize_extra_attributes_hash and 
-            ((attr_value = pe.extra_attributes_hash[key]).is_a?(String) and value.is_a?(String) and options[:ignore_case]) ? attr_value.downcase == value.downcase : attr_value == value}
+            all.select!{ |pe| pe.store_attributes and 
+                        ((attr_value = pe.extra_attributes_hash[key]).is_a?(String) and 
+                        value.is_a?(String) and options[:ignore_case]) ? attr_value.downcase == value.downcase : attr_value == value}
         end
         # Default to first page if not specified
         if options[:per_page]

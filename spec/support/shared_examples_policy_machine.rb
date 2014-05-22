@@ -260,6 +260,13 @@ shared_examples "a policy machine" do
         @u.foo.should == 'baz'
         policy_machine.users.last.foo.should == 'baz'
       end
+      
+      it 'updates persisted extra attributes with new keys' do
+        @u = policy_machine.create_user('u1', foo: 'bar')
+        @u.update(foo: 'baz', bla: 'bar')
+        @u.foo.should == 'baz'
+        policy_machine.users.last.foo.should == 'baz'
+      end
 
       it 'does not remove old attributes when adding new ones' do
         @u = policy_machine.create_user('u1', foo: 'bar')
