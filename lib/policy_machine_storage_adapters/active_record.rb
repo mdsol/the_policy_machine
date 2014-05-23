@@ -117,14 +117,16 @@ module PolicyMachineStorageAdapter
 
         connection.execute("Insert ignore into transitive_closure values (#{parent_id}, #{child_id})")
 
-        connection.execute("Insert ignore into transitive_closure
-             select distinct parents_ancestors.ancestor_id, childs_descendants.descendant_id from
-              transitive_closure parents_ancestors,
-              transitive_closure childs_descendants
+        selected_pairs = connection.execute(
+            "Select distinct parents_ancestors.ancestor_id, childs_descendants.descendant_id from
+               transitive_closure parents_ancestors,
+               transitive_closure childs_descendants
              where
               (parents_ancestors.descendant_id = #{parent_id} or parents_ancestors.ancestor_id = #{parent_id})
-              and (childs_descendants.ancestor_id = #{child_id} or childs_descendants.descendant_id = #{child_id})")
+              and (childs_descendants.ancestor_id = #{child_id} or childs_descendants.descendant_id = #{child_id}) ")
 
+        selected_pairs.to_a.each {|pair| connection.execute("Insert ignore into transitive_closure values (#{pair.join(',')}) ") }
+        
       end
 
       def remove_from_transitive_closure
