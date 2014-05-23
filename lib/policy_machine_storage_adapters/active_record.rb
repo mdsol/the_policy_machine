@@ -1,6 +1,5 @@
 require 'policy_machine'
 require 'set'
-require 'ruby-debug'
 
 # This class stores policy elements in a SQL database using whatever
 # database configuration and adapters are provided by active_record.
@@ -113,7 +112,6 @@ module PolicyMachineStorageAdapter
       end
 
       def add_to_transitive_closure
-       # connection.commit_db_transaction
 
         connection.execute("Insert ignore into transitive_closure values (#{parent_id}, #{child_id})")
 
@@ -123,7 +121,7 @@ module PolicyMachineStorageAdapter
                transitive_closure childs_descendants
              where
               (parents_ancestors.descendant_id = #{parent_id} or parents_ancestors.ancestor_id = #{parent_id})
-              and (childs_descendants.ancestor_id = #{child_id} or childs_descendants.descendant_id = #{child_id}) ")
+              and (childs_descendants.ancestor_id = #{child_id} or childs_descendants.descendant_id = #{child_id})")
 
         selected_pairs.to_a.each {|pair| connection.execute("Insert ignore into transitive_closure values (#{pair.join(',')}) ") }
         
