@@ -138,9 +138,10 @@ module PolicyMachineStorageAdapter
         connection.execute("Delete from transitive_closure where
           ancestor_id in (#{parents_ancestors}) and
           descendant_id in (#{childs_descendants}) and
-          not exists (Select * from assignments where parent_id=ancestor_id and child_id=descendant_id)
+          not exists (Select NULL from assignments where parent_id=ancestor_id and child_id=descendant_id)
         ")
 
+        # TODO: fix like add_to_transitive_closure
         connection.execute("Insert ignore into transitive_closure
             select ancestors_surviving_relationships.ancestor_id, descendants_surviving_relationships.descendant_id
             from
