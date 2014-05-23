@@ -113,7 +113,7 @@ module PolicyMachineStorageAdapter
       end
 
       def add_to_transitive_closure
-        connection.commit_db_transaction
+       # connection.commit_db_transaction
 
         connection.execute("Insert ignore into transitive_closure values (#{parent_id}, #{child_id})")
 
