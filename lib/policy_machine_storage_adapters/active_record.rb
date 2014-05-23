@@ -117,7 +117,7 @@ module PolicyMachineStorageAdapter
         connection.execute("Insert ignore into transitive_closure values (#{parent_id}, #{child_id})")
 
         connection.commit_db_transaction
-        connection.execute("Set transaction isolation level READ UNCOMMITTED")
+        # connection.execute("Set transaction isolation level READ UNCOMMITTED")
         selected_pairs = connection.execute(
             "Select distinct parents_ancestors.ancestor_id, childs_descendants.descendant_id from
                transitive_closure parents_ancestors,
