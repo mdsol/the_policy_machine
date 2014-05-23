@@ -120,7 +120,7 @@ module PolicyMachineStorageAdapter
              where
               (parents_ancestors.descendant_id = #{parent_id} or parents_ancestors.ancestor_id = #{parent_id})
               and (childs_descendants.ancestor_id = #{child_id} or childs_descendants.descendant_id = #{child_id})
-              and not exists (select null from transitive_closure where ancestor_id = parents_ancestors.ancestor_id and descendant_id = childs_descendants.descendant_id) ")
+             for update")
       end
 
       def remove_from_transitive_closure
