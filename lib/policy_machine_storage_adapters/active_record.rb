@@ -114,6 +114,7 @@ module PolicyMachineStorageAdapter
       def add_to_transitive_closure
         connection.execute("Insert ignore into transitive_closure values (#{parent_id}, #{child_id})")
 
+        # Note: select/insert statements executed separately to avoid deadlock caused by InnoDB taking shared locks and all selected rows
         selected_pairs = connection.execute(
             "Select distinct parents_ancestors.ancestor_id, childs_descendants.descendant_id from
                transitive_closure parents_ancestors,
@@ -137,6 +138,7 @@ module PolicyMachineStorageAdapter
           not exists (Select NULL from assignments where parent_id=ancestor_id and child_id=descendant_id)
         ")
 
+        # Note: select/insert statements executed separately to avoid deadlock caused by InnoDB taking shared locks and all selected rows
         selected_pairs = connection.execute(
            "Select ancestors_surviving_relationships.ancestor_id, descendants_surviving_relationships.descendant_id
             from
@@ -151,7 +153,7 @@ module PolicyMachineStorageAdapter
       end
 
       private
-        # insert (with ignore) the given ancestor_id, descendant_id pairs 
+        # Insert (with ignore) the given ancestor_id, descendant_id pairs 
         def insert_transitive_closures(id_pairs)
           if (id_pairs.any?)
             insert_stmt = "Insert ignore into transitive_closure values "
