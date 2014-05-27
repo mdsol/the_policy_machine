@@ -117,13 +117,17 @@ module PolicyMachineStorageAdapter
 
       def add_to_transitive_closure
         connection.execute("Insert ignore into transitive_closure values (#{parent_id}, #{child_id})")
-        connection.execute("Insert ignore into transitive_closure
-             select parents_ancestors.ancestor_id, childs_descendants.descendant_id from
-              transitive_closure parents_ancestors,
-              transitive_closure childs_descendants
+
+        # Note: select/insert statements executed separately to avoid deadlock caused by InnoDB taking shared locks and all selected rows
+        selected_pairs = connection.execute(
+            "Select distinct parents_ancestors.ancestor_id, childs_descendants.descendant_id from
+               transitive_closure parents_ancestors,
+               transitive_closure childs_descendants
              where
               (parents_ancestors.descendant_id = #{parent_id} or parents_ancestors.ancestor_id = #{parent_id})
-              and (childs_descendants.ancestor_id = #{child_id} or childs_descendants.descendant_id = #{child_id})")
+              and (childs_descendants.ancestor_id = #{child_id} or childs_descendants.descendant_id = #{child_id})
+            ")
+        insert_transitive_closures(selected_pairs.to_a)
       end
 
       def remove_from_transitive_closure
@@ -135,11 +139,12 @@ module PolicyMachineStorageAdapter
         connection.execute("Delete from transitive_closure where
           ancestor_id in (#{parents_ancestors}) and
           descendant_id in (#{childs_descendants}) and
-          not exists (Select * from assignments where parent_id=ancestor_id and child_id=descendant_id)
+          not exists (Select NULL from assignments where parent_id=ancestor_id and child_id=descendant_id)
         ")
 
-        connection.execute("Insert ignore into transitive_closure
-            select ancestors_surviving_relationships.ancestor_id, descendants_surviving_relationships.descendant_id
+        # Note: select/insert statements executed separately to avoid deadlock caused by InnoDB taking shared locks and all selected rows
+        selected_pairs = connection.execute(
+           "Select ancestors_surviving_relationships.ancestor_id, descendants_surviving_relationships.descendant_id
             from
               transitive_closure ancestors_surviving_relationships,
               transitive_closure descendants_surviving_relationships
@@ -147,9 +152,19 @@ module PolicyMachineStorageAdapter
               (ancestors_surviving_relationships.ancestor_id in (#{parents_ancestors}))
               and (descendants_surviving_relationships.descendant_id in (#{childs_descendants}))
               and (ancestors_surviving_relationships.descendant_id = descendants_surviving_relationships.ancestor_id)
-        ")
+           ")
+        insert_transitive_closures(selected_pairs.to_a)
       end
 
+      private
+        # Insert (with ignore) the given ancestor_id, descendant_id pairs 
+        def insert_transitive_closures(id_pairs)
+          if (id_pairs.any?)
+            insert_stmt = "Insert ignore into transitive_closure values "
+            insert_stmt << id_pairs.map { |pair| "(#{pair.join(",")})" }.join(",")
+            connection.execute(insert_stmt)
+          end
+        end
     end
 
     POLICY_ELEMENT_TYPES = %w(user user_attribute object object_attribute operation policy_class)
