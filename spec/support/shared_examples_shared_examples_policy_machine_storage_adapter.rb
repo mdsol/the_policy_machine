@@ -41,6 +41,8 @@ shared_examples "a policy machine storage adapter" do
             policy_machine_storage_adapter.add_object("#{name}_uuid", 'some_policy_machine_uuid', name: name) 
           end
         end
+
+        around { |test| Kernel.silence_warnings{test.run} }
         
         it 'finds with case sensitivity by default' do
           expect(policy_machine_storage_adapter.find_all_of_type_object(name: 'ABCDE')).to eq([])
