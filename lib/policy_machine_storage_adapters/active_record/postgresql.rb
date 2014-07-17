@@ -6,6 +6,7 @@ module PolicyMachineStorageAdapter
     class Assignment
 
       def add_to_transitive_closure
+        connection.execute('Lock transitive_closure in share mode')
         connection.execute("Insert into transitive_closure values (#{parent_id}, #{child_id})")
         connection.execute("Insert into transitive_closure
              select distinct parents_ancestors.ancestor_id, childs_descendants.descendant_id from
@@ -19,6 +20,7 @@ module PolicyMachineStorageAdapter
       end
 
       def remove_from_transitive_closure
+        connection.execute('Lock transitive_closure in share mode')
         parents_ancestors = connection.execute("Select ancestor_id from transitive_closure where descendant_id=#{parent_id}")
         childs_descendants = connection.execute("Select descendant_id from transitive_closure where ancestor_id=#{child_id}")
         parents_ancestors = parents_ancestors.values.<<(parent_id).join(',')
