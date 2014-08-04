@@ -187,7 +187,7 @@ module PolicyMachineStorageAdapter
         # Default to first page if not specified
         if options[:per_page]
           page = options[:page] ? options[:page] : 1
-          paginated_all = all.order.paginate(page: page, per_page: options[:per_page])
+          paginated_all = all.order(:id).paginate(page: page, per_page: options[:per_page])
         end
         paginated_all = all unless paginated_all
         unless paginated_all.respond_to? :total_entries
