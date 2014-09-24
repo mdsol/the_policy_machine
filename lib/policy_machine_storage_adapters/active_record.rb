@@ -151,9 +151,21 @@ module PolicyMachineStorageAdapter
         conditions = options.slice!(:per_page, :page, :ignore_case).stringify_keys
         extra_attribute_conditions = conditions.slice!(*PolicyElement.column_names)
         pe_class = class_for_type(pe_type)
-
+        
         # Arel matches provides agnostic case insensitive sql for mysql and postgres
-        all = conditions[:name] ? pe_class.where(pe_class.arel_table[:name].matches(conditions[:name])).where(conditions.except(:name)) : pe_class.where(conditions)        
+        all = begin
+          if options[:ignore_case]
+            match_expressions = begin
+              expressions = []
+              conditions.keys.each {|e| expressions << pe_class.arel_table[e].matches(conditions[e])}
+              expressions
+            end 
+            match_expressions.empty? ? pe_class.where({}) : match_expressions.inject(pe_class) {|rel, e| rel.where(e)}
+          else
+            pe_class.where(conditions)
+          end
+        end
+
         extra_attribute_conditions.each do |key, value|
           warn "WARNING: #{self.class} is filtering #{pe_type} on #{key} in memory, which won't scale well. " <<
             "To move this query to the database, add a '#{key}' column to the policy_elements table " <<
