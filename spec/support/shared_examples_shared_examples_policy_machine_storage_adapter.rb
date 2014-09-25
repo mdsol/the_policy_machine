@@ -32,7 +32,7 @@ shared_examples "a policy machine storage adapter" do
       it 'returns array of found policy elements of given type if more than one is found' do
         node1 = policy_machine_storage_adapter.send("add_#{pe_type}", 'some_uuid1', 'some_policy_machine_uuid')
         node2 = policy_machine_storage_adapter.send("add_#{pe_type}", 'some_uuid2', 'some_policy_machine_uuid')
-        policy_machine_storage_adapter.send("find_all_of_type_#{pe_type}").should == [node1, node2]
+        policy_machine_storage_adapter.send("find_all_of_type_#{pe_type}").should match_array([node1, node2])
       end
       
       context 'case sensitivity' do
@@ -41,6 +41,8 @@ shared_examples "a policy machine storage adapter" do
             policy_machine_storage_adapter.add_object("#{name}_uuid", 'some_policy_machine_uuid', name: name) 
           end
         end
+
+        around { |test| Kernel.silence_warnings{test.run} }
         
         it 'finds with case sensitivity by default' do
           expect(policy_machine_storage_adapter.find_all_of_type_object(name: 'ABCDE')).to eq([])
