@@ -1,0 +1,12 @@
+# According to https://github.com/javan/whenever: 
+# If your production environment uses RVM (Ruby Version Manager) you will run into a gotcha that causes your cron jobs to 
+# hang. This is not directly related to Whenever, and can be tricky to debug. Your .rvmrc files must be trusted or else 
+# the cron jobs will hang waiting for the file to be trusted. A solution is to disable the prompt by adding this 
+# line to your user rvm file in ~/.rvmrc:  
+#
+# rvm_trust_rvmrcs_flag=1
+#
+
+rvm_trust_rvmrcs_flag=1
+rvm use 1.9.3-p327@policy_machine --create
+

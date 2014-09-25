@@ -156,7 +156,7 @@ module PolicyMachineStorageAdapter
         all = begin
           if options[:ignore_case]
             match_expressions = conditions.map {|k,v| pe_class.arel_table[k].matches(v) }
-            match_expressions.empty? ? pe_class.where({}) : match_expressions.inject(pe_class) {|rel, e| rel.where(e)}
+            match_expressions.inject(pe_class.scoped) {|rel, e| rel.where(e)}
           else
             pe_class.where(conditions)
           end
