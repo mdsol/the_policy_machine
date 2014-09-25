@@ -15,7 +15,7 @@ module PolicyMachineStorageAdapter
              where
               (parents_ancestors.descendant_id = #{parent_id} or parents_ancestors.ancestor_id = #{parent_id})
               and (childs_descendants.ancestor_id = #{child_id} or childs_descendants.descendant_id = #{child_id})
-              and not exists (Select * from transitive_closure preexisting where preexisting.ancestor_id = parents_ancestors.ancestor_id
+              and not exists (Select NULL from transitive_closure preexisting where preexisting.ancestor_id = parents_ancestors.ancestor_id
                                                                            and preexisting.descendant_id = childs_descendants.descendant_id)")
       end
 
@@ -29,7 +29,7 @@ module PolicyMachineStorageAdapter
         connection.execute("Delete from transitive_closure where
           ancestor_id in (#{parents_ancestors}) and
           descendant_id in (#{childs_descendants}) and
-          not exists (Select * from assignments where parent_id=ancestor_id and child_id=descendant_id)
+          not exists (Select NULL from assignments where parent_id=ancestor_id and child_id=descendant_id)
         ")
 
         connection.execute("Insert into transitive_closure

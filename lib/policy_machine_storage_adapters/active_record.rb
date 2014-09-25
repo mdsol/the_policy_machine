@@ -25,7 +25,6 @@ module PolicyMachineStorageAdapter
       has_many :descendants, through: :transitive_closure
       has_many :ancestors, through: :inverse_transitive_closure
 
-      default_scope order(:id) # Order must be deterministic to support paginated requests.
 
       attr_accessible :unique_identifier, :policy_machine_uuid
       attr_accessor :extra_attributes_hash
@@ -173,9 +172,9 @@ module PolicyMachineStorageAdapter
         # Default to first page if not specified
         if options[:per_page]
           page = options[:page] ? options[:page] : 1
-          paginated_all = all.order.paginate(page: page, per_page: options[:per_page])
+          paginated_all = all.order(:id).paginate(page: page, per_page: options[:per_page])
         end
-        paginated_all = all unless paginated_all
+        paginated_all = all.order unless paginated_all
         unless paginated_all.respond_to? :total_entries
           paginated_all.define_singleton_method(:total_entries) do
             all.count

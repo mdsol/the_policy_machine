@@ -53,7 +53,7 @@ describe 'ActiveRecord' do
 
           # TODO: Investigate why this doesn't fail when not slicing params
           it 'does not paginate if no page or per_page' do
-            results = policy_machine_storage_adapter.find_all_of_type_object(color: 'red')
+            results = policy_machine_storage_adapter.find_all_of_type_object(color: 'red').sort
             results.first.unique_identifier.should == "uuid_0"
             results.last.unique_identifier.should == "uuid_9"
           end
