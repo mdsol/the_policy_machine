@@ -2,12 +2,28 @@
 # TODO: Look into taking better advantage of Postgres for this
 
 module PolicyMachineStorageAdapter
-  class ActiveRecord
+  class ActiveRecord     
+     
+      # This is required due to postgres not supporting insert ignore for uniqueness constraints
+      # TODO: Look into moving insert ignore sql into active record postgres adapter code and removing this
+      def assign(src, dst)
+        assert_persisted_policy_element(src, dst)
+        transaction do
+          result = ::ActiveRecord::Base.connection.execute("Insert into assignments (child_id, parent_id)
+            select #{dst.id}, #{src.id} 
+            where not exists (select id from assignments preexisting where preexisting.child_id=#{dst.id} and preexisting.parent_id=#{src.id})
+            returning id")
+            Assignment.find(result[0]['id']).add_to_transitive_closure if result.count == 1
+          end
+      end
+    
     class Assignment
 
       def add_to_transitive_closure
         connection.execute('Lock transitive_closure in share mode')
-        connection.execute("Insert into transitive_closure values (#{parent_id}, #{child_id})")
+        connection.execute("Insert into transitive_closure
+          select #{parent_id}, #{child_id}
+          where not exists (Select NULL from transitive_closure preexisting where preexisting.ancestor_id=#{parent_id} and preexisting.descendant_id=#{child_id})")
         connection.execute("Insert into transitive_closure
              select distinct parents_ancestors.ancestor_id, childs_descendants.descendant_id from
               transitive_closure parents_ancestors,
