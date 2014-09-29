@@ -264,6 +264,11 @@ shared_examples "a policy machine storage adapter" do
       policy_machine_storage_adapter.assign(@oa, @pc3)
       policy_machine_storage_adapter.policy_classes_for_object_attribute(@oa).should match_array([@pc1, @pc3])
     end
+    
+    it 'handles non unique associations' do
+      policy_machine_storage_adapter.assign(@oa, @pc1)
+      expect { policy_machine_storage_adapter.assign(@oa, @pc1) }.to_not raise_error(ActiveRecord::RecordNotUnique)
+    end
 
   end
 
