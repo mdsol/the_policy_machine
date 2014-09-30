@@ -8,12 +8,13 @@ module PolicyMachineStorageAdapter
       # TODO: Look into moving insert ignore sql into active record postgres adapter code and removing this
       def assign(src, dst)
         assert_persisted_policy_element(src, dst)
+        src_id, dst_id = src.id, dst.id
         transaction do
           result = ::ActiveRecord::Base.connection.execute("Insert into assignments (child_id, parent_id)
-            select #{dst.id}, #{src.id} 
-            where not exists (select id from assignments preexisting where preexisting.child_id=#{dst.id} and preexisting.parent_id=#{src.id})
+            select #{dst_id}, #{src_id} 
+            where not exists (select id from assignments preexisting where preexisting.child_id=#{dst_id} and preexisting.parent_id=#{src_id})
             returning id")
-            Assignment.find(result[0]['id']).add_to_transitive_closure if result.count == 1
+            Assignment.new(parent_id: src_id, child_id: dst_id).add_to_transitive_closure if result.values.present?
           end
       end
     
