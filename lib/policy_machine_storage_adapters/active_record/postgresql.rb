@@ -10,6 +10,7 @@ module PolicyMachineStorageAdapter
         assert_persisted_policy_element(src, dst)
         src_id, dst_id = src.id, dst.id
         transaction do
+          # TODO: Look into rewriting using binded parameterized sql
           result = ::ActiveRecord::Base.connection.execute("Insert into assignments (child_id, parent_id)
             select #{dst_id}, #{src_id} 
             where not exists (select id from assignments preexisting where preexisting.child_id=#{dst_id} and preexisting.parent_id=#{src_id})
