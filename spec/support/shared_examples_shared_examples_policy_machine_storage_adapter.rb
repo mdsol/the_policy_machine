@@ -193,13 +193,13 @@ shared_examples "a policy machine storage adapter" do
       assocs_with_r = policy_machine_storage_adapter.associations_with(@r)
       assocs_with_r.size == 1
       assocs_with_r[0][0].should == @ua
-      assocs_with_r[0][1].to_a.should == [@r, @w]
+      assocs_with_r[0][1].to_a.should match_array([@r, @w])
       assocs_with_r[0][2].should == @oa
 
       assocs_with_w = policy_machine_storage_adapter.associations_with(@w)
       assocs_with_w.size == 1
       assocs_with_w[0][0].should == @ua
-      assocs_with_w[0][1].to_a.should == [@r, @w]
+      assocs_with_w[0][1].to_a.should match_array([@r, @w])
       assocs_with_w[0][2].should == @oa
     end
 
@@ -240,7 +240,7 @@ shared_examples "a policy machine storage adapter" do
       assocs_with_w[0][1].to_a.should == [@w]
       assocs_with_w[0][2].should == @oa
       assocs_with_w[1][0].should == @ua2
-      assocs_with_w[1][1].to_a.should == [@w, @e]
+      assocs_with_w[1][1].to_a.should match_array([@w, @e])
       assocs_with_w[1][2].should == @oa
 
     end
@@ -262,7 +262,12 @@ shared_examples "a policy machine storage adapter" do
     it 'returns array of policy class(es) if object is in policy class(es)' do
       policy_machine_storage_adapter.assign(@oa, @pc1)
       policy_machine_storage_adapter.assign(@oa, @pc3)
-      policy_machine_storage_adapter.policy_classes_for_object_attribute(@oa).should == [@pc1, @pc3]
+      policy_machine_storage_adapter.policy_classes_for_object_attribute(@oa).should match_array([@pc1, @pc3])
+    end
+    
+    it 'handles non unique associations' do
+      policy_machine_storage_adapter.assign(@oa, @pc1)
+      expect { policy_machine_storage_adapter.assign(@oa, @pc1) }.to_not raise_error
     end
 
   end

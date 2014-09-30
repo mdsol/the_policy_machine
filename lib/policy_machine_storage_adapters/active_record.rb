@@ -106,7 +106,7 @@ module PolicyMachineStorageAdapter
     end
 
     class Assignment < ::ActiveRecord::Base
-      attr_accessible :child_id
+      attr_accessible :child_id, :parent_id
       # needs parent_id, child_id columns
       after_create :add_to_transitive_closure
       after_destroy :remove_from_transitive_closure
@@ -154,7 +154,8 @@ module PolicyMachineStorageAdapter
         # Arel matches provides agnostic case insensitive sql for mysql and postgres
         all = begin
           if options[:ignore_case]
-            match_expressions = conditions.map {|k,v| pe_class.arel_table[k].matches(v) }
+            match_expressions = conditions.map {|k,v| [:string, :text].include?(pe_class.columns_hash[k].type) ? 
+              pe_class.arel_table[k].matches(v) : pe_class.arel_table[k].eq(v) }
             match_expressions.inject(pe_class.scoped) {|rel, e| rel.where(e)}
           else
             pe_class.where(conditions)
