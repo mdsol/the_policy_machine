@@ -154,7 +154,7 @@ module PolicyMachineStorageAdapter
         # Arel matches provides agnostic case insensitive sql for mysql and postgres
         all = begin
           if options[:ignore_case]
-            match_expressions = conditions.map {|k,v| pe_class.columns_hash[k.to_s].type.any?[:string, :text] ? 
+            match_expressions = conditions.map {|k,v| [:string, :text].include?(pe_class.columns_hash[k.to_s].type) ? 
               pe_class.arel_table[k].matches(v) : pe_class.arel_table[k].eq(v) }
             match_expressions.inject(pe_class.scoped) {|rel, e| rel.where(e)}
           else
