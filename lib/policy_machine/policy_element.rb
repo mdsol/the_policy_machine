@@ -9,6 +9,7 @@ module PM
     attr_accessor   :policy_machine_uuid
     attr_accessor   :stored_pe
     attr_accessor   :extra_attributes
+    attr_reader     :pm_storage_adapter
 
     ##
     # Create a new policy element with the given name and type.
@@ -230,12 +231,24 @@ module PM
     end
   end
 
-  # An operation set in a policy machine.
+  # An operation in a policy machine.
   class Operation < PolicyElement
-    def self.create(unique_identifier, policy_machine_uuid, pm_storage_adapter, extra_attributes = {})
+    def self.create(unique_identifier, policy_machine_uuid, pm_storage_adapter, extra_attributes = {}, prohibition = false)
+      if unique_identifier =~ /^~/ && !prohibition
+        raise ArgumentError, "An operation cannot start with '~'"
+      end
       new_pe = new(unique_identifier, policy_machine_uuid, pm_storage_adapter, nil, extra_attributes)
       new_pe.stored_pe = pm_storage_adapter.add_operation(unique_identifier, policy_machine_uuid, extra_attributes)
       new_pe
+    end
+
+    def self.find_or_create(unique_identifier, policy_machine_uuid, pm_storage_adapter, extra_attributes = {}, prohibition = false)
+      op = pm_storage_adapter.find_all_of_type_operation(unique_identifier: unique_identifier, policy_machine_uuid: policy_machine_uuid).first
+      if op
+        convert_stored_pe_to_pe(op, pm_storage_adapter, self)
+      else
+        create(unique_identifier, policy_machine_uuid, pm_storage_adapter, extra_attributes = {}, prohibition)
+      end
     end
 
     # Return all policy elements of a particular type (e.g. all users)
@@ -247,6 +260,22 @@ module PM
       all_result.define_singleton_method(:total_entries) {result.total_entries}
       all_result
       
+    end
+
+    def to_s
+      unique_identifier
+    end
+
+    def operation
+      unique_identifier.sub(/^~/,'')
+    end
+
+    def prohibition
+      Prohibition.new(self)
+    end
+
+    def prohibition?
+      unique_identifier =~ /^~/
     end
 
     # Return all associations in which this Operation is included
@@ -261,6 +290,23 @@ module PM
     protected
     def allowed_assignee_classes
       []
+    end
+  end
+
+  # A prohibition in a policy machine.
+  class Prohibition < PolicyElement
+    def self.new(operation)
+      negation = "~#{operation}"
+      case operation
+      when PM::Operation
+        PM::Operation.find_or_create(negation,operation.policy_machine_uuid, operation.pm_storage_adapter, {}, true)
+      when Symbol
+        negation.to_sym
+      when String
+        negation
+      else
+        raise(ArgumentError, "operation must be an Operation, Symbol, or String.")
+      end
     end
   end
 

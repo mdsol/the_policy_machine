@@ -67,6 +67,14 @@ class PolicyMachine
   #
   # TODO: add option to ignore policy classes to allow consumer to speed up this method.
   def is_privilege?(user_or_attribute, operation, object_or_attribute, options = {})
+    is_privilege_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute, options) &&
+      !is_privilege_ignoring_prohibitions?(user_or_attribute, PM::Prohibition.new(operation), object_or_attribute, options)
+  end
+
+  ##
+  # Check the privilege without checking for prohibitions. May be called directly but is also used in is_privilege?
+  #
+  def is_privilege_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute, options = {})
     unless user_or_attribute.is_a?(PM::User) || user_or_attribute.is_a?(PM::UserAttribute)
       raise(ArgumentError, "user_attribute_pe must be a User or UserAttribute.")
     end
@@ -135,6 +143,8 @@ class PolicyMachine
     end
   end
 
+  
+
   ##
   # Returns an array of all privileges encoded in this
   # policy machine.  Each privilege is of the form:
@@ -145,7 +155,7 @@ class PolicyMachine
     privileges = []
 
     users.each do |user|
-      operations.each do |operation|
+      operations.reject(&:prohibition?).each do |operation|
         objects.each do |object|
           if is_privilege?(user, operation, object)
             privileges << [user, operation, object]
@@ -163,16 +173,23 @@ class PolicyMachine
   # object (attribute).
   #
   # TODO:  might make privilege a class of its own
-  def scoped_privileges(user_or_attribute, object_or_attribute)
-    if policy_machine_storage_adapter.respond_to?(:scoped_privileges)
+  def scoped_privileges(user_or_attribute, object_or_attribute, ignore_prohibitions = false)
+    privileges_and_prohibitions = if policy_machine_storage_adapter.respond_to?(:scoped_privileges)
       policy_machine_storage_adapter.scoped_privileges(user_or_attribute.stored_pe, object_or_attribute.stored_pe).map do |op|
         operation = PM::Operation.convert_stored_pe_to_pe(op, policy_machine_storage_adapter, PM::Operation)
         [user_or_attribute, operation, object_or_attribute]
       end
     else
-      operations.grep(->operation{is_privilege?(user_or_attribute, operation, object_or_attribute)}) do |op|
+      operations.grep(->operation{is_privilege_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute)}) do |op|
         [user_or_attribute, op, object_or_attribute]
       end
+    end
+    prohibitions, privileges = privileges_and_prohibitions.partition { |_,op,_| op.prohibition? }
+    if ignore_prohibitions
+      privileges
+    else
+      prohibited_operations = prohibitions.map { |_,prohibition,_| prohibition.operation }
+      privileges.reject { |_,op,_| prohibited_operations.include?(op.unique_identifier) }
     end
   end
 

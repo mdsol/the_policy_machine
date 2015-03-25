@@ -4,7 +4,7 @@ policy_machine
 A ruby implementation of the Policy Machine authorization formalism.  You can find the NIST specification for Policy
 Machines [here](http://csrc.nist.gov/pm/documents/pm_report-rev-x_final.pdf).
 
-Note that prohibitions, obligations and multiple policy classes have not yet been implemented.  These aspects of the Policy Machine
+Note that obligations have not yet been implemented, nor have all aspects of prohibitions and policy classes.  These aspects of the Policy Machine
 will be included in future versions of this gem.
 
 # Installation
@@ -74,6 +74,11 @@ policy_machine.is_privilege?(u1, w, o1)
 # Returns false
 policy_machine.is_privilege?(u3, w, o3)
 ```
+
+# Prohibitions
+prohibit_w = w.prohibition
+policy_machine.add_association(division, Set.new([r,prohibit_w]),project1)
+# division cannot gain w on project1, no matter what other associations are added.
 
 # Storage Adapters
 
