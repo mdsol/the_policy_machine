@@ -66,6 +66,7 @@ class PolicyMachine
   # object_or_attribute is an object or object attribute.
   #
   # TODO: add option to ignore policy classes to allow consumer to speed up this method.
+  # TODO: Parallelize the two component checks
   def is_privilege?(user_or_attribute, operation, object_or_attribute, options = {})
     is_privilege_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute, options) &&
       !is_privilege_ignoring_prohibitions?(user_or_attribute, PM::Prohibition.new(operation), object_or_attribute, options)
