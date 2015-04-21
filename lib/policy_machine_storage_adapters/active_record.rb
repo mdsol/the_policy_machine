@@ -315,12 +315,12 @@ module PolicyMachineStorageAdapter
 
     ## Optimized version of PolicyMachine#scoped_privileges
     # Returns all operations the user has on the object
-    def scoped_privileges(user_or_attribute, object_or_attribute)
+    def scoped_privileges(user_or_attribute, object_or_attribute, options = {})
       policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
       if policy_classes_containing_object.count < 2
-        scoped_privileges_single_policy_class(user_or_attribute, object_or_attribute)
+        scoped_privileges_single_policy_class(user_or_attribute, object_or_attribute, options)
       else
-        scoped_privileges_multiple_policy_classes(user_or_attribute, object_or_attribute, policy_classes_containing_object)
+        scoped_privileges_multiple_policy_classes(user_or_attribute, object_or_attribute, policy_classes_containing_object, options)
       end
     end
 
@@ -345,12 +345,14 @@ module PolicyMachineStorageAdapter
       end
     end
 
-    def scoped_privileges_single_policy_class(user_or_attribute, object_or_attribute)
+    # Pass in options to allow forced row ordering by id in results
+    def scoped_privileges_single_policy_class(user_or_attribute, object_or_attribute, options = {})
       associations = associations_between(user_or_attribute, object_or_attribute).includes(:operations)
-      associations.flat_map(&:operations).uniq
+      operations = associations.flat_map(&:operations).uniq
+      options[:order] ? operations.sort : operations
     end
 
-    def scoped_privileges_multiple_policy_classes(user_or_attribute, object_or_attribute, policy_classes_containing_object)
+    def scoped_privileges_multiple_policy_classes(user_or_attribute, object_or_attribute, policy_classes_containing_object, options = {})
       base_scope = associations_between(user_or_attribute, object_or_attribute)
       operations_for_policy_classes = policy_classes_containing_object.map do |pc|
         associations = base_scope.where(object_attribute_id: pc.ancestors).includes(:operations)
