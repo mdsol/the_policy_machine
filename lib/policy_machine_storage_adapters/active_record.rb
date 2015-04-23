@@ -15,16 +15,23 @@ module PolicyMachineStorageAdapter
 
   class ActiveRecord
 
+    # Load the Assignment class at runtime because it's implemented differently by different adapters
+    # And which database adapter is active is not always determinable at class definition time
+    # Assignment must inherit from ActiveRecord::Base and have class methods ancestors_of, descendants_of, and transitive_closure?
+    def self.const_missing(name)
+      if name.to_s == 'Assignment'
+        require_relative("active_record/#{PolicyElement.configurations[Rails.env]['adapter']}")
+        Assignment
+      else
+        super
+      end
+    end
+
     class PolicyElement < ::ActiveRecord::Base
       alias :persisted :persisted?
       # needs unique_identifier, policy_machine_uuid, type, extra_attributes columns
       has_many :assignments, foreign_key: :parent_id, dependent: :destroy
       has_many :children, through: :assignments, dependent: :destroy #this doesn't actually destroy the children, just the assignment
-      has_many :transitive_closure, foreign_key: :ancestor_id
-      has_many :inverse_transitive_closure, class_name: :"PolicyMachineStorageAdapter::ActiveRecord::TransitiveClosure", foreign_key: :descendant_id
-      has_many :descendants, through: :transitive_closure
-      has_many :ancestors, through: :inverse_transitive_closure
-
 
       attr_accessible :unique_identifier, :policy_machine_uuid
       attr_accessor :extra_attributes_hash
@@ -68,6 +75,14 @@ module PolicyMachineStorageAdapter
         ::ActiveRecord::Base.store_accessor(:extra_attributes, @extra_attributes_hash.keys)
       end
 
+      def descendants
+        Assignment.descendants_of(self)
+      end
+
+      def ancestors
+        Assignment.ancestors_of(self)
+      end
+
     end
 
     class User < PolicyElement
@@ -96,35 +111,6 @@ module PolicyMachineStorageAdapter
       has_and_belongs_to_many :operations, class_name: :"PolicyMachineStorageAdapter::ActiveRecord::Operation"
       belongs_to :user_attribute
       belongs_to :object_attribute
-    end
-
-    class TransitiveClosure < ::ActiveRecord::Base
-      self.table_name = 'transitive_closure'
-      # needs ancestor_id, descendant_id columns
-      belongs_to :ancestor, class_name: :PolicyElement
-      belongs_to :descendant, class_name: :PolicyElement
-    end
-
-    class Assignment < ::ActiveRecord::Base
-      attr_accessible :child_id, :parent_id
-      # needs parent_id, child_id columns
-      after_create :add_to_transitive_closure
-      after_destroy :remove_from_transitive_closure
-      belongs_to :parent, class_name: :PolicyElement
-      belongs_to :child, class_name: :PolicyElement
-
-      def self.transitive_closure?(ancestor, descendant)
-        TransitiveClosure.exists?(ancestor_id: ancestor.id, descendant_id: descendant.id)
-      end
-
-      # Lazily load the necessary file to override this method, then re-call it
-      # TODO: Find a clean way to make the load happen at class definition instead
-      # (the difficulty is that Rails may not have loaded config yet)
-      def add_to_transitive_closure
-        require_relative("active_record/#{configurations[Rails.env]['adapter']}")
-        add_to_transitive_closure
-      end
-
     end
 
     POLICY_ELEMENT_TYPES = %w(user user_attribute object object_attribute operation policy_class)
@@ -198,7 +184,8 @@ module PolicyMachineStorageAdapter
     #
     def assign(src, dst)
       assert_persisted_policy_element(src, dst)
-      src.children << dst
+      Assignment.create(parent_id: src.id, child_id: dst.id)
+    rescue ::ActiveRecord::RecordNotUnique
     end
 
     ##
