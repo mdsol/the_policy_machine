@@ -101,7 +101,7 @@ describe 'ActiveRecord' do
 
       it 'does not have O(n) database calls' do
         #TODO: Find a way to count all database calls that doesn't conflict with ActiveRecord magic
-        PolicyMachineStorageAdapter::ActiveRecord::TransitiveClosure.should_receive(:exists?).at_most(10).times
+        PolicyMachineStorageAdapter::ActiveRecord::Assignment.should_receive(:transitive_closure?).at_most(10).times
         @pm.is_privilege?(@u1, @op, @objects.first).should be
       end
 
