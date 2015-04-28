@@ -15,14 +15,14 @@ module PolicyMachineStorageAdapter
 
       def self.descendants_of(element)
         recursive_query = join_recursive do |query|
-          query.start_with(parent_id: element.id).connect_by(child_id: :parent_id)
+          query.start_with(parent_id: element.id).connect_by(child_id: :parent_id).nocycle
         end
         PolicyElement.where(id: recursive_query.select('assignments.child_id'))
       end
 
       def self.ancestors_of(element)
         recursive_query = join_recursive do |query|
-          query.start_with(child_id: element.id).connect_by(parent_id: :child_id)
+          query.start_with(child_id: element.id).connect_by(parent_id: :child_id).nocycle
         end
         PolicyElement.where(id: recursive_query.select('assignments.parent_id'))
       end
