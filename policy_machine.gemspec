@@ -23,5 +23,6 @@ Gem::Specification.new do |s|
   s.add_development_dependency('database_cleaner')
   s.add_development_dependency('will_paginate', '~> 3.0.5')
   s.add_development_dependency('activerecord-hierarchical_query', '~> 0.0')
+  s.add_development_dependency('activerecord-import', '~> 0.0')
 
 end

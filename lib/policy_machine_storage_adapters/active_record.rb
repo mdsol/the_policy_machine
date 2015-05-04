@@ -3,7 +3,7 @@ require 'set'
 
 # This class stores policy elements in a SQL database using whatever
 # database configuration and adapters are provided by active_record.
-# Currently only MySQL is supported via this adapter.
+# Currently only MySQL and Postgres are supported via this adapter.
 
 begin
   require 'active_record'
@@ -14,6 +14,8 @@ end
 module PolicyMachineStorageAdapter
 
   class ActiveRecord
+
+    require 'activerecord-import' # Gem for bulk inserts
 
     # Load the Assignment class at runtime because it's implemented differently by different adapters
     # And which database adapter is active is not always determinable at class definition time
@@ -111,6 +113,27 @@ module PolicyMachineStorageAdapter
       has_and_belongs_to_many :operations, class_name: :"PolicyMachineStorageAdapter::ActiveRecord::Operation"
       belongs_to :user_attribute
       belongs_to :object_attribute
+
+      #TODO: ActiveRecord's generated operations= method is inefficient, makes 1 query for each op added or removed even though there's no hooks
+      # Awkward manual implementation for now, but in the future change this to an hstore or something in the postgres adapter,
+      # and/or fix Rails.
+      def operations=(updated_operations)
+        updated_operation_set = Set.new(updated_operations)
+        current_operation_set = Set.new(self.operations)
+        new_operations = updated_operation_set - current_operation_set
+        removed_operations = current_operation_set - updated_operation_set
+        transaction do
+          OperationsPolicyElementAssociation.where(policy_element_association_id: self.id)
+                                            .where(operation_id: removed_operations.map(&:id))
+                                            .delete_all
+          OperationsPolicyElementAssociation.import([:policy_element_association_id, :operation_id],
+                                                     new_operations.map{ |op| [self.id, op.id] },
+                                                     validate: false)
+        end
+      end
+    end
+
+    class OperationsPolicyElementAssociation < ::ActiveRecord::Base
     end
 
     POLICY_ELEMENT_TYPES = %w(user user_attribute object object_attribute operation policy_class)
