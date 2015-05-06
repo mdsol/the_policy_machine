@@ -159,11 +159,11 @@ module PolicyMachineStorageAdapter
         conditions = options.slice!(:per_page, :page, :ignore_case).stringify_keys
         extra_attribute_conditions = conditions.slice!(*PolicyElement.column_names)
         pe_class = class_for_type(pe_type)
-        
+
         # Arel matches provides agnostic case insensitive sql for mysql and postgres
         all = begin
           if options[:ignore_case]
-            match_expressions = conditions.map {|k,v| [:string, :text].include?(pe_class.columns_hash[k].type) ? 
+            match_expressions = conditions.map {|k,v| ignore_case_applies?(options[:ignore_case],k) ?
               pe_class.arel_table[k].matches(v) : pe_class.arel_table[k].eq(v) }
             match_expressions.inject(pe_class.scoped) {|rel, e| rel.where(e)}
           else
@@ -175,16 +175,16 @@ module PolicyMachineStorageAdapter
           warn "WARNING: #{self.class} is filtering #{pe_type} on #{key} in memory, which won't scale well. " <<
             "To move this query to the database, add a '#{key}' column to the policy_elements table " <<
             "and re-save existing records"
-            all.select!{ |pe| pe.store_attributes and 
-                        ((attr_value = pe.extra_attributes_hash[key]).is_a?(String) and 
-                        value.is_a?(String) and options[:ignore_case]) ? attr_value.downcase == value.downcase : attr_value == value}
+            all.select!{ |pe| pe.store_attributes and
+                        ((attr_value = pe.extra_attributes_hash[key]).is_a?(String) and
+                        value.is_a?(String) and ignore_case_applies?(options[:ignore_case],key)) ? attr_value.downcase == value.downcase : attr_value == value}
         end
         # Default to first page if not specified
         if options[:per_page]
           page = options[:page] ? options[:page] : 1
           all = all.order(:id).paginate(page: page, per_page: options[:per_page])
         end
-        
+
         # TODO: Look into moving this block into previous pagination conditional and test in consuming app
         unless all.respond_to? :total_entries
           all.define_singleton_method(:total_entries) do
@@ -193,6 +193,12 @@ module PolicyMachineStorageAdapter
         end
         all
       end
+    end
+
+    # Allow ignore_case to be a boolean, string, symbol, or array of symbols or strings
+    def ignore_case_applies?(ignore_case, key)
+      return false if key == 'policy_machine_uuid'
+      ignore_case == true || ignore_case.to_s == key || ( ignore_case.respond_to?(:any?) && ignore_case.any?{ |k| k.to_s == key} )
     end
 
     def class_for_type(pe_type)
@@ -207,8 +213,7 @@ module PolicyMachineStorageAdapter
     #
     def assign(src, dst)
       assert_persisted_policy_element(src, dst)
-      Assignment.create(parent_id: src.id, child_id: dst.id)
-    rescue ::ActiveRecord::RecordNotUnique
+      Assignment.where(parent_id: src.id, child_id: dst.id).first_or_create
     end
 
     ##
