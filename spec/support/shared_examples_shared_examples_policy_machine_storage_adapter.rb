@@ -37,22 +37,31 @@ shared_examples "a policy machine storage adapter" do
       
       context 'case sensitivity' do
         before do
-          ['abcde', 'object1'].each do |name| 
+          ['abcde', 'object1'].each do |name|
             policy_machine_storage_adapter.add_object("#{name}_uuid", 'some_policy_machine_uuid', name: name) 
           end
         end
 
         around { |test| Kernel.silence_warnings{test.run} }
-        
+
         it 'finds with case sensitivity by default' do
           expect(policy_machine_storage_adapter.find_all_of_type_object(name: 'ABCDE')).to eq([])
           expect(policy_machine_storage_adapter.find_all_of_type_object(name: 'oBJECt1')).to eq([])
         end
-        
-        it 'finds without case sensitivity if the option is passed' do
+
+        it 'finds without case sensitivity if the option is set to true' do
           expect(policy_machine_storage_adapter.find_all_of_type_object(name: 'ABCDE', ignore_case: true).first.unique_identifier).to eq('abcde_uuid')
           expect(policy_machine_storage_adapter.find_all_of_type_object(name: 'oBJECt1', ignore_case: true).first.unique_identifier).to eq('object1_uuid')
         end
+
+        it 'finds without case sensitivity if passed an array containing the sort key' do
+          expect(policy_machine_storage_adapter.find_all_of_type_object(name: 'ABCDE', ignore_case: [:name]).first.unique_identifier).to eq('abcde_uuid')
+        end
+
+        it 'finds with case sensitivity if passed an array not containing the sort key' do
+          expect(policy_machine_storage_adapter.find_all_of_type_object(name: 'ABCDE', ignore_case: [:color])).to eq([])
+        end
+
       end
     end
   end

@@ -140,7 +140,7 @@ module PolicyMachineStorageAdapter
         # Arel matches provides agnostic case insensitive sql for mysql and postgres
         all = begin
           if options[:ignore_case]
-            match_expressions = conditions.map {|k,v| [:string, :text].include?(pe_class.columns_hash[k].type) ? 
+            match_expressions = conditions.map {|k,v| ignore_case_applies?(options[:ignore_case],k) ?
               pe_class.arel_table[k].matches(v) : pe_class.arel_table[k].eq(v) }
             match_expressions.inject(pe_class.scoped) {|rel, e| rel.where(e)}
           else
@@ -154,7 +154,7 @@ module PolicyMachineStorageAdapter
             "and re-save existing records"
             all.select!{ |pe| pe.store_attributes and 
                         ((attr_value = pe.extra_attributes_hash[key]).is_a?(String) and 
-                        value.is_a?(String) and options[:ignore_case]) ? attr_value.downcase == value.downcase : attr_value == value}
+                        value.is_a?(String) and ignore_case_applies?(options[:ignore_case],key)) ? attr_value.downcase == value.downcase : attr_value == value}
         end
         # Default to first page if not specified
         if options[:per_page]
@@ -170,6 +170,12 @@ module PolicyMachineStorageAdapter
         end
         all
       end
+    end
+
+    # Allow ignore_case to be a boolean, string, symbol, or array of symbols or strings
+    def ignore_case_applies?(ignore_case, key)
+      return false if key == 'policy_machine_uuid'
+      ignore_case == true || ignore_case.to_s == key || ( ignore_case.respond_to?(:any?) && ignore_case.any?{ |k| k.to_s == key} )
     end
 
     def class_for_type(pe_type)
