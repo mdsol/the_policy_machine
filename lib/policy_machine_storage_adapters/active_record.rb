@@ -136,7 +136,7 @@ module PolicyMachineStorageAdapter
         conditions = options.slice!(:per_page, :page, :ignore_case).stringify_keys
         extra_attribute_conditions = conditions.slice!(*PolicyElement.column_names)
         pe_class = class_for_type(pe_type)
-        
+
         # Arel matches provides agnostic case insensitive sql for mysql and postgres
         all = begin
           if options[:ignore_case]
@@ -152,8 +152,8 @@ module PolicyMachineStorageAdapter
           warn "WARNING: #{self.class} is filtering #{pe_type} on #{key} in memory, which won't scale well. " <<
             "To move this query to the database, add a '#{key}' column to the policy_elements table " <<
             "and re-save existing records"
-            all.select!{ |pe| pe.store_attributes and 
-                        ((attr_value = pe.extra_attributes_hash[key]).is_a?(String) and 
+            all.select!{ |pe| pe.store_attributes and
+                        ((attr_value = pe.extra_attributes_hash[key]).is_a?(String) and
                         value.is_a?(String) and ignore_case_applies?(options[:ignore_case],key)) ? attr_value.downcase == value.downcase : attr_value == value}
         end
         # Default to first page if not specified
@@ -161,7 +161,7 @@ module PolicyMachineStorageAdapter
           page = options[:page] ? options[:page] : 1
           all = all.order(:id).paginate(page: page, per_page: options[:per_page])
         end
-        
+
         # TODO: Look into moving this block into previous pagination conditional and test in consuming app
         unless all.respond_to? :total_entries
           all.define_singleton_method(:total_entries) do
@@ -190,8 +190,7 @@ module PolicyMachineStorageAdapter
     #
     def assign(src, dst)
       assert_persisted_policy_element(src, dst)
-      Assignment.create(parent_id: src.id, child_id: dst.id)
-    rescue ::ActiveRecord::RecordNotUnique
+      Assignment.where(parent_id: src.id, child_id: dst.id).first_or_create
     end
 
     ##
