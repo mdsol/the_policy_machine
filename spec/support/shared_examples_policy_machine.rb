@@ -193,6 +193,16 @@ shared_examples "a policy machine" do
         policy_machine.add_association(@user_attribute, @operation_set, @object_attribute).should be_true
       end
 
+      it 'overwrites old associations between the same attributes' do
+        policy_machine.add_association(@user_attribute, Set.new([@operation1]), @object_attribute)
+
+        expect{policy_machine.add_association(@user_attribute, Set.new([@operation2]), @object_attribute)}
+          .to change{ policy_machine.scoped_privileges(@user_attribute, @object_attribute) }
+          .from( [[@user_attribute, @operation1, @object_attribute]] )
+          .to(   [[@user_attribute, @operation2, @object_attribute]] )
+
+      end
+
     end
   end
 
