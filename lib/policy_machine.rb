@@ -223,6 +223,13 @@ class PolicyMachine
     policy_machine_storage_adapter.transaction(&block)
   end
 
+  # Global configuration options
+  # Supported:
+    # tolerate_cycles (boolean, defaults to false)
+  def self.config
+    @config ||= {}
+  end
+
   private
 
     # Raise unless the argument is a policy element.

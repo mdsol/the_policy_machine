@@ -370,6 +370,17 @@ shared_examples "a policy machine" do
       policy_machine.is_privilege?(@u1, @w, @o1).should be_false
     end
 
+    context 'tolerate_cycles is set to true' do
+      before { PolicyMachine.config[:tolerate_cycles] = true }
+      after  { PolicyMachine.config.clear }
+      it 'tolerates cycles when configured' do
+        @groupa = policy_machine.create_user_attribute('GroupA')
+        policy_machine.add_assignment(@groupa, @group1)
+        policy_machine.add_assignment(@group1, @groupa)
+        policy_machine.is_privilege?(@u1, @w, @o1).should be_true
+      end
+    end
+
     describe 'options' do
       describe 'associations' do
         it 'raises unless options[:associations] is an Array' do
