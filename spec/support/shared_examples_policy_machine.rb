@@ -237,6 +237,14 @@ shared_examples "a policy machine" do
       expect{PM::Prohibition.on(3)}.to raise_error(ArgumentError)
     end
 
+    it 'can negate operations expressed as strings' do
+      expect(PM::Prohibition.on('fly')).to be_a String
+    end
+
+    it 'can negate operations expressed as symbols' do
+      expect(PM::Prohibition.on(:fly)).to be_a Symbol
+    end
+
   end
 
   describe 'User Attributes' do
