@@ -271,7 +271,7 @@ module PM
     end
 
     def prohibition
-      Prohibition.new(self)
+      Prohibition.on(self)
     end
 
     def prohibition?
@@ -295,7 +295,7 @@ module PM
 
   # A prohibition in a policy machine.
   class Prohibition < PolicyElement
-    def self.new(operation)
+    def self.on(operation)
       negation = "~#{operation}"
       case operation
       when PM::Operation

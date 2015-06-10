@@ -69,7 +69,7 @@ class PolicyMachine
   # TODO: Parallelize the two component checks
   def is_privilege?(user_or_attribute, operation, object_or_attribute, options = {})
     is_privilege_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute, options) &&
-      !is_privilege_ignoring_prohibitions?(user_or_attribute, PM::Prohibition.new(operation), object_or_attribute, options)
+      !is_privilege_ignoring_prohibitions?(user_or_attribute, PM::Prohibition.on(operation), object_or_attribute, options)
   end
 
   ##

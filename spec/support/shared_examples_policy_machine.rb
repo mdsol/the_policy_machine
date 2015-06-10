@@ -223,7 +223,7 @@ shared_examples "a policy machine" do
   describe 'Operations' do
 
     it 'does not allow an operation to start with a ~' do
-      expect{policy_machine.create_operation('~_~')}.to raise_error(ArgumentError)
+      expect{policy_machine.create_operation('~apple')}.to raise_error(ArgumentError)
       expect{policy_machine.create_operation('apple~')}.not_to raise_error
     end
 
@@ -234,7 +234,7 @@ shared_examples "a policy machine" do
     end
 
     it 'raises if trying to negate a non-operation' do
-      expect{PM::Prohibition.new(3)}.to raise_error(ArgumentError)
+      expect{PM::Prohibition.on(3)}.to raise_error(ArgumentError)
     end
 
   end
