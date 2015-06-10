@@ -645,8 +645,8 @@ shared_examples "a policy machine" do
 
     it 'can ignore prohibitions' do
       expect(policy_machine.is_privilege_ignoring_prohibitions?(@u2, @w, @in_u2)).to be
-      ignoring_prohibitions = policy_machine.scoped_privileges(@u2, @in_u2, true).map{ |_,op,_| op.unique_identifier }
-      with_prohibitions = policy_machine.scoped_privileges(@u2, @in_u2, false).map{ |_,op,_| op.unique_identifier }
+      ignoring_prohibitions = policy_machine.scoped_privileges(@u2, @in_u2, ignore_prohibitions: true).map{ |_,op,_| op.unique_identifier }
+      with_prohibitions = policy_machine.scoped_privileges(@u2, @in_u2).map{ |_,op,_| op.unique_identifier }
       expect(ignoring_prohibitions - with_prohibitions).to eq([@w.unique_identifier])
     end
 

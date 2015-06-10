@@ -28,7 +28,6 @@ module PolicyMachineStorageAdapter
       # The results are paginated via will_paginate using the pagination params in the params hash
       # The find is case insensitive to the conditions
       define_method("find_all_of_type_#{pe_type}") do |options = {}|
-        # Look into implementing case insensitivty for databases other than mysql
         conditions = options.slice!(:per_page, :page, :ignore_case).merge(pe_type: pe_type)
         elements = policy_elements.select do |pe|
           conditions.all? do |k,v|
@@ -36,7 +35,7 @@ module PolicyMachineStorageAdapter
               !pe.respond_to?(k) || pe.send(k) == nil
             else
               pe.respond_to?(k) && 
-                ((pe.send(k).is_a?(String) && v.is_a?(String) && options[:ignore_case]) ? pe.send(k).downcase == v.downcase : pe.send(k) == v)
+                ((pe.send(k).is_a?(String) && v.is_a?(String) && ignore_case_applies?(options[:ignore_case], k)) ? pe.send(k).downcase == v.downcase : pe.send(k) == v)
             end
           end
         end
@@ -55,6 +54,11 @@ module PolicyMachineStorageAdapter
         end
         paginated_elements
       end
+    end
+
+    # Allow ignore_case to be a boolean, string, symbol, or array of symbols or strings
+    def ignore_case_applies?(ignore_case, key)
+      ignore_case == true || ignore_case.to_s == key || ( ignore_case.respond_to?(:any?) && ignore_case.any?{ |k| k.to_s == key.to_s} )
     end
 
     ##

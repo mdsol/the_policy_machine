@@ -16,6 +16,7 @@ class GeneratePolicyMachine < ActiveRecord::Migration
     end
     add_index :policy_element_associations, [:user_attribute_id, :object_attribute_id], name: 'index_pe_assocs_on_ua_and_oa'
 
+    #TODO: If we end up not using this table in Postgres, make creating it conditional on the database type
     create_table :transitive_closure, id: false do |t|
       t.integer :ancestor_id, null: false
       t.integer :descendant_id, null: false

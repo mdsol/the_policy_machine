@@ -1,6 +1,36 @@
 module PolicyMachineStorageAdapter
   class ActiveRecord
-    class Assignment
+    class Assignment < ::ActiveRecord::Base
+
+      class TransitiveClosure < ::ActiveRecord::Base
+        self.table_name = 'transitive_closure'
+        # needs ancestor_id, descendant_id columns
+        belongs_to :ancestor, class_name: :PolicyElement
+        belongs_to :descendant, class_name: :PolicyElement
+      end
+
+      after_create :add_to_transitive_closure
+      after_destroy :remove_from_transitive_closure
+      attr_accessible :child_id, :parent_id
+      # needs parent_id, child_id columns
+      belongs_to :parent, class_name: :PolicyElement
+      belongs_to :child, class_name: :PolicyElement
+
+      def self.transitive_closure?(ancestor, descendant)
+        TransitiveClosure.exists?(ancestor_id: ancestor.id, descendant_id: descendant.id)
+      end
+
+      def self.descendants_of(element)
+        PolicyElement.joins('inner join transitive_closure on policy_elements.id=transitive_closure.descendant_id').where(
+          "transitive_closure.ancestor_id = #{element.id}"
+        )
+      end
+
+      def self.ancestors_of(element)
+        PolicyElement.joins('inner join transitive_closure on policy_elements.id=transitive_closure.ancestor_id').where(
+          "transitive_closure.descendant_id = #{element.id}"
+        )
+      end
 
       def add_to_transitive_closure
         connection.execute("Insert ignore into transitive_closure values (#{parent_id}, #{child_id})")

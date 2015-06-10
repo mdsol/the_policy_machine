@@ -174,9 +174,9 @@ class PolicyMachine
   # object (attribute).
   #
   # TODO:  might make privilege a class of its own
-  def scoped_privileges(user_or_attribute, object_or_attribute, ignore_prohibitions = false)
+  def scoped_privileges(user_or_attribute, object_or_attribute, options = {})
     privileges_and_prohibitions = if policy_machine_storage_adapter.respond_to?(:scoped_privileges)
-      policy_machine_storage_adapter.scoped_privileges(user_or_attribute.stored_pe, object_or_attribute.stored_pe).map do |op|
+      policy_machine_storage_adapter.scoped_privileges(user_or_attribute.stored_pe, object_or_attribute.stored_pe, options).map do |op|
         operation = PM::Operation.convert_stored_pe_to_pe(op, policy_machine_storage_adapter, PM::Operation)
         [user_or_attribute, operation, object_or_attribute]
       end
@@ -186,7 +186,7 @@ class PolicyMachine
       end
     end
     prohibitions, privileges = privileges_and_prohibitions.partition { |_,op,_| op.prohibition? }
-    if ignore_prohibitions
+    if options[:ignore_prohibitions]
       privileges
     else
       prohibited_operations = prohibitions.map { |_,prohibition,_| prohibition.operation }
