@@ -220,6 +220,33 @@ shared_examples "a policy machine" do
     end
   end
 
+  describe 'Operations' do
+
+    it 'does not allow an operation to start with a ~' do
+      expect{policy_machine.create_operation('~apple')}.to raise_error(ArgumentError)
+      expect{policy_machine.create_operation('apple~')}.not_to raise_error
+    end
+
+    it 'can derive a prohibition from an operation and vice versa' do
+      @op = policy_machine.create_operation('fly')
+      expect(@op.prohibition).to be_prohibition
+      expect(@op.prohibition.operation).to eq('fly')
+    end
+
+    it 'raises if trying to negate a non-operation' do
+      expect{PM::Prohibition.on(3)}.to raise_error(ArgumentError)
+    end
+
+    it 'can negate operations expressed as strings' do
+      expect(PM::Prohibition.on('fly')).to be_a String
+    end
+
+    it 'can negate operations expressed as symbols' do
+      expect(PM::Prohibition.on(:fly)).to be_a Symbol
+    end
+
+  end
+
   describe 'User Attributes' do
 
     describe '#extra_attributes' do
@@ -609,7 +636,7 @@ shared_examples "a policy machine" do
       policy_machine.add_assignment(@objects, @mail_system)
 
       # Associations
-      policy_machine.add_association(@id_u2, Set.new([@r]), @in_u2)
+      policy_machine.add_association(@id_u2, Set.new([@r,@w.prohibition]), @in_u2)
       policy_machine.add_association(@id_u2, Set.new([@r, @w]), @out_u2)
       policy_machine.add_association(@id_u2, Set.new([@w]), @inboxes)
       policy_machine.add_association(@id_u2, Set.new([@r, @w]), @other_u2)
@@ -621,12 +648,16 @@ shared_examples "a policy machine" do
         [@u2, @w, @draft_u2], [@u2, @r, @trash_u2], [@u2, @w, @trash_u2]
       ]
 
-      # TODO:  remove the expected privilege below once prohibitions are put in place.
-      # In the example, @u2 is prohibited from writing to @in_u2
-      expected_privileges << [@u2, @w, @in_u2]
-
       assert_pm_privilege_expectations(policy_machine.privileges, expected_privileges)
     end
+
+    it 'can ignore prohibitions' do
+      expect(policy_machine.is_privilege_ignoring_prohibitions?(@u2, @w, @in_u2)).to be
+      ignoring_prohibitions = policy_machine.scoped_privileges(@u2, @in_u2, ignore_prohibitions: true).map{ |_,op,_| op.unique_identifier }
+      with_prohibitions = policy_machine.scoped_privileges(@u2, @in_u2).map{ |_,op,_| op.unique_identifier }
+      expect(ignoring_prohibitions - with_prohibitions).to eq([@w.unique_identifier])
+    end
+
   end
 
   describe 'The DAC Operating System:  Figure 11. (pg. 47)' do
