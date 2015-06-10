@@ -73,12 +73,12 @@ policy_machine.is_privilege?(u1, w, o1)
 
 # Returns false
 policy_machine.is_privilege?(u3, w, o3)
-```
 
 # Prohibitions
 prohibit_w = w.prohibition
 policy_machine.add_association(division, Set.new([r,prohibit_w]),project1)
-# division cannot gain w on project1, no matter what other associations are added.
+# is_privilege?(division,w,project1) will always be false, regardless of other associations.
+```
 
 # Storage Adapters
 
