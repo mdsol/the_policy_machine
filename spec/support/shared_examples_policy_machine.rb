@@ -245,6 +245,10 @@ shared_examples "a policy machine" do
       expect(PM::Prohibition.on(:fly)).to be_a Symbol
     end
 
+    it 'can negate operations expressed as PM::Operations' do
+      expect(PM::Prohibition.on(policy_machine.create_operation('fly'))).to be_a PM::Operation
+    end
+
   end
 
   describe 'User Attributes' do
