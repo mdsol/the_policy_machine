@@ -19,9 +19,9 @@ If you want to contribute an enhancement or a fix:
 First cd into the test/dummy directory and create the test db with:
 
 ```
-bundle exec rake db:create
-bundle exec rake db:migrate
-bundle exec rake db:test:prepare
+[bundle exec] rake db:create
+[bundle exec] rake db:migrate
+[bundle exec] rake db:test:prepare
 ```
 
 Run all rspec with:
