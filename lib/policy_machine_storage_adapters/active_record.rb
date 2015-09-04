@@ -165,7 +165,7 @@ module PolicyMachineStorageAdapter
           if options[:ignore_case]
             match_expressions = conditions.map {|k,v| ignore_case_applies?(options[:ignore_case],k) ?
               pe_class.arel_table[k].matches(v) : pe_class.arel_table[k].eq(v) }
-            match_expressions.inject(pe_class.scoped) {|rel, e| rel.where(e)}
+            match_expressions.inject(pe_class.scoped) {|rel, e| rel.where(e)}.where(custom_where_clause)
           else
             pe_class.where(conditions).where(custom_where_clause)
           end
