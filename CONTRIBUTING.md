@@ -16,7 +16,7 @@ If you want to contribute an enhancement or a fix:
 
 ## Running Automated Tests
 
-First cd into the test/dummy directory and create the test db with
+First cd into the test/dummy directory and create the test db with:
 
 ```
 bundle exec rake db:create
