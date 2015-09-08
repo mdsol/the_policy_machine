@@ -42,6 +42,7 @@ module PolicyMachineStorageAdapter
       end
 
       serialize :configuration_type_role_uuids, ArraySerializer
+      serialize :tags, ArraySerializer
 
       alias :persisted :persisted?
       # needs unique_identifier, policy_machine_uuid, type, extra_attributes columns
