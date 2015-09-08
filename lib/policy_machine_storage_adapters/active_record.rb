@@ -30,6 +30,20 @@ module PolicyMachineStorageAdapter
     end
 
     class PolicyElement < ::ActiveRecord::Base
+
+      class ArraySerializer < Array
+        def self.dump(arr)
+          arr.is_a?(Array) ? "{#{arr.join(',')}}" : '{}'
+        end
+
+        def self.load(arr)
+          arr ? new(arr.delete("{}").split(',')) : nil
+        end
+      end
+
+      serialize :configuration_type_role_uuids, ArraySerializer
+      serialize :tags, ArraySerializer
+
       alias :persisted :persisted?
       # needs unique_identifier, policy_machine_uuid, type, extra_attributes columns
       has_many :assignments, foreign_key: :parent_id, dependent: :destroy
@@ -74,7 +88,7 @@ module PolicyMachineStorageAdapter
       # Uses ActiveRecord's store method to methodize new attribute keys in extra_attributes
       def store_attributes
         @extra_attributes_hash = ExtraAttributesHash[self.extra_attributes.is_a?(Hash) ? self.extra_attributes : JSON.parse(self.extra_attributes, quirks_mode: true)]
-        ::ActiveRecord::Base.store_accessor(:extra_attributes, @extra_attributes_hash.keys)
+        self.class.store_accessor(:extra_attributes, @extra_attributes_hash.keys)
       end
 
       def descendants
