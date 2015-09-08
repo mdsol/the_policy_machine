@@ -30,6 +30,19 @@ module PolicyMachineStorageAdapter
     end
 
     class PolicyElement < ::ActiveRecord::Base
+
+      class ConfigurationTypeRoleUuidsArray < Array
+        def self.dump(configuration_type_role_uuids)
+          configuration_type_role_uuids.is_a?(Array) ? "{#{configuration_type_role_uuids.join(',')}}" : '{}'
+        end
+
+        def self.load(configuration_type_role_uuids)
+          configuration_type_role_uuids ? new(configuration_type_role_uuids.delete("{}").split(',')) : nil
+        end
+      end
+
+      serialize :configuration_type_role_uuids, ConfigurationTypeRoleUuidsArray
+
       alias :persisted :persisted?
       # needs unique_identifier, policy_machine_uuid, type, extra_attributes columns
       has_many :assignments, foreign_key: :parent_id, dependent: :destroy
