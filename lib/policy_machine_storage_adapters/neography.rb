@@ -36,6 +36,9 @@ module PolicyMachineStorageAdapter
       end
       
       define_method("find_all_of_type_#{pe_type}") do |options = {}|
+        if options.delete(:where)
+          raise NotImplementedError.new('you are trying to use an active_record where clause on an in memory storage adapter!')
+        end
         found_elts = ::Neography::Node.find('policy_element_types', 'pe_type', pe_type)
         found_elts = found_elts.nil? ? [] : [found_elts].flatten
         found_elts.select do |elt|

@@ -34,6 +34,13 @@ describe 'Neography' do
         policy_machine_storage_adapter.assign(src, dst).should be_false
       end
     end
+
+    describe 'find all' do
+      it 'raises a NotImplementedError when active_record statements are added' do
+        policy_machine_storage_adapter = PolicyMachineStorageAdapter::Neography.new
+        expect { policy_machine_storage_adapter.find_all_of_type_object(where: "unique_identifier LIKE '%uuid1'") }.to raise_error
+      end
+    end
   end
 end if neo4j_exists?
 
