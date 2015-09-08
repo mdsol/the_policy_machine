@@ -87,7 +87,7 @@ module PolicyMachineStorageAdapter
       # Uses ActiveRecord's store method to methodize new attribute keys in extra_attributes
       def store_attributes
         @extra_attributes_hash = ExtraAttributesHash[self.extra_attributes.is_a?(Hash) ? self.extra_attributes : JSON.parse(self.extra_attributes, quirks_mode: true)]
-        ::ActiveRecord::Base.store_accessor(:extra_attributes, @extra_attributes_hash.keys)
+        self.class.store_accessor(:extra_attributes, @extra_attributes_hash.keys)
       end
 
       def descendants
