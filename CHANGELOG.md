@@ -1,3 +1,7 @@
+# 0.0.3
+
+* Adds functionality for custom where clauses using activerecord storage adapter
+
 # 0.0.2
 
 * Fix: Operation sets now silently remove duplicates
