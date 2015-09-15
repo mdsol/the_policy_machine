@@ -11,7 +11,7 @@
 #
 # It's strongly recommended to check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20131021221759) do
+ActiveRecord::Schema.define(:version => 20150915183109) do
 
   create_table "assignments", :force => true do |t|
     t.integer "parent_id", :null => false
@@ -36,11 +36,12 @@ ActiveRecord::Schema.define(:version => 20131021221759) do
   add_index "policy_element_associations", ["user_attribute_id", "object_attribute_id"], :name => "index_pe_assocs_on_ua_and_oa"
 
   create_table "policy_elements", :force => true do |t|
-    t.string "unique_identifier",   :null => false
+    t.string "unique_identifier",                  :null => false
     t.string "policy_machine_uuid"
-    t.string "type",                :null => false
+    t.string "type",                               :null => false
     t.text   "extra_attributes"
     t.string "color"
+    t.string "tags",                :limit => nil
   end
 
   add_index "policy_elements", ["type"], :name => "index_policy_elements_on_type"

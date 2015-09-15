@@ -34,7 +34,28 @@ shared_examples "a policy machine storage adapter" do
         node2 = policy_machine_storage_adapter.send("add_#{pe_type}", 'some_uuid2', 'some_policy_machine_uuid')
         policy_machine_storage_adapter.send("find_all_of_type_#{pe_type}").should match_array([node1, node2])
       end
-      
+
+      context 'inclusions' do
+        before do
+          policy_machine_storage_adapter.send("add_#{pe_type}", 'some_uuid1', 'some_policy_machine_uuid', tags: ['up', 'down'])
+          policy_machine_storage_adapter.send("add_#{pe_type}", 'some_uuid2', 'some_policy_machine_uuid', tags: ['up', 'strange'])
+        end
+
+        it 'requires an exact match on array attributes' do
+          expect(policy_machine_storage_adapter.send("find_all_of_type_#{pe_type}", tags: ['down', 'up'])).to be_empty
+          expect(policy_machine_storage_adapter.send("find_all_of_type_#{pe_type}", tags: ['up', 'down'])).to be_one
+        end
+
+        it 'allows querying by checking whether a value is included in an array' do
+          expect(policy_machine_storage_adapter.send("find_all_of_type_#{pe_type}", tags: {include: 'down'})).to be_one
+        end
+
+        it 'allows querying by checking whether multiple values are all included in an array' do
+          expect(policy_machine_storage_adapter.send("find_all_of_type_#{pe_type}", tags: {include: ['down','up']})).to be_one
+        end
+
+      end
+
       context 'case sensitivity' do
         before do
           ['abcde', 'object1'].each do |name|
