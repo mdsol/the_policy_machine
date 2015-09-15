@@ -42,6 +42,8 @@ module PolicyMachineStorageAdapter
           options.except(:ignore_case).all? do |k,v|
             if v.nil?
               !elt.respond_to?(k)
+            elsif v.is_a?(Hash) && v.keys == [:include]
+              elt.respond_to?(k) && elt.send(k).respond_to?(:include?) && [*v[:include]].all?{|val| elt.send(k).include?(val)}
             else
               elt.respond_to?(k) &&
                 ((elt.send(k).is_a?(String) && v.is_a?(String) && ignore_case_applies?(options[:ignore_case], k)) ? elt.send(k).downcase == v.downcase : elt.send(k) == v)
