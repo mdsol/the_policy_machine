@@ -8,7 +8,7 @@ end
 require_relative '../test/test_helper.rb'
 
 require 'rspec'
-require 'debugger'
+require 'pry'
 
 SPEC_DIR = File.expand_path("..", __FILE__)
 lib_dir = File.expand_path("../lib", SPEC_DIR)
