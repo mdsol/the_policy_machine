@@ -40,6 +40,13 @@ describe 'ActiveRecord' do
           policy_machine_storage_adapter.find_all_of_type_object(color: 'blue').map(&:color).should eql(['blue'])
         end
 
+        it 'uses a custom where clause when the where key is present' do
+          policy_machine_storage_adapter.add_object('some_uuid1', 'some_policy_machine_uuid1')
+          policy_machine_storage_adapter.add_object('some_uuid2', 'some_policy_machine_uuid1', color: 'red')
+          policy_machine_storage_adapter.add_object('some_uuid3', 'some_policy_machine_uuid1', color: 'blue')
+          policy_machine_storage_adapter.find_all_of_type_object(where: "unique_identifier LIKE '%uuid1'").should be_one
+        end
+
         context 'pagination' do
           before do
             10.times {|i| policy_machine_storage_adapter.add_object("uuid_#{i}", 'some_policy_machine_uuid1', color: 'red') }

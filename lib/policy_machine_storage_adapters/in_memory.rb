@@ -28,6 +28,10 @@ module PolicyMachineStorageAdapter
       # The results are paginated via will_paginate using the pagination params in the params hash
       # The find is case insensitive to the conditions
       define_method("find_all_of_type_#{pe_type}") do |options = {}|
+        if options.delete(:where)
+          raise NotImplementedError.new('you are trying to use an active_record where clause on an in memory storage adapter!')
+        end
+
         conditions = options.slice!(:per_page, :page, :ignore_case).merge(pe_type: pe_type)
         elements = policy_elements.select do |pe|
           conditions.all? do |k,v|

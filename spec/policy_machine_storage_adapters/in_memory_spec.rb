@@ -31,6 +31,10 @@ describe PolicyMachineStorageAdapter::InMemory do
         results.first.unique_identifier.should == "uuid_0"
         results.last.unique_identifier.should == "uuid_2"
       end
+
+      it 'raises if you try to inject a where clause' do
+        expect { policy_machine_storage_adapter.find_all_of_type_object(where: 'custom_query') }.to raise_error
+      end
     end
   end
 end
