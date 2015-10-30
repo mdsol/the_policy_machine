@@ -11,7 +11,7 @@ Gem::Specification.new do |s|
   s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
   s.require_paths = ["lib"]
 
-  s.add_dependency('activesupport', '~> 3.2')
+  s.add_dependency('activesupport', '~> 4.2')
 
   # Only required in ActiveRecord mode
   s.add_dependency('activerecord-import', '~> 0.0')
