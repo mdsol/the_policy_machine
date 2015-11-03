@@ -4,10 +4,9 @@ module PolicyMachineStorageAdapter
   class ActiveRecord
 
     class Assignment < ::ActiveRecord::Base
-      attr_accessible :child_id, :parent_id
       # needs parent_id, child_id columns
-      belongs_to :parent, class_name: :PolicyElement
-      belongs_to :child, class_name: :PolicyElement
+      belongs_to :parent, class_name: 'PolicyElement', foreign_key: :parent_id
+      belongs_to :child, class_name: 'PolicyElement', foreign_key: :child_id
 
       def self.transitive_closure?(ancestor, descendant)
         descendants_of(ancestor).include?(descendant)
