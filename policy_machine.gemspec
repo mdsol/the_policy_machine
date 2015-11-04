@@ -11,7 +11,8 @@ Gem::Specification.new do |s|
   s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
   s.require_paths = ["lib"]
 
-  s.add_dependency('activesupport', '~> 3.2')
+  s.add_dependency('activesupport', '~> 4.1')
+  s.add_dependency('activerecord', '~> 4.1') #TODO optional dependency when not using active record adapter
 
   # Only required in ActiveRecord mode
   s.add_dependency('activerecord-import', '~> 0.0')
@@ -24,8 +25,8 @@ Gem::Specification.new do |s|
   s.add_development_dependency('rspec', '~> 2.13.0')
   s.add_development_dependency('simplecov', '~> 0.7.1')
   s.add_development_dependency('pry')
+  s.add_development_dependency('pry-nav')
   s.add_development_dependency('neography', '~> 1.1')
-  s.add_development_dependency('rails', '~> 3.2')
   s.add_development_dependency('database_cleaner')
   s.add_development_dependency('will_paginate', '~> 3.0.5')
 
