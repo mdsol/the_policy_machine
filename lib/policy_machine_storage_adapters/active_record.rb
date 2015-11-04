@@ -30,6 +30,10 @@ module PolicyMachineStorageAdapter
       end
     end
 
+    def self.load_db_adapter!
+      require_relative("active_record/#{PolicyElement.configurations[Rails.env]['adapter']}")
+    end
+
     class PolicyElement < ::ActiveRecord::Base
       alias :persisted :persisted?
       # needs unique_identifier, policy_machine_uuid, type, extra_attributes columns
