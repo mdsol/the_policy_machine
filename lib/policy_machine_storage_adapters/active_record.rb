@@ -22,11 +22,15 @@ module PolicyMachineStorageAdapter
     # Assignment must inherit from ActiveRecord::Base and have class methods ancestors_of, descendants_of, and transitive_closure?
     def self.const_missing(name)
       if name.to_s == 'Assignment'
-        require_relative("active_record/#{PolicyElement.configurations[Rails.env]['adapter']}")
+        load_db_adapter!
         Assignment
       else
         super
       end
+    end
+
+    def self.load_db_adapter!
+      require_relative("active_record/#{PolicyElement.configurations[Rails.env]['adapter']}")
     end
 
     class PolicyElement < ::ActiveRecord::Base
