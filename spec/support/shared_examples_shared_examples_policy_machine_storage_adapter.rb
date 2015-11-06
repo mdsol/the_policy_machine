@@ -59,7 +59,7 @@ shared_examples "a policy machine storage adapter" do
       context 'case sensitivity' do
         before do
           ['abcde', 'object1'].each do |name|
-            policy_machine_storage_adapter.add_object("#{name}_uuid", 'some_policy_machine_uuid', name: name) 
+            policy_machine_storage_adapter.add_object("#{name}_uuid", 'some_policy_machine_uuid', name: name)
           end
         end
 
@@ -221,7 +221,7 @@ shared_examples "a policy machine storage adapter" do
     it 'stores the association' do
       policy_machine_storage_adapter.add_association(@ua, Set.new([@r, @w]), @oa, 'some_policy_machine_uuid1')
       assocs_with_r = policy_machine_storage_adapter.associations_with(@r)
-      assocs_with_r.size == 1
+      assocs_with_r.size.should eq 1
       assocs_with_r[0][0].should == @ua
       assocs_with_r[0][1].to_a.should match_array([@r, @w])
       assocs_with_r[0][2].should == @oa
@@ -294,7 +294,7 @@ shared_examples "a policy machine storage adapter" do
       policy_machine_storage_adapter.assign(@oa, @pc3)
       policy_machine_storage_adapter.policy_classes_for_object_attribute(@oa).should match_array([@pc1, @pc3])
     end
-    
+
     it 'handles non unique associations' do
       policy_machine_storage_adapter.assign(@oa, @pc1)
       expect { policy_machine_storage_adapter.assign(@oa, @pc1) }.to_not raise_error
