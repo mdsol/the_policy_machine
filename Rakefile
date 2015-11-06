@@ -1,0 +1,2 @@
+require 'policy_machine_test_app'
+PolicyMachineTestApp.load_rakes
