@@ -149,7 +149,7 @@ module PolicyMachineStorageAdapter
       define_method("find_all_of_type_#{pe_type}") do |options = {}|
         conditions = options.slice!(:per_page, :page, :ignore_case).stringify_keys
         extra_attribute_conditions = conditions.slice!(*PolicyElement.column_names)
-        include_conditions, conditions = options.partition { |k,v| include_condition?(k,v) }
+        include_conditions, conditions = conditions.partition { |k,v| include_condition?(k,v) }
         pe_class = class_for_type(pe_type)
 
         # Arel matches provides agnostic case insensitive sql for mysql and postgres
@@ -164,7 +164,7 @@ module PolicyMachineStorageAdapter
         end
 
         include_conditions.each do |key, value|
-          all = Adapter.apply_include_condition(scope: all, key: key, value: value, klass: self)
+          all = Adapter.apply_include_condition(scope: all, key: key, value: value[:include], klass: class_for_type(pe_type))
         end
 
         extra_attribute_conditions.each do |key, value|

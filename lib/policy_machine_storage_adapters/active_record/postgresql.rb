@@ -32,9 +32,9 @@ module PolicyMachineStorageAdapter
 
       # Support substring searching and Postgres Array membership
       def self.apply_include_condition(scope: , key: , value: , klass: )
-        array_type = klass.columns_hash[key.to_s].sql_type.include?('[]')
-        if array_type
-          scope.where("? = ANY(#{key})", value)
+        require 'byebug'
+        if klass.columns_hash[key.to_s].array
+          [*value].reduce(scope) { |rel, val| rel.where("? = ANY(#{key})", val) }
         else
           scope.where("#{key} LIKE '%?%'", value.to_s.gsub(/([%_])/, '\\\\\0'))
         end
