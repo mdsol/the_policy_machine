@@ -27,5 +27,20 @@ module PolicyMachineStorageAdapter
       end
 
     end
+
+    class Adapter
+
+      # Support substring searching and Postgres Array membership
+      def self.apply_include_condition(scope: , key: , value: , klass: )
+        array_type = klass.columns_hash[key.to_s].sql_type.include?('[]')
+        if array_type
+          scope.where("? = ANY(#{key})", value)
+        else
+          scope.where("#{key} LIKE '%?%'", value.to_s.gsub(/([%_])/, '\\\\\0'))
+        end
+      end
+
+    end
+
   end
 end

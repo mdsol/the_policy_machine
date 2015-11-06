@@ -17,13 +17,14 @@ module PolicyMachineStorageAdapter
 
     require 'activerecord-import' # Gem for bulk inserts
 
-    # Load the Assignment class at runtime because it's implemented differently by different adapters
+    # Load the Assignment and Adapter classes at runtime because it's implemented differently by different adapters
     # And which database adapter is active is not always determinable at class definition time
     # Assignment must inherit from ActiveRecord::Base and have class methods ancestors_of, descendants_of, and transitive_closure?
+    # Adapter must implement apply_include_condition
     def self.const_missing(name)
-      if name.to_s == 'Assignment'
-        require_relative("active_record/#{PolicyElement.configurations[Rails.env]['adapter']}")
-        Assignment
+      if %w[Assignment Adapter].include?(name.to_s)
+        load_db_adapter!
+        const_get(name)
       else
         super
       end
@@ -144,6 +145,7 @@ module PolicyMachineStorageAdapter
       define_method("find_all_of_type_#{pe_type}") do |options = {}|
         conditions = options.slice!(:per_page, :page, :ignore_case).stringify_keys
         extra_attribute_conditions = conditions.slice!(*PolicyElement.column_names)
+        include_conditions, conditions = options.partition { |k,v| include_condition?(k,v) }
         pe_class = class_for_type(pe_type)
 
         # Arel matches provides agnostic case insensitive sql for mysql and postgres
@@ -155,6 +157,10 @@ module PolicyMachineStorageAdapter
           else
             pe_class.where(conditions)
           end
+        end
+
+        include_conditions.each do |key, value|
+          all = Adapter.apply_include_condition(scope: all, key: key, value: value, klass: self)
         end
 
         extra_attribute_conditions.each do |key, value|
@@ -185,6 +191,12 @@ module PolicyMachineStorageAdapter
     def ignore_case_applies?(ignore_case, key)
       return false if key == 'policy_machine_uuid'
       ignore_case == true || ignore_case.to_s == key || ( ignore_case.respond_to?(:any?) && ignore_case.any?{ |k| k.to_s == key} )
+    end
+
+    # A value hash where the only key is :include is special.
+    #Note: If we start accepting literal hash values this may need to start checking the key's column type
+    def include_condition?(key, value)
+      value.respond_to?(:keys) && value.keys == [:include]
     end
 
     def class_for_type(pe_type)
