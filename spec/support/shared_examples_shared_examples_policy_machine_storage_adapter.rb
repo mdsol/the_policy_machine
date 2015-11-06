@@ -41,7 +41,8 @@ shared_examples "a policy machine storage adapter" do
           policy_machine_storage_adapter.send("add_#{pe_type}", 'some_uuid2', 'some_policy_machine_uuid', tags: ['up', 'strange'])
         end
 
-        xit 'requires an exact match on array attributes' do
+        it 'requires an exact match on array attributes' do
+          pending('TODO, Rails unexpectedly does not automatically construct valid SQL here')
           expect(policy_machine_storage_adapter.send("find_all_of_type_#{pe_type}", tags: ['down', 'up'])).to be_empty
           expect(policy_machine_storage_adapter.send("find_all_of_type_#{pe_type}", tags: ['up', 'down'])).to be_one
         end
@@ -52,6 +53,10 @@ shared_examples "a policy machine storage adapter" do
 
         it 'allows querying by checking whether multiple values are all included in an array' do
           expect(policy_machine_storage_adapter.send("find_all_of_type_#{pe_type}", tags: {include: ['down','up']})).to be_one
+        end
+
+        it 'performs substring matching' do
+          expect(policy_machine_storage_adapter.send("find_all_of_type_#{pe_type}", unique_identifier: {include: '1'})).to be_one
         end
 
       end

@@ -72,7 +72,7 @@ module PolicyMachineStorageAdapter
 
       # Support substring searching
       def self.apply_include_condition(scope: , key: , value: , klass: )
-        scope.where("#{key} LIKE '%?%'", value.to_s.gsub(/([%_])/, '\\\\\0'))
+        scope.where("#{key} LIKE '%#{value.to_s.gsub(/([%_])/, '\\\\\0')}%'", )
       end
 
     end

@@ -159,7 +159,7 @@ module PolicyMachineStorageAdapter
               pe_class.arel_table[k].matches(v) : pe_class.arel_table[k].eq(v) }
             match_expressions.inject(pe_class.where(nil)) {|rel, e| rel.where(e)}
           else
-            pe_class.where(conditions)
+            pe_class.where(conditions.to_h)
           end
         end
 

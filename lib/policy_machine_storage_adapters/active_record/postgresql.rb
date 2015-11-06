@@ -36,7 +36,7 @@ module PolicyMachineStorageAdapter
         if klass.columns_hash[key.to_s].array
           [*value].reduce(scope) { |rel, val| rel.where("? = ANY(#{key})", val) }
         else
-          scope.where("#{key} LIKE '%?%'", value.to_s.gsub(/([%_])/, '\\\\\0'))
+          scope.where("#{key} LIKE '%#{value.to_s.gsub(/([%_])/, '\\\\\0')}%'", )
         end
       end
 
