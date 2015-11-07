@@ -27,6 +27,7 @@ Gem::Specification.new do |s|
   s.add_development_dependency('simplecov', '~> 0.7.1')
   s.add_development_dependency('pry')
   s.add_development_dependency('pry-nav')
+  s.add_development_dependency('byebug')
   s.add_development_dependency('neography', '~> 1.1')
   s.add_development_dependency('database_cleaner')
   s.add_development_dependency('rails', '~> 4.2')
