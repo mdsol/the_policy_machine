@@ -32,7 +32,6 @@ module PolicyMachineStorageAdapter
 
       # Support substring searching and Postgres Array membership
       def self.apply_include_condition(scope: , key: , value: , klass: )
-        require 'byebug'
         if klass.columns_hash[key.to_s].array
           [*value].reduce(scope) { |rel, val| rel.where("? = ANY(#{key})", val) }
         else
