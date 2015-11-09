@@ -33,6 +33,8 @@ module PolicyMachineStorageAdapter
           conditions.all? do |k,v|
             if v.nil?
               !pe.respond_to?(k) || pe.send(k) == nil
+            elsif v.is_a?(Hash) && v.keys == [:include]
+              pe.respond_to?(k) && pe.send(k).respond_to?(:include?) && [*v[:include]].all?{|val| pe.send(k).include?(val)}
             else
               pe.respond_to?(k) && 
                 ((pe.send(k).is_a?(String) && v.is_a?(String) && ignore_case_applies?(options[:ignore_case], k)) ? pe.send(k).downcase == v.downcase : pe.send(k) == v)

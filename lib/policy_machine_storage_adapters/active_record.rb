@@ -17,16 +17,21 @@ module PolicyMachineStorageAdapter
 
     require 'activerecord-import' # Gem for bulk inserts
 
-    # Load the Assignment class at runtime because it's implemented differently by different adapters
+    # Load the Assignment and Adapter classes at runtime because it's implemented differently by different adapters
     # And which database adapter is active is not always determinable at class definition time
     # Assignment must inherit from ActiveRecord::Base and have class methods ancestors_of, descendants_of, and transitive_closure?
+    # Adapter must implement apply_include_condition
     def self.const_missing(name)
-      if name.to_s == 'Assignment'
-        require_relative("active_record/#{PolicyElement.configurations[Rails.env]['adapter']}")
-        Assignment
+      if %w[Assignment Adapter].include?(name.to_s)
+        load_db_adapter!
+        const_get(name)
       else
         super
       end
+    end
+
+    def self.load_db_adapter!
+      require_relative("active_record/#{PolicyElement.configurations[Rails.env]['adapter']}")
     end
 
     class PolicyElement < ::ActiveRecord::Base
@@ -35,25 +40,9 @@ module PolicyMachineStorageAdapter
       has_many :assignments, foreign_key: :parent_id, dependent: :destroy
       has_many :children, through: :assignments, dependent: :destroy #this doesn't actually destroy the children, just the assignment
 
-      attr_accessible :unique_identifier, :policy_machine_uuid
       attr_accessor :extra_attributes_hash
 
-      # A regular Hash type column is encoded as YAML in Rails 3,
-      # but we prefer JSON. So this subclass exposes the methods ActiveRecord needs
-      # to serialize and deserialize as JSON.
-      class ExtraAttributesHash < Hash
-
-        def self.load(data)
-          self[JSON.parse(data, quirks_mode: true)]
-        end
-
-        def self.dump(data)
-          data.to_json
-        end
-
-      end
-
-      serialize :extra_attributes, ExtraAttributesHash
+      serialize :extra_attributes, JSON
 
       def method_missing(meth, *args, &block)
         store_attributes
@@ -73,7 +62,7 @@ module PolicyMachineStorageAdapter
 
       # Uses ActiveRecord's store method to methodize new attribute keys in extra_attributes
       def store_attributes
-        @extra_attributes_hash = ExtraAttributesHash[self.extra_attributes.is_a?(Hash) ? self.extra_attributes : JSON.parse(self.extra_attributes, quirks_mode: true)]
+        @extra_attributes_hash = extra_attributes
         self.class.store_accessor(:extra_attributes, @extra_attributes_hash.keys)
       end
 
@@ -102,7 +91,7 @@ module PolicyMachineStorageAdapter
     end
 
     class Operation < PolicyElement
-      has_and_belongs_to_many :policy_element_associations, class_name: :"PolicyMachineStorageAdapter::ActiveRecord::PolicyElementAssociation"
+      has_and_belongs_to_many :policy_element_associations, class_name: 'PolicyMachineStorageAdapter::ActiveRecord::PolicyElementAssociation', join_table: 'operations_policy_element_associations'
     end
 
     class PolicyClass < PolicyElement
@@ -110,7 +99,8 @@ module PolicyMachineStorageAdapter
 
     class PolicyElementAssociation < ::ActiveRecord::Base
       # requires a join table (should be indexed!)
-      has_and_belongs_to_many :operations, class_name: :"PolicyMachineStorageAdapter::ActiveRecord::Operation"
+      has_and_belongs_to_many :operations, class_name: "PolicyMachineStorageAdapter::ActiveRecord::Operation", join_table: 'operations_policy_element_associations'
+
       belongs_to :user_attribute
       belongs_to :object_attribute
 
@@ -130,6 +120,7 @@ module PolicyMachineStorageAdapter
                                                      new_operations.map{ |op| [self.id, op.id] },
                                                      validate: false)
         end
+        self.clear_association_cache
       end
     end
 
@@ -152,12 +143,13 @@ module PolicyMachineStorageAdapter
           :policy_machine_uuid => policy_machine_uuid,
           :extra_attributes => extra_attributes
         }.merge(active_record_attributes)
-        class_for_type(pe_type).create(element_attrs, without_protection: true)
+        class_for_type(pe_type).create(element_attrs)
       end
 
       define_method("find_all_of_type_#{pe_type}") do |options = {}|
         conditions = options.slice!(:per_page, :page, :ignore_case).stringify_keys
         extra_attribute_conditions = conditions.slice!(*PolicyElement.column_names)
+        include_conditions, conditions = conditions.partition { |k,v| include_condition?(k,v) }
         pe_class = class_for_type(pe_type)
 
         # Arel matches provides agnostic case insensitive sql for mysql and postgres
@@ -165,17 +157,21 @@ module PolicyMachineStorageAdapter
           if options[:ignore_case]
             match_expressions = conditions.map {|k,v| ignore_case_applies?(options[:ignore_case],k) ?
               pe_class.arel_table[k].matches(v) : pe_class.arel_table[k].eq(v) }
-            match_expressions.inject(pe_class.scoped) {|rel, e| rel.where(e)}
+            match_expressions.inject(pe_class.where(nil)) {|rel, e| rel.where(e)}
           else
-            pe_class.where(conditions)
+            pe_class.where(conditions.to_h)
           end
+        end
+
+        include_conditions.each do |key, value|
+          all = Adapter.apply_include_condition(scope: all, key: key, value: value[:include], klass: class_for_type(pe_type))
         end
 
         extra_attribute_conditions.each do |key, value|
           warn "WARNING: #{self.class} is filtering #{pe_type} on #{key} in memory, which won't scale well. " <<
             "To move this query to the database, add a '#{key}' column to the policy_elements table " <<
             "and re-save existing records"
-            all.select!{ |pe| pe.store_attributes and
+            all.to_a.select!{ |pe| pe.store_attributes and
                         ((attr_value = pe.extra_attributes_hash[key]).is_a?(String) and
                         value.is_a?(String) and ignore_case_applies?(options[:ignore_case],key)) ? attr_value.downcase == value.downcase : attr_value == value}
         end
@@ -199,6 +195,12 @@ module PolicyMachineStorageAdapter
     def ignore_case_applies?(ignore_case, key)
       return false if key == 'policy_machine_uuid'
       ignore_case == true || ignore_case.to_s == key || ( ignore_case.respond_to?(:any?) && ignore_case.any?{ |k| k.to_s == key} )
+    end
+
+    # A value hash where the only key is :include is special.
+    #Note: If we start accepting literal hash values this may need to start checking the key's column type
+    def include_condition?(key, value)
+      value.respond_to?(:keys) && value.keys == [:include]
     end
 
     def class_for_type(pe_type)
@@ -292,22 +294,26 @@ module PolicyMachineStorageAdapter
     # If no associations are found then the empty array should be returned.
     #
     def associations_with(operation)
-      assocs = operation.policy_element_associations.all(include: [:user_attribute, :operations, :object_attribute])
-      assocs.map { |assoc| [assoc.user_attribute, Set.new(assoc.operations), assoc.object_attribute] }
+
+      assocs = operation.policy_element_associations(true).includes(:user_attribute, :operations, :object_attribute).all
+      assocs.map do |assoc|
+        assoc.clear_association_cache #TODO Either do this better (touch through HABTM on bulk insert?) or dont do this?
+        [assoc.user_attribute, Set.new(assoc.operations), assoc.object_attribute]
+      end
     end
 
     ##
     # Return array of all policy classes which contain the given object_attribute (or object).
     # Return empty array if no such policy classes found.
     def policy_classes_for_object_attribute(object_attribute)
-      object_attribute.descendants.where(type: class_for_type('policy_class'))
+      object_attribute.descendants.merge(PolicyElement.where(type: class_for_type('policy_class')))
     end
 
     ##
     # Return array of all user attributes which contain the given user.
     # Return empty array if no such user attributes are found.
     def user_attributes_for_user(user)
-      user.descendants.where(type: class_for_type('user_attribute'))
+      user.descendants.merge(PolicyElement.where(type: class_for_type('user_attribute')))
     end
 
     ##
@@ -349,21 +355,26 @@ module PolicyMachineStorageAdapter
       end
     end
 
+
     def is_privilege_multiple_policy_classes(user_or_attribute, operation, object_or_attribute, policy_classes_containing_object)
-      base_scope =  if operation.is_a?(class_for_type('operation'))
-        associations_between(user_or_attribute, object_or_attribute).where(id: operation.policy_element_associations)
-      else
-        associations_between(user_or_attribute, object_or_attribute).joins(:operations).where(policy_elements: {unique_identifier: operation})
-      end
+      #Outstanding active record sql adapter prevents chaining an additional where using the association.
+      # TODO: fix when active record is fixed
       policy_classes_containing_object.all? do |pc|
-        base_scope.where(object_attribute_id: pc.ancestors).any?
+        if operation.is_a?(class_for_type('operation'))
+          associations_between(user_or_attribute, object_or_attribute).where(id: operation.policy_element_associations.to_a, object_attribute_id: pc.ancestors).any?
+        else
+          associations_between(user_or_attribute, object_or_attribute).joins(:operations).where(policy_elements: {unique_identifier: operation}, object_attribute_id: pc.ancestors).any?
+        end
       end
     end
 
     # Pass in options to allow forced row ordering by id in results
     def scoped_privileges_single_policy_class(user_or_attribute, object_or_attribute, options = {})
       associations = associations_between(user_or_attribute, object_or_attribute).includes(:operations)
-      operations = associations.flat_map(&:operations).uniq
+      operations = associations.flat_map do |assoc|
+        assoc.clear_association_cache
+        assoc.operations
+      end.uniq
       options[:order] ? operations.sort : operations
     end
 
@@ -371,7 +382,10 @@ module PolicyMachineStorageAdapter
       base_scope = associations_between(user_or_attribute, object_or_attribute)
       operations_for_policy_classes = policy_classes_containing_object.map do |pc|
         associations = base_scope.where(object_attribute_id: pc.ancestors).includes(:operations)
-        associations.flat_map(&:operations)
+        associations.flat_map do |assoc|
+          assoc.clear_association_cache
+          assoc.operations
+        end.uniq
       end
       operations_for_policy_classes.inject(:&) || []
     end

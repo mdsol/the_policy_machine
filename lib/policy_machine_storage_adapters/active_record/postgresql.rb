@@ -4,10 +4,9 @@ module PolicyMachineStorageAdapter
   class ActiveRecord
 
     class Assignment < ::ActiveRecord::Base
-      attr_accessible :child_id, :parent_id
       # needs parent_id, child_id columns
-      belongs_to :parent, class_name: :PolicyElement
-      belongs_to :child, class_name: :PolicyElement
+      belongs_to :parent, class_name: 'PolicyElement', foreign_key: :parent_id
+      belongs_to :child, class_name: 'PolicyElement', foreign_key: :child_id
 
       def self.transitive_closure?(ancestor, descendant)
         descendants_of(ancestor).include?(descendant)
@@ -28,5 +27,19 @@ module PolicyMachineStorageAdapter
       end
 
     end
+
+    class Adapter
+
+      # Support substring searching and Postgres Array membership
+      def self.apply_include_condition(scope: , key: , value: , klass: )
+        if klass.columns_hash[key.to_s].array
+          [*value].reduce(scope) { |rel, val| rel.where("? = ANY(#{key})", val) }
+        else
+          scope.where("#{key} LIKE '%#{value.to_s.gsub(/([%_])/, '\\\\\0')}%'", )
+        end
+      end
+
+    end
+
   end
 end
