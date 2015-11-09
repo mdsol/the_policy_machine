@@ -200,7 +200,7 @@ module PolicyMachineStorageAdapter
     # A value hash where the only key is :include is special.
     #Note: If we start accepting literal hash values this may need to start checking the key's column type
     def include_condition?(key, value)
-      value.respond_to?(:keys) && value.keys == [:include]
+      value.respond_to?(:keys) && value.keys.map(&:to_sym) == [:include]
     end
 
     def class_for_type(pe_type)
