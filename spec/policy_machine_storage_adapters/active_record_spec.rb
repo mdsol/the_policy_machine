@@ -5,6 +5,11 @@ require 'database_cleaner'
 DatabaseCleaner.strategy = :truncation
 
 describe 'ActiveRecord' do
+  before(:all) do
+    ENV["RAILS_ENV"] = "test"
+    require_relative '../../test/testapp/config/environment.rb' #TODO better error message when setup has not been run
+    Rails.backtrace_cleaner.remove_silencers!
+  end
 
   before(:each) do
     Rails.cache.clear
