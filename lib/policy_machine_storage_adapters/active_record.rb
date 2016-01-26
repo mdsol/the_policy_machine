@@ -345,16 +345,41 @@ module PolicyMachineStorageAdapter
       end
     end
 
-    private
-
-    def is_privilege_single_policy_class(user_or_attribute, operation, object_or_attribute)
-      if operation.is_a?(class_for_type('operation'))
-        associations_between(user_or_attribute, object_or_attribute).where(id: operation.policy_element_associations).any?
+    ## Optimized version of PolicyMachine#scoped_privileges
+    # Returns all objects the user has the given operation on
+    # TODO: Support multiple policy classes here
+    def accessible_objects(user_or_attribute, operation, options = {})
+      operation = class_for_type('operation').find_by_unique_identifier!(operation.to_s) unless operation.is_a?(class_for_type('operation'))
+      permitting_oas = PolicyElement.where(id: operation.policy_element_associations.where(
+        user_attribute_id: user_or_attribute.descendants | [user_or_attribute],
+      ).select(:object_attribute_id))
+      direct_scope = permitting_oas.where(type: class_for_type('object'))
+      indirect_scope = Assignment.ancestors_of(permitting_oas).where(type: class_for_type('object'))
+      if inclusion = options[:includes]
+        direct_scope = Adapter.apply_include_condition(scope: direct_scope, key: :unique_identifier, value: inclusion, klass: class_for_type('object'))
+        indirect_scope = Adapter.apply_include_condition(scope: indirect_scope, key: :unique_identifier, value: inclusion, klass: class_for_type('object'))
+      end
+      candidates = direct_scope | indirect_scope
+      if options[:ignore_prohibitions] || !(prohibition = class_for_type('operation').find_by_unique_identifier("~#{operation.unique_identifier}"))
+        candidates
       else
-        associations_between(user_or_attribute, object_or_attribute).joins(:operations).where(policy_elements: {unique_identifier: operation}).any?
+        candidates - accessible_objects(user_or_attribute, prohibition, options.merge(ignore_prohibitions: true))
       end
     end
 
+    private
+
+    def relevant_associations(user_or_attribute, operation, object_or_attribute)
+      if operation.is_a?(class_for_type('operation'))
+        associations_between(user_or_attribute, object_or_attribute).where(id: operation.policy_element_associations)
+      else
+        associations_between(user_or_attribute, object_or_attribute).joins(:operations).where(policy_elements: {unique_identifier: operation})
+      end
+    end
+
+    def is_privilege_single_policy_class(user_or_attribute, operation, object_or_attribute)
+      relevant_associations(user_or_attribute, operation, object_or_attribute).any?
+    end
 
     def is_privilege_multiple_policy_classes(user_or_attribute, operation, object_or_attribute, policy_classes_containing_object)
       #Outstanding active record sql adapter prevents chaining an additional where using the association.
@@ -392,8 +417,8 @@ module PolicyMachineStorageAdapter
 
     def associations_between(user_or_attribute, object_or_attribute)
       class_for_type('policy_element_association').where(
-        object_attribute_id: object_or_attribute.descendants | [object_or_attribute],
-        user_attribute_id: user_or_attribute.descendants | [user_or_attribute]
+        object_attribute_id: Assignment.descendants_of(object_or_attribute) | [object_or_attribute],
+        user_attribute_id: Assignment.descendants_of(user_or_attribute) | [user_or_attribute]
       )
     end
 
