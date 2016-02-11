@@ -144,7 +144,7 @@ class PolicyMachine
     end
   end
 
-  
+
 
   ##
   # Returns an array of all privileges encoded in this

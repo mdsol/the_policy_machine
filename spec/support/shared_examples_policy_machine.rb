@@ -301,7 +301,7 @@ shared_examples "a policy machine" do
         @u.foo.should == 'baz'
         policy_machine.users.last.foo.should == 'baz'
       end
-      
+
       it 'updates persisted extra attributes with new keys' do
         @u = policy_machine.create_user('u1', foo: 'bar')
         @u.update(foo: 'baz', bla: 'bar')
@@ -792,13 +792,13 @@ shared_examples "a policy machine" do
     end
 
     it 'lists all objects with the given privilege for the given user' do
-      expect( policy_machine.accessible_objects(@u1, @read).map(&:unique_identifier) ).to include('one:fish','two:fish','red:one')
-      expect( policy_machine.accessible_objects(@u1, @write).map(&:unique_identifier) ).to eq( ['red:one'] )
+      expect( policy_machine.accessible_objects(@u1, @read, key: :unique_identifier).map(&:unique_identifier) ).to include('one:fish','two:fish','red:one')
+      expect( policy_machine.accessible_objects(@u1, @write, key: :unique_identifier).map(&:unique_identifier) ).to eq( ['red:one'] )
     end
 
     it 'filters objects via substring matching' do
-      expect( policy_machine.accessible_objects(@u1, @read, includes: 'fish').map(&:unique_identifier) ).to match_array(['one:fish','two:fish'])
-      expect( policy_machine.accessible_objects(@u1, @read, includes: 'one').map(&:unique_identifier) ).to match_array(['one:fish','red:one'])
+      expect( policy_machine.accessible_objects(@u1, @read, includes: 'fish', key: :unique_identifier).map(&:unique_identifier) ).to match_array(['one:fish','two:fish'])
+      expect( policy_machine.accessible_objects(@u1, @read, includes: 'one', key: :unique_identifier).map(&:unique_identifier) ).to match_array(['one:fish','red:one'])
     end
 
     context 'with prohibitions' do

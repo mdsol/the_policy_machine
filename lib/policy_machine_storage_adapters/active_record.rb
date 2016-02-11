@@ -356,8 +356,8 @@ module PolicyMachineStorageAdapter
       direct_scope = permitting_oas.where(type: class_for_type('object'))
       indirect_scope = Assignment.ancestors_of(permitting_oas).where(type: class_for_type('object'))
       if inclusion = options[:includes]
-        direct_scope = Adapter.apply_include_condition(scope: direct_scope, key: :unique_identifier, value: inclusion, klass: class_for_type('object'))
-        indirect_scope = Adapter.apply_include_condition(scope: indirect_scope, key: :unique_identifier, value: inclusion, klass: class_for_type('object'))
+        direct_scope = Adapter.apply_include_condition(scope: direct_scope, key: options[:key], value: inclusion, klass: class_for_type('object'))
+        indirect_scope = Adapter.apply_include_condition(scope: indirect_scope, key: options[:key], value: inclusion, klass: class_for_type('object'))
       end
       candidates = direct_scope | indirect_scope
       if options[:ignore_prohibitions] || !(prohibition = class_for_type('operation').find_by_unique_identifier("~#{operation.unique_identifier}"))
