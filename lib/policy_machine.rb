@@ -69,7 +69,7 @@ class PolicyMachine
   # TODO: Parallelize the two component checks
   def is_privilege?(user_or_attribute, operation, object_or_attribute, options = {})
     is_privilege_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute, options) &&
-      !is_privilege_ignoring_prohibitions?(user_or_attribute, PM::Prohibition.on(operation), object_or_attribute, options)
+      (options[:ignore_prohibitions] || !is_privilege_ignoring_prohibitions?(user_or_attribute, PM::Prohibition.on(operation), object_or_attribute, options))
   end
 
   ##
@@ -144,7 +144,7 @@ class PolicyMachine
     end
   end
 
-  
+
 
   ##
   # Returns an array of all privileges encoded in this
@@ -191,6 +191,21 @@ class PolicyMachine
     else
       prohibited_operations = prohibitions.map { |_,prohibition,_| prohibition.operation }
       privileges.reject { |_,op,_| prohibited_operations.include?(op.unique_identifier) }
+    end
+  end
+
+  ##
+  # Returns an array of all objects the given user (attribute)
+  # has the given operation on.
+  def accessible_objects(user_or_attribute, operation, options = {})
+    if policy_machine_storage_adapter.respond_to?(:accessible_objects)
+      policy_machine_storage_adapter.accessible_objects(user_or_attribute, operation, options)
+    else
+      result = objects.select { |object| is_privilege?(user_or_attribute, operation, object, options) }
+      if inclusion = options[:includes]
+        result.select! { |object| object.unique_identifier.include?(inclusion) }
+      end
+      result
     end
   end
 

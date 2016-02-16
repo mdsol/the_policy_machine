@@ -92,7 +92,7 @@ and `gem 'neography'`. This should not be used in production since the interface
 
 *ActiveRecord*
 
-The ActiveRecord storage adapter talks to your existing MySQL database via your preconfigured
+The ActiveRecord storage adapter talks to your existing MySQL or Postgres database via your preconfigured
 ActiveRecord. You'll need to run `rails generate policy_machine migration` to add the necessary
 tables to your database.
 

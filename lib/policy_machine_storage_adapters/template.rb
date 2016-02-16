@@ -173,5 +173,11 @@ module PolicyMachineStorageAdapter
 
     end
 
+    # Optimized version of PolicyMachine#accessible_objects
+    # Return all objects the user has the given operation on
+    # Optional: only add this method if you can do it better than policy_machine.rb
+    def accessible_objects(user_or_attribute, operation, options = {})
+    end
+
   end
 end

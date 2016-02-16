@@ -301,7 +301,7 @@ shared_examples "a policy machine" do
         @u.foo.should == 'baz'
         policy_machine.users.last.foo.should == 'baz'
       end
-      
+
       it 'updates persisted extra attributes with new keys' do
         @u = policy_machine.create_user('u1', foo: 'bar')
         @u.update(foo: 'baz', bla: 'bar')
@@ -770,6 +770,54 @@ shared_examples "a policy machine" do
       ]
       assert_pm_privilege_expectations(policy_machine.privileges, expected_privileges)
     end
+  end
+
+  describe 'accessible_objects' do
+
+    before do
+      @one_fish = policy_machine.create_object('one:fish')
+      @two_fish = policy_machine.create_object('two:fish')
+      @red_one = policy_machine.create_object('red:one')
+      @read = policy_machine.create_operation('read')
+      @write = policy_machine.create_operation('write')
+      @u1 = policy_machine.create_user('u1')
+      @ua = policy_machine.create_user_attribute('ua')
+      [@one_fish, @two_fish, @red_one].each do |object|
+        policy_machine.add_association(@ua, Set.new([@read]), object)
+      end
+      @oa = policy_machine.create_object_attribute('oa')
+      policy_machine.add_association(@ua, Set.new([@write]), @oa)
+      policy_machine.add_assignment(@u1, @ua)
+      policy_machine.add_assignment(@red_one, @oa)
+    end
+
+    it 'lists all objects with the given privilege for the given user' do
+      expect( policy_machine.accessible_objects(@u1, @read, key: :unique_identifier).map(&:unique_identifier) ).to include('one:fish','two:fish','red:one')
+      expect( policy_machine.accessible_objects(@u1, @write, key: :unique_identifier).map(&:unique_identifier) ).to eq( ['red:one'] )
+    end
+
+    it 'filters objects via substring matching' do
+      expect( policy_machine.accessible_objects(@u1, @read, includes: 'fish', key: :unique_identifier).map(&:unique_identifier) ).to match_array(['one:fish','two:fish'])
+      expect( policy_machine.accessible_objects(@u1, @read, includes: 'one', key: :unique_identifier).map(&:unique_identifier) ).to match_array(['one:fish','red:one'])
+    end
+
+    context 'with prohibitions' do
+      before do
+        @oa2 = policy_machine.create_object_attribute('oa2')
+        policy_machine.add_assignment(@one_fish, @oa2)
+        policy_machine.add_association(@ua, Set.new([@read.prohibition]), @oa2)
+      end
+
+      it 'filters out prohibited objects by default' do
+        expect( policy_machine.accessible_objects(@u1, @read).map(&:unique_identifier) ).to match_array(['two:fish','red:one'])
+      end
+
+      it 'can ignore prohibitions' do
+        expect( policy_machine.accessible_objects(@u1, @read, ignore_prohibitions: true).map(&:unique_identifier) ).to match_array(['one:fish', 'two:fish','red:one'])
+      end
+
+    end
+
   end
 
 end
