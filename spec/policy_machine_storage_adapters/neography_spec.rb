@@ -5,7 +5,7 @@ describe 'Neography' do
   before(:all) do
     stop_neo4j
     reset_neo4j
-    start_neo4j    
+    start_neo4j
   end
   before(:each) do
     clean_neo4j
@@ -13,17 +13,17 @@ describe 'Neography' do
   after(:all) do
     stop_neo4j
   end
-  
+
   describe PolicyMachineStorageAdapter::Neography do
     it_behaves_like 'a policy machine storage adapter with required public methods'
     it_behaves_like 'a policy machine storage adapter'
   end
 
-  describe 'PolicyMachine integration with PolicyMachineStorageAdapter::Neography' do  
+  describe 'PolicyMachine integration with PolicyMachineStorageAdapter::Neography' do
     it_behaves_like 'a policy machine' do
-      let(:policy_machine) { PolicyMachine.new(:name => 'neography PM', :storage_adapter => PolicyMachineStorageAdapter::Neography) }    
+      let(:policy_machine) { PolicyMachine.new(:name => 'neography PM', :storage_adapter => PolicyMachineStorageAdapter::Neography) }
     end
-    
+
     describe '#assign' do
       # TODO:  storage adapters should be made tolerant to exceptions raised by underlying clients.
       it 'returns false when relationship cannot be created' do
