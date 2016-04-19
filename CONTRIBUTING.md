@@ -8,8 +8,9 @@ If you find a bug:
 If you want to contribute an enhancement or a fix:
 
 * Fork the project on GitHub.
-* bundle install
-* Make your changes with tests.
+* Execute `bundle install`.
+* Execute `rake pm:test:prepare` to configure your test environment.
+* Write tests for your changes.
 * Run all automated tests to see if your change broke anything or is providing anything less than 100% code coverage (see below).
 * Commit the changes without making changes to any other files that aren't related to your enhancement or fix.
 * Send a pull request.
