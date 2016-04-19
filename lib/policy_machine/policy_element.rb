@@ -197,7 +197,7 @@ module PM
       end
       all_result.define_singleton_method(:total_entries) {result.total_entries}
       all_result
-      
+
     end
 
     protected
@@ -222,7 +222,7 @@ module PM
       end
       all_result.define_singleton_method(:total_entries) {result.total_entries}
       all_result
-      
+
     end
 
     protected
@@ -259,7 +259,7 @@ module PM
       end
       all_result.define_singleton_method(:total_entries) {result.total_entries}
       all_result
-      
+
     end
 
     def to_s
