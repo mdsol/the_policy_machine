@@ -7,7 +7,11 @@ DatabaseCleaner.strategy = :truncation
 describe 'ActiveRecord' do
   before(:all) do
     ENV["RAILS_ENV"] = "test"
-    require_relative '../../test/testapp/config/environment.rb' #TODO better error message when setup has not been run
+    begin
+      require_relative '../../test/testapp/config/environment.rb'
+    rescue LoadError
+      raise "Failed to locate test/testapp/config/environment.rb. Execute 'rake pm:test:prepare' to generate test/testapp."
+    end
     Rails.backtrace_cleaner.remove_silencers!
   end
 
