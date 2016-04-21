@@ -204,7 +204,7 @@ shared_examples "a policy machine" do
   end
 
   describe 'All methods for policy elements' do
-    (PolicyMachine::POLICY_ELEMENT_TYPES - %w(policy_class)).each do |pe_type|
+    PolicyMachine::POLICY_ELEMENT_TYPES.each do |pe_type|
       it "returns an array of all #{pe_type.to_s.pluralize}" do
         pe = policy_machine.send("create_#{pe_type}", 'some name')
         policy_machine.send(pe_type.to_s.pluralize).should == [pe]
@@ -215,14 +215,6 @@ shared_examples "a policy machine" do
         other_pm = PolicyMachine.new
         pe_in_other_machine = other_pm.send("create_#{pe_type}", 'some name')
         policy_machine.send(pe_type.to_s.pluralize).should == [pe]
-      end
-    end
-
-    (PolicyMachine::POLICY_ELEMENT_TYPES - %w(user user_attribute object object_attribute operation)).each do |pe_type|
-      it "raises when calling #{pe_type.to_s.pluralize}" do
-        pe = policy_machine.send("create_#{pe_type}", 'some name')
-        expect{ policy_machine.send(pe_type.to_s.pluralize) }
-          .to raise_error(NoMethodError)
       end
     end
   end
