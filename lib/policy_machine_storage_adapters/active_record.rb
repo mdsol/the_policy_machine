@@ -40,9 +40,7 @@ module PolicyMachineStorageAdapter
       has_many :assignments, foreign_key: :parent_id, dependent: :destroy
       has_many :children, through: :assignments, dependent: :destroy #this doesn't actually destroy the children, just the assignment
 
-      attr_accessor :extra_attributes_hash
-
-      serialize :extra_attributes, JSON
+      store_accessor :extra_attributes
 
       def method_missing(meth, *args, &block)
         store_attributes

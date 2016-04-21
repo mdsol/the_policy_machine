@@ -27,8 +27,8 @@ shared_examples "a policy machine" do
 
     it 'raises when uuid is blank' do
       ['', '   '].each do |blank_value|
-        expect{ PolicyMachine.new(:uuid => blank_value) }.
-          to raise_error(ArgumentError, 'uuid cannot be blank')
+        expect{ PolicyMachine.new(:uuid => blank_value) }
+          .to raise_error(ArgumentError, 'uuid cannot be blank')
       end
     end
 
@@ -42,7 +42,6 @@ shared_examples "a policy machine" do
           should be_a(::PolicyMachineStorageAdapter::Neography)
       end
     end
-
   end
 
   describe 'Assignments' do
@@ -80,30 +79,30 @@ shared_examples "a policy machine" do
 
       it 'raises when first argument is not a policy element' do
         pe = policy_machine.create_user_attribute(SecureRandom.uuid)
-        expect{ policy_machine.add_assignment(1, pe) }.
-          to raise_error(ArgumentError, "arg must each be a kind of PolicyElement; got Fixnum instead")
+        expect{ policy_machine.add_assignment(1, pe) }
+          .to raise_error(ArgumentError, "arg must each be a kind of PolicyElement; got Fixnum instead")
       end
 
       it 'raises when first argument is not in policy machine' do
         pm2 = PolicyMachine.new
         pe0 = pm2.create_user_attribute(SecureRandom.uuid)
         pe1 = policy_machine.create_user_attribute(SecureRandom.uuid)
-        expect{ policy_machine.add_assignment(pe0, pe1) }.
-          to raise_error(ArgumentError, "#{pe0.unique_identifier} is not in policy machine with uuid #{policy_machine.uuid}")
+        expect{ policy_machine.add_assignment(pe0, pe1) }
+          .to raise_error(ArgumentError, "#{pe0.unique_identifier} is not in policy machine with uuid #{policy_machine.uuid}")
       end
 
       it 'raises when second argument is not a policy element' do
         pe = policy_machine.create_user_attribute(SecureRandom.uuid)
-        expect{ policy_machine.add_assignment(pe, "hello") }.
-          to raise_error(ArgumentError, "arg must each be a kind of PolicyElement; got String instead")
+        expect{ policy_machine.add_assignment(pe, "hello") }
+          .to raise_error(ArgumentError, "arg must each be a kind of PolicyElement; got String instead")
       end
 
       it 'raises when second argument is not in policy machine' do
         pm2 = PolicyMachine.new
         pe0 = policy_machine.create_user_attribute(SecureRandom.uuid)
         pe1 = pm2.create_user_attribute(SecureRandom.uuid)
-        expect{ policy_machine.add_assignment(pe0, pe1) }.
-          to raise_error(ArgumentError, "#{pe1.unique_identifier} is not in policy machine with uuid #{policy_machine.uuid}")
+        expect{ policy_machine.add_assignment(pe0, pe1) }
+          .to raise_error(ArgumentError, "#{pe1.unique_identifier} is not in policy machine with uuid #{policy_machine.uuid}")
       end
     end
 
@@ -123,29 +122,29 @@ shared_examples "a policy machine" do
       end
 
       it 'raises when first argument is not a policy element' do
-        expect{ policy_machine.add_assignment(1, @pe1) }.
-          to raise_error(ArgumentError, "arg must each be a kind of PolicyElement; got Fixnum instead")
+        expect{ policy_machine.add_assignment(1, @pe1) }
+          .to raise_error(ArgumentError, "arg must each be a kind of PolicyElement; got Fixnum instead")
       end
 
       it 'raises when first argument is not in policy machine' do
         pm2 = PolicyMachine.new
         pe0 = pm2.create_user_attribute(SecureRandom.uuid)
         pe1 = policy_machine.create_user_attribute(SecureRandom.uuid)
-        expect{ policy_machine.remove_assignment(pe0, pe1) }.
-          to raise_error(ArgumentError, "#{pe0.unique_identifier} is not in policy machine with uuid #{policy_machine.uuid}")
+        expect{ policy_machine.remove_assignment(pe0, pe1) }
+          .to raise_error(ArgumentError, "#{pe0.unique_identifier} is not in policy machine with uuid #{policy_machine.uuid}")
       end
 
       it 'raises when second argument is not a policy element' do
-        expect{ policy_machine.add_assignment(@pe0, "hello") }.
-          to raise_error(ArgumentError, "arg must each be a kind of PolicyElement; got String instead")
+        expect{ policy_machine.add_assignment(@pe0, "hello") }
+          .to raise_error(ArgumentError, "arg must each be a kind of PolicyElement; got String instead")
       end
 
       it 'raises when second argument is not in policy machine' do
         pm2 = PolicyMachine.new
         pe0 = policy_machine.create_user_attribute(SecureRandom.uuid)
         pe1 = pm2.create_user_attribute(SecureRandom.uuid)
-        expect{ policy_machine.remove_assignment(pe0, pe1) }.
-          to raise_error(ArgumentError, "#{pe1.unique_identifier} is not in policy machine with uuid #{policy_machine.uuid}")
+        expect{ policy_machine.remove_assignment(pe0, pe1) }
+          .to raise_error(ArgumentError, "#{pe1.unique_identifier} is not in policy machine with uuid #{policy_machine.uuid}")
       end
     end
   end
@@ -168,8 +167,8 @@ shared_examples "a policy machine" do
       it 'raises when first argument is not in policy machine' do
         pm2 = PolicyMachine.new
         ua = pm2.create_user_attribute(SecureRandom.uuid)
-        expect{ policy_machine.add_association(ua, @operation_set, @object_attribute) }.
-          to raise_error(ArgumentError, "#{ua.unique_identifier} is not in policy machine with uuid #{policy_machine.uuid}")
+        expect{ policy_machine.add_association(ua, @operation_set, @object_attribute) }
+          .to raise_error(ArgumentError, "#{ua.unique_identifier} is not in policy machine with uuid #{policy_machine.uuid}")
       end
 
       it 'raises when third argument is not a PolicyElement' do
@@ -180,8 +179,8 @@ shared_examples "a policy machine" do
       it 'raises when third argument is not in policy machine' do
         pm2 = PolicyMachine.new
         oa = pm2.create_object_attribute(SecureRandom.uuid)
-        expect{ policy_machine.add_association(@user_attribute, @operation_set, oa) }.
-          to raise_error(ArgumentError, "#{oa.unique_identifier} is not in policy machine with uuid #{policy_machine.uuid}")
+        expect{ policy_machine.add_association(@user_attribute, @operation_set, oa) }
+          .to raise_error(ArgumentError, "#{oa.unique_identifier} is not in policy machine with uuid #{policy_machine.uuid}")
       end
 
       it 'allows an association to be made between an existing user_attribute, operation set and object attribute (returns true)' do
@@ -200,9 +199,7 @@ shared_examples "a policy machine" do
           .to change{ policy_machine.scoped_privileges(@user_attribute, @object_attribute) }
           .from( [[@user_attribute, @operation1, @object_attribute]] )
           .to(   [[@user_attribute, @operation2, @object_attribute]] )
-
       end
-
     end
   end
 
@@ -224,14 +221,13 @@ shared_examples "a policy machine" do
     (PolicyMachine::POLICY_ELEMENT_TYPES - %w(user user_attribute object object_attribute operation)).each do |pe_type|
       it "raises when calling #{pe_type.to_s.pluralize}" do
         pe = policy_machine.send("create_#{pe_type}", 'some name')
-        expect{ policy_machine.send(pe_type.to_s.pluralize) }.
-          to raise_error(NoMethodError)
+        expect{ policy_machine.send(pe_type.to_s.pluralize) }
+          .to raise_error(NoMethodError)
       end
     end
   end
 
   describe 'Operations' do
-
     it 'does not allow an operation to start with a ~' do
       expect{policy_machine.create_operation('~apple')}.to raise_error(ArgumentError)
       expect{policy_machine.create_operation('apple~')}.not_to raise_error
@@ -258,37 +254,28 @@ shared_examples "a policy machine" do
     it 'can negate operations expressed as PM::Operations' do
       expect(PM::Prohibition.on(policy_machine.create_operation('fly'))).to be_a PM::Operation
     end
-
   end
 
   describe 'User Attributes' do
-
     describe '#extra_attributes' do
-
       it 'accepts and persists arbitrary extra attributes' do
         @ua = policy_machine.create_user_attribute('ua1', foo: 'bar')
         @ua.foo.should == 'bar'
         policy_machine.user_attributes.last.foo.should == 'bar'
       end
-
     end
 
     describe '#delete' do
-
       it 'successfully deletes itself' do
         @ua = policy_machine.create_user_attribute('ua1')
         @ua.delete
         policy_machine.user_attributes.should_not include(@ua)
       end
-
     end
-
   end
 
   describe 'Users' do
-
     describe '#extra_attributes' do
-
       it 'accepts and persists arbitrary extra attributes' do
         @u = policy_machine.create_user('u1', foo: 'bar')
         @u.foo.should == 'bar'
@@ -326,9 +313,7 @@ shared_examples "a policy machine" do
           policy_machine.users(foo: 'bar', attitude: 'sassy').should be_none
         end
       end
-
     end
-
   end
 
   describe '#is_privilege?' do
@@ -488,9 +473,7 @@ shared_examples "a policy machine" do
           policy_machine.is_privilege?(@u1, @w, @o1, 'in_user_attribute' => @group1, 'in_object_attribute' => project2).
             should be_false
         end
-
       end
-
     end
   end
 
@@ -520,7 +503,6 @@ shared_examples "a policy machine" do
     it 'raises an argument error when passed anything other than a user' do
       expect {policy_machine.list_user_attributes(@group1)}.to raise_error ArgumentError, /Expected a PM::User/
     end
-
   end
 
   describe '#transaction' do
@@ -671,7 +653,6 @@ shared_examples "a policy machine" do
       with_prohibitions = policy_machine.scoped_privileges(@u2, @in_u2).map{ |_,op,_| op.unique_identifier }
       expect(ignoring_prohibitions - with_prohibitions).to eq([@w.unique_identifier])
     end
-
   end
 
   describe 'The DAC Operating System:  Figure 11. (pg. 47)' do
