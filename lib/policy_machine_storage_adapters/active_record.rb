@@ -35,14 +35,16 @@ module PolicyMachineStorageAdapter
     end
 
     class PolicyElement < ::ActiveRecord::Base
-      alias :persisted :persisted?
+      alias_method :persisted, :persisted?
+      singleton_class.send(:alias_method, :active_record_serialize, :serialize)
+
       # needs unique_identifier, policy_machine_uuid, type, extra_attributes columns
       has_many :assignments, foreign_key: :parent_id, dependent: :destroy
       has_many :children, through: :assignments, dependent: :destroy #this doesn't actually destroy the children, just the assignment
 
       attr_accessor :extra_attributes_hash
 
-      serialize :extra_attributes, JSON
+      active_record_serialize :extra_attributes, JSON
 
       def method_missing(meth, *args, &block)
         store_attributes
@@ -72,6 +74,12 @@ module PolicyMachineStorageAdapter
 
       def ancestors
         Assignment.ancestors_of(self)
+      end
+
+      def self.serialize(store:, name:, serializer: nil)
+        active_record_serialize store, serializer
+
+        store_accessor store, name
       end
 
     end
@@ -135,15 +143,24 @@ module PolicyMachineStorageAdapter
       # The unique_identifier identifies the element within the policy machine.
       # The policy_machine_uuid is the uuid of the containing policy machine.
       #
+
+      #TODO: use the new stored attributes approach and a jsonb column for extra_attributes for the postgres adapter
       define_method("add_#{pe_type}") do |unique_identifier, policy_machine_uuid, extra_attributes = {}|
+        klass = class_for_type(pe_type)
+
+        stored_attribute_keys = klass.stored_attributes.except(:extra_attributes).values.flatten.map(&:to_s)
+        column_keys = klass.attribute_names + stored_attribute_keys
+
         active_record_attributes = extra_attributes.stringify_keys
-        extra_attributes = active_record_attributes.slice!(*PolicyElement.column_names)
+        extra_attributes = active_record_attributes.slice!(*column_keys)
+
         element_attrs = {
-          :unique_identifier => unique_identifier,
-          :policy_machine_uuid => policy_machine_uuid,
-          :extra_attributes => extra_attributes
+          unique_identifier: unique_identifier,
+          policy_machine_uuid: policy_machine_uuid,
+          extra_attributes: extra_attributes
         }.merge(active_record_attributes)
-        class_for_type(pe_type).create(element_attrs)
+
+        klass.create(element_attrs)
       end
 
       define_method("find_all_of_type_#{pe_type}") do |options = {}|
