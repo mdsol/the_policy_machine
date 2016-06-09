@@ -195,6 +195,17 @@ class PolicyMachine
   end
 
   ##
+  # Search for and iterate over a collection in batches
+  def batch_find(type:, query: {}, config: {}, &blk)
+    if policy_machine_storage_adapter.respond_to?(:batch_find)
+      policy_machine_storage_adapter.batch_find(type, query, config, &blk)
+    else
+      batch_size = config.fetch(:batch_size, 1)
+      method(type.to_s.pluralize).call(query).each_slice(batch_size, &blk)
+    end
+  end
+
+  ##
   # Returns an array of all objects the given user (attribute)
   # has the given operation on.
   def accessible_objects(user_or_attribute, operation, options = {})
