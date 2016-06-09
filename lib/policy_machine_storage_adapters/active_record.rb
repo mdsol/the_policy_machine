@@ -362,6 +362,10 @@ module PolicyMachineStorageAdapter
       end
     end
 
+    def batch_find(policy_object, query = {}, config = {}, &blk)
+      method("find_all_of_type_#{policy_object}").call(query).find_in_batches(config, &blk)
+    end
+
     ## Optimized version of PolicyMachine#scoped_privileges
     # Returns all objects the user has the given operation on
     # TODO: Support multiple policy classes here
