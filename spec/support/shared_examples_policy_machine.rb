@@ -842,6 +842,12 @@ shared_examples "a policy machine" do
 
     context 'when given a block' do
 
+      it 'calls the block' do
+        expect do |spy|
+          policy_machine.batch_find(type: :object, query: { unique_identifier: 'one:fish' }, &spy)
+        end.to yield_control
+      end
+
       context 'and search terms' do
         it 'returns the matching records' do
           policy_machine.batch_find(type: :object, query: { unique_identifier: 'one:fish' }) do |batch|
@@ -855,6 +861,10 @@ shared_examples "a policy machine" do
         it 'returns the correct batch size' do
           policy_machine.batch_find(type: :object, config: { batch_size: 1 }) do |batch|
             expect(batch.size).to eq 1
+          end
+
+          policy_machine.batch_find(type: :object, config: { batch_size: 3 }) do |batch|
+            expect(batch.size).to eq 3
           end
         end
       end
@@ -889,9 +899,9 @@ shared_examples "a policy machine" do
 
       context 'but given config options' do
         it 'resepects batch size configs while return all results' do
-          enum = policy_machine.batch_find(type: :object, config: { batch_size: 1})
+          enum = policy_machine.batch_find(type: :object, config: { batch_size: 3})
           results = enum.flat_map do |batch|
-            expect(batch.size).to eq 1
+            expect(batch.size).to eq 3
             batch.map { |pe| pe.unique_identifier }
           end
           expected = %w(one:fish two:fish red:one)
