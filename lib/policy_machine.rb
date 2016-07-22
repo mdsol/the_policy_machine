@@ -272,7 +272,7 @@ class PolicyMachine
     if policy_machine_storage_adapter.respond_to?(:bulk_create!)
       bulk_creator = clone
       bulk_creator.bulk_creating = true
-      bulk_creator.instance_exec(block)
+      bulk_creator.instance_exec(&block)
       bulk_creator.bulk_create!
     else
       yield
