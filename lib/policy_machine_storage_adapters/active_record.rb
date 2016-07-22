@@ -366,7 +366,7 @@ module PolicyMachineStorageAdapter
       method("find_all_of_type_#{policy_object}").call(query).find_in_batches(config, &blk)
     end
 
-    ## Optimized version of PolicyMachine#scoped_privileges
+    ## Optimized version of PolicyMachine#accessible_objects
     # Returns all objects the user has the given operation on
     # TODO: Support multiple policy classes here
     def accessible_objects(user_or_attribute, operation, options = {})
