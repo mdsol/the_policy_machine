@@ -83,7 +83,7 @@ module PolicyMachineStorageAdapter
       end
 
       def self.create_later(*args)
-        elements_to_create << new(args)
+        elements_to_create << new(*args)
       end
 
       def self.elements_to_create

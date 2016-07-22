@@ -268,12 +268,15 @@ class PolicyMachine
     policy_machine_storage_adapter.transaction(&block)
   end
 
-  def bulk_create(&block)
+  def bulk_create
     if policy_machine_storage_adapter.respond_to?(:bulk_create!)
-      bulk_creator = clone
-      bulk_creator.bulk_creating = true
-      bulk_creator.instance_exec(&block)
-      bulk_creator.bulk_create!
+      begin
+        self.bulk_creating = true
+        yield
+        policy_machine_storage_adapter.bulk_create!
+      ensure
+        self.bulk_creating = false
+      end
     else
       yield
     end
