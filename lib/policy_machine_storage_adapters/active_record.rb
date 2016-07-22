@@ -82,6 +82,20 @@ module PolicyMachineStorageAdapter
         store_accessor store, name
       end
 
+      def self.create_later(*args)
+        elements_to_create << new(args)
+      end
+
+      def self.elements_to_create
+        Thread.current[:policy_machine_batch_create] ||= Array.new
+      end
+
+      def self.bulk_create!
+        result = import(elements_to_create)
+      ensure
+        Thread.current[:policy_machine_batch_create].clear
+      end
+
     end
 
     class User < PolicyElement
@@ -144,23 +158,27 @@ module PolicyMachineStorageAdapter
       # The policy_machine_uuid is the uuid of the containing policy machine.
       #
 
-      #TODO: use the new stored attributes approach and a jsonb column for extra_attributes for the postgres adapter
-      define_method("add_#{pe_type}") do |unique_identifier, policy_machine_uuid, extra_attributes = {}|
-        klass = class_for_type(pe_type)
+      ['bulk_', nil].each do |bulk|
 
-        stored_attribute_keys = klass.stored_attributes.except(:extra_attributes).values.flatten.map(&:to_s)
-        column_keys = klass.attribute_names + stored_attribute_keys
+        #TODO: use the new stored attributes approach and a jsonb column for extra_attributes for the postgres adapter
+        define_method("#{bulk}add_#{pe_type}") do |unique_identifier, policy_machine_uuid, extra_attributes = {}|
+          klass = class_for_type(pe_type)
 
-        active_record_attributes = extra_attributes.stringify_keys
-        extra_attributes = active_record_attributes.slice!(*column_keys)
+          stored_attribute_keys = klass.stored_attributes.except(:extra_attributes).values.flatten.map(&:to_s)
+          column_keys = klass.attribute_names + stored_attribute_keys
 
-        element_attrs = {
-          unique_identifier: unique_identifier,
-          policy_machine_uuid: policy_machine_uuid,
-          extra_attributes: extra_attributes
-        }.merge(active_record_attributes)
+          active_record_attributes = extra_attributes.stringify_keys
+          extra_attributes = active_record_attributes.slice!(*column_keys)
 
-        klass.create(element_attrs)
+          element_attrs = {
+            unique_identifier: unique_identifier,
+            policy_machine_uuid: policy_machine_uuid,
+            extra_attributes: extra_attributes
+          }.merge(active_record_attributes)
+
+          bulk ? klass.create_later(element_attrs) : klass.create(element_attrs)
+        end
+
       end
 
       define_method("find_all_of_type_#{pe_type}") do |options = {}|

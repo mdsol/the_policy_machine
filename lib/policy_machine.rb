@@ -241,7 +241,8 @@ class PolicyMachine
     define_method("create_#{pe_type}") do |unique_identifier, extra_attributes = {}|
       # when creating a policy element, we provide a unique_identifier, the uuid of this policy machine
       # and a policy machine storage adapter to allow us to persist the policy element.
-      pm_class.send(:create, unique_identifier, @uuid, @policy_machine_storage_adapter, extra_attributes)
+      meth = self.bulk_creating ? :create_later : :create
+      pm_class.send(meth, unique_identifier, @uuid, @policy_machine_storage_adapter, extra_attributes)
     end
 
     ##
@@ -265,6 +266,25 @@ class PolicyMachine
   # TODO: Possibly rescue NotImplementError and warn.
   def transaction(&block)
     policy_machine_storage_adapter.transaction(&block)
+  end
+
+  def bulk_create(&block)
+    if policy_machine_storage_adapter.respond_to?(:bulk_create!)
+      bulk_creator = clone
+      bulk_creator.bulk_creating = true
+      bulk_creator.instance_exec(block)
+      bulk_creator.bulk_create!
+    else
+      yield
+    end
+  end
+
+  protected
+
+  attr_accessor :bulk_creating
+
+  def bulk_create!
+    policy_machine_storage_adapter.bulk_create!
   end
 
   private
