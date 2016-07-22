@@ -406,6 +406,10 @@ module PolicyMachineStorageAdapter
       end
     end
 
+    def bulk_create!
+      PolicyElement.bulk_create!
+    end
+
     private
 
     def relevant_associations(user_or_attribute, operation, object_or_attribute)
