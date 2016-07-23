@@ -82,16 +82,36 @@ module PolicyMachineStorageAdapter
         store_accessor store, name
       end
 
-      def self.create_later(*args)
-        elements_to_create << new(*args)
+      def self.create_later(attrs)
+        keys_to_ignore = %i[unique_identifier created_at updated_at] #FIXME
+        already_pending = elements_to_create.find {|elt| elt.attributes.symbolize_keys.except(*keys_to_ignore) == attrs.except(*keys_to_ignore) }
+        if already_pending
+          already_pending
+        else
+          to_create = new(attrs)
+          elements_to_create << to_create
+          to_create
+        end
       end
 
       def self.elements_to_create
         Thread.current[:policy_machine_batch_create] ||= Array.new
       end
 
+      def self.assignments_to_create
+        Thread.current[:policy_machine_batch_create_assignments] ||= Array.new
+      end
+
+      def self.assign_later(*args)
+        assignments_to_create << Assignment.new(*args)
+        :buffered
+      end
+
       def self.bulk_create!
         result = import(elements_to_create)
+        byebug
+        Assignment.import(assignments_to_create)
+        result
       ensure
         Thread.current[:policy_machine_batch_create].clear
       end
@@ -250,7 +270,11 @@ module PolicyMachineStorageAdapter
     #
     def assign(src, dst)
       assert_persisted_policy_element(src, dst)
-      Assignment.where(parent_id: src.id, child_id: dst.id).first_or_create
+      if src.id && dst.id
+        Assignment.where(parent_id: src.id, child_id: dst.id).first_or_create
+      else
+        PolicyElement.assign_later(parent: src, child: dst)
+      end
     end
 
     ##
@@ -314,6 +338,7 @@ module PolicyMachineStorageAdapter
     # Returns true if the association was added and false otherwise.
     #
     def add_association(user_attribute, operation_set, object_attribute, policy_machine_uuid)
+      return true unless (user_attribute.id && object_attribute.id) # TODO: Make this work like assignments
       PolicyElementAssociation.where(
         user_attribute_id: user_attribute.id,
         object_attribute_id: object_attribute.id
