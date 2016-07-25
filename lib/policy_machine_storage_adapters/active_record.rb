@@ -84,7 +84,9 @@ module PolicyMachineStorageAdapter
 
       def self.create_later(attrs)
         keys_to_ignore = %i[unique_identifier created_at updated_at] #FIXME
-        already_pending = elements_to_create.find {|elt| elt.attributes.symbolize_keys.except(*keys_to_ignore) == attrs.except(*keys_to_ignore) }
+        already_pending = elements_to_create.find do |elt|
+          elt.class == self && attrs.except(*keys_to_ignore).all? { |k,v| elt.send(k) == v }
+        end
         if already_pending
           already_pending
         else
@@ -102,18 +104,34 @@ module PolicyMachineStorageAdapter
         Thread.current[:policy_machine_batch_create_assignments] ||= Array.new
       end
 
-      def self.assign_later(*args)
-        assignments_to_create << Assignment.new(*args)
+      def self.associations_to_create
+        Thread.current[:policy_machine_batch_create_associations] ||= Array.new
+      end
+
+      def self.assign_later(parent: , child: )
+        assignments_to_create << {parent: parent, child: child }
         :buffered
+      end
+
+      def self.associate_later(*args)
+        associations_to_create << args
       end
 
       def self.bulk_create!
         result = import(elements_to_create)
-        byebug
-        Assignment.import(assignments_to_create)
+        assignments_to_create.map! do |attrs|
+          [attrs[:parent].id, attrs[:child].id]
+        end
+        Assignment.import([:parent_id, :child_id], assignments_to_create)
+        #TODO: Make association create batched
+        associations_to_create.each { |assoc| PolicyElementAssociation.add_association(*assoc) }
         result
-      ensure
-        Thread.current[:policy_machine_batch_create].clear
+      end
+
+      def self.clear_buffer!
+        elements_to_create.clear
+        assignments_to_create.clear
+        associations_to_create.clear
       end
 
     end
@@ -164,6 +182,14 @@ module PolicyMachineStorageAdapter
         end
         self.clear_association_cache
       end
+
+      def self.add_association(user_attribute, operation_set, object_attribute, policy_machine_uuid)
+        where(
+          user_attribute_id: user_attribute.id,
+          object_attribute_id: object_attribute.id
+        ).first_or_create.operations = operation_set.to_a
+      end
+
     end
 
     class OperationsPolicyElementAssociation < ::ActiveRecord::Base
@@ -270,11 +296,7 @@ module PolicyMachineStorageAdapter
     #
     def assign(src, dst)
       assert_persisted_policy_element(src, dst)
-      if src.id && dst.id
-        Assignment.where(parent_id: src.id, child_id: dst.id).first_or_create
-      else
-        PolicyElement.assign_later(parent: src, child: dst)
-      end
+      Assignment.where(parent_id: src.id, child_id: dst.id).first_or_create
     end
 
     ##
@@ -338,11 +360,7 @@ module PolicyMachineStorageAdapter
     # Returns true if the association was added and false otherwise.
     #
     def add_association(user_attribute, operation_set, object_attribute, policy_machine_uuid)
-      return true unless (user_attribute.id && object_attribute.id) # TODO: Make this work like assignments
-      PolicyElementAssociation.where(
-        user_attribute_id: user_attribute.id,
-        object_attribute_id: object_attribute.id
-      ).first_or_create.operations = operation_set.to_a
+      PolicyElementAssociation.add_association(user_attribute, operation_set, object_attribute, policy_machine_uuid)
     end
 
     ##
@@ -433,6 +451,18 @@ module PolicyMachineStorageAdapter
 
     def bulk_create!
       PolicyElement.bulk_create!
+    end
+
+    def clear_buffer!
+      PolicyElement.clear_buffer!
+    end
+
+    def assign_later(parent: , child: )
+      PolicyElement.assign_later(parent: parent, child: child )
+    end
+
+    def add_association_later(user_attribute, operation_set, object_attribute, policy_machine_uuid)
+      PolicyElement.associate_later(user_attribute, operation_set, object_attribute, policy_machine_uuid)
     end
 
     private

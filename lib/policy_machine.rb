@@ -34,7 +34,7 @@ class PolicyMachine
     assert_policy_element_in_machine(src_policy_element)
     assert_policy_element_in_machine(dst_policy_element)
 
-    src_policy_element.assign_to(dst_policy_element)
+    src_policy_element.assign_to(dst_policy_element, self.bulk_creating)
   end
 
   ##
@@ -56,7 +56,7 @@ class PolicyMachine
     operation_set.each{ |op| assert_policy_element_in_machine(op) }
     assert_policy_element_in_machine(object_attribute_pe)
 
-    PM::Association.create(user_attribute_pe, operation_set, object_attribute_pe, @uuid, @policy_machine_storage_adapter)
+    PM::Association.create(user_attribute_pe, operation_set, object_attribute_pe, @uuid, @policy_machine_storage_adapter, self.bulk_creating)
   end
 
   ##
@@ -276,6 +276,7 @@ class PolicyMachine
         policy_machine_storage_adapter.bulk_create!
       ensure
         self.bulk_creating = false
+        policy_machine_storage_adapter.clear_buffer!
       end
     else
       yield
