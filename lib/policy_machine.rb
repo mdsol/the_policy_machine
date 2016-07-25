@@ -272,8 +272,9 @@ class PolicyMachine
     if policy_machine_storage_adapter.respond_to?(:bulk_create!)
       begin
         self.bulk_creating = true
-        yield
+        result = yield
         policy_machine_storage_adapter.bulk_create!
+        result
       ensure
         self.bulk_creating = false
         policy_machine_storage_adapter.clear_buffer!

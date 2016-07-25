@@ -85,7 +85,7 @@ module PolicyMachineStorageAdapter
       def self.create_later(attrs)
         keys_to_ignore = %i[unique_identifier created_at updated_at] #FIXME
         already_pending = elements_to_create.find do |elt|
-          elt.class == self && attrs.except(*keys_to_ignore).all? { |k,v| elt.send(k) == v }
+          elt.class == self && attrs.symbolize_keys.except(*keys_to_ignore).all? { |k,v| elt.send(k).to_json == v.to_json }
         end
         if already_pending
           already_pending
@@ -122,7 +122,7 @@ module PolicyMachineStorageAdapter
         assignments_to_create.map! do |attrs|
           [attrs[:parent].id, attrs[:child].id]
         end
-        Assignment.import([:parent_id, :child_id], assignments_to_create)
+        Assignment.import([:parent_id, :child_id], assignments_to_create, on_duplicate_key_ignore: true)
         #TODO: Make association create batched
         associations_to_create.each { |assoc| PolicyElementAssociation.add_association(*assoc) }
         result
@@ -458,7 +458,11 @@ module PolicyMachineStorageAdapter
     end
 
     def assign_later(parent: , child: )
-      PolicyElement.assign_later(parent: parent, child: child )
+      if !(Assignment.connection.supports_on_duplicate_key_ignore?) && parent.id && child.id
+        Assignment.where(parent_id: parent.id, child_id: child.id).first_or_create
+      else
+        PolicyElement.assign_later(parent: parent, child: child )
+      end
     end
 
     def add_association_later(user_attribute, operation_set, object_attribute, policy_machine_uuid)
