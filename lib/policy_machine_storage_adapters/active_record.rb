@@ -133,7 +133,7 @@ module PolicyMachineStorageAdapter
       def self.bulk_create_assignments
         assignments_to_create.map! do |attrs|
           [attrs[:parent].id, attrs[:child].id]
-        end
+        end.uniq!
         Assignment.import([:parent_id, :child_id], assignments_to_create, on_duplicate_key_ignore: true)
       end
 
