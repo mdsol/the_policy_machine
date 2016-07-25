@@ -82,6 +82,75 @@ module PolicyMachineStorageAdapter
         store_accessor store, name
       end
 
+      def self.create_later(attrs)
+        keys_to_ignore = %i[unique_identifier created_at updated_at] #FIXME
+        already_pending = elements_to_create.find do |elt|
+          elt.class == self && attrs.symbolize_keys.except(*keys_to_ignore).all? { |k,v| elt.send(k).to_json == v.to_json }
+        end
+        if already_pending
+          already_pending
+        else
+          to_create = new(attrs)
+          elements_to_create << to_create
+          to_create
+        end
+      end
+
+      def self.elements_to_create
+        Thread.current[:policy_machine_batch_create] ||= Array.new
+      end
+
+      def self.assignments_to_create
+        Thread.current[:policy_machine_batch_create_assignments] ||= Array.new
+      end
+
+      def self.associations_to_create
+        Thread.current[:policy_machine_batch_create_associations] ||= Array.new
+      end
+
+      def self.assign_later(parent: , child: )
+        assignments_to_create << {parent: parent, child: child }
+        :buffered
+      end
+
+      def self.associate_later(user_attribute, operation_set, object_attribute, policy_machine_uuid)
+        associations_to_create << [user_attribute, operation_set, object_attribute, policy_machine_uuid]
+      end
+
+      def self.bulk_create!
+        result = import(elements_to_create)
+        bulk_create_assignments
+        bulk_create_associations
+        result
+      end
+
+      def self.clear_buffer!
+        elements_to_create.clear
+        assignments_to_create.clear
+        associations_to_create.clear
+      end
+
+      def self.bulk_create_assignments
+        assignments_to_create.map! do |attrs|
+          [attrs[:parent].id, attrs[:child].id]
+        end.uniq!
+        Assignment.import([:parent_id, :child_id], assignments_to_create, on_duplicate_key_ignore: true)
+      end
+
+      def self.bulk_create_associations
+        associations_to_create.map! do |user_attribute, operation_set, object_attribute, policy_machine_uuid|
+          [PolicyElementAssociation.new(user_attribute_id: user_attribute.id, object_attribute_id: object_attribute.id),
+           operation_set]
+        end
+        PolicyElementAssociation.import(associations_to_create.map(&:first), on_duplicate_key_ignore: true)
+
+        #TODO: This should be a bulk upsert too but, among other things, AR doesn't understand nested arrays so deleting where a tuple
+        # isn't in a list of tuples seems to require raw SQL
+        associations_to_create.each do |model, operation_set|
+          model.operations = operation_set
+        end
+      end
+
     end
 
     class User < PolicyElement
@@ -130,6 +199,14 @@ module PolicyMachineStorageAdapter
         end
         self.clear_association_cache
       end
+
+      def self.add_association(user_attribute, operation_set, object_attribute, policy_machine_uuid)
+        where(
+          user_attribute_id: user_attribute.id,
+          object_attribute_id: object_attribute.id
+        ).first_or_create.operations = operation_set.to_a
+      end
+
     end
 
     class OperationsPolicyElementAssociation < ::ActiveRecord::Base
@@ -144,23 +221,27 @@ module PolicyMachineStorageAdapter
       # The policy_machine_uuid is the uuid of the containing policy machine.
       #
 
-      #TODO: use the new stored attributes approach and a jsonb column for extra_attributes for the postgres adapter
-      define_method("add_#{pe_type}") do |unique_identifier, policy_machine_uuid, extra_attributes = {}|
-        klass = class_for_type(pe_type)
+      ['bulk_', nil].each do |bulk|
 
-        stored_attribute_keys = klass.stored_attributes.except(:extra_attributes).values.flatten.map(&:to_s)
-        column_keys = klass.attribute_names + stored_attribute_keys
+        #TODO: use the new stored attributes approach and a jsonb column for extra_attributes for the postgres adapter
+        define_method("#{bulk}add_#{pe_type}") do |unique_identifier, policy_machine_uuid, extra_attributes = {}|
+          klass = class_for_type(pe_type)
 
-        active_record_attributes = extra_attributes.stringify_keys
-        extra_attributes = active_record_attributes.slice!(*column_keys)
+          stored_attribute_keys = klass.stored_attributes.except(:extra_attributes).values.flatten.map(&:to_s)
+          column_keys = klass.attribute_names + stored_attribute_keys
 
-        element_attrs = {
-          unique_identifier: unique_identifier,
-          policy_machine_uuid: policy_machine_uuid,
-          extra_attributes: extra_attributes
-        }.merge(active_record_attributes)
+          active_record_attributes = extra_attributes.stringify_keys
+          extra_attributes = active_record_attributes.slice!(*column_keys)
 
-        klass.create(element_attrs)
+          element_attrs = {
+            unique_identifier: unique_identifier,
+            policy_machine_uuid: policy_machine_uuid,
+            extra_attributes: extra_attributes
+          }.merge(active_record_attributes)
+
+          bulk ? klass.create_later(element_attrs) : klass.create(element_attrs)
+        end
+
       end
 
       define_method("find_all_of_type_#{pe_type}") do |options = {}|
@@ -296,10 +377,7 @@ module PolicyMachineStorageAdapter
     # Returns true if the association was added and false otherwise.
     #
     def add_association(user_attribute, operation_set, object_attribute, policy_machine_uuid)
-      PolicyElementAssociation.where(
-        user_attribute_id: user_attribute.id,
-        object_attribute_id: object_attribute.id
-      ).first_or_create.operations = operation_set.to_a
+      PolicyElementAssociation.add_association(user_attribute, operation_set, object_attribute, policy_machine_uuid)
     end
 
     ##
@@ -386,6 +464,26 @@ module PolicyMachineStorageAdapter
       else
         candidates - accessible_objects(user_or_attribute, prohibition, options.merge(ignore_prohibitions: true))
       end
+    end
+
+    def bulk_create!
+      PolicyElement.bulk_create!
+    end
+
+    def clear_buffer!
+      PolicyElement.clear_buffer!
+    end
+
+    def assign_later(parent: , child: )
+      if !(Assignment.connection.supports_on_duplicate_key_ignore?) && parent.id && child.id
+        Assignment.where(parent_id: parent.id, child_id: child.id).first_or_create
+      else
+        PolicyElement.assign_later(parent: parent, child: child )
+      end
+    end
+
+    def add_association_later(user_attribute, operation_set, object_attribute, policy_machine_uuid)
+      PolicyElement.associate_later(user_attribute, operation_set, object_attribute, policy_machine_uuid)
     end
 
     private

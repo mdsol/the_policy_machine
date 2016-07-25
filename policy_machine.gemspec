@@ -16,7 +16,7 @@ Gem::Specification.new do |s|
   s.add_dependency('will_paginate')
 
   # Only required in ActiveRecord mode
-  s.add_dependency('activerecord-import', '~> 0.0')
+  s.add_dependency('activerecord-import', '~> 0.12')
     # Only required for mysql
     s.add_dependency('mysql2')
     # Only required for postgres

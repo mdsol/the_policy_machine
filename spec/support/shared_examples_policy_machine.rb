@@ -521,64 +521,74 @@ shared_examples "a policy machine" do
 
   describe '#privileges' do
 
-    # This PM is taken from the policy machine spec, Figure 4. (pg. 19)
-    describe 'Simple Example:  Figure 4. (pg. 19)' do
-      before do
-        # Users
-        @u1 = policy_machine.create_user('u1')
-        @u2 = policy_machine.create_user('u2')
-        @u3 = policy_machine.create_user('u3')
+    [nil, ' in bulk create mode'].each do |bulk_create_mode|
 
-        # Objects
-        @o1 = policy_machine.create_object('o1')
-        @o2 = policy_machine.create_object('o2')
-        @o3 = policy_machine.create_object('o3')
+      # This PM is taken from the policy machine spec, Figure 4. (pg. 19)
+      describe "Simple Example:  Figure 4. (pg. 19)#{bulk_create_mode}" do
+        before do
+            inserts = lambda do
+            # Users
+            @u1 = policy_machine.create_user('u1')
+            @u2 = policy_machine.create_user('u2')
+            @u3 = policy_machine.create_user('u3')
 
-        # User Attributes
-        @group1 = policy_machine.create_user_attribute('Group1')
-        @group2 = policy_machine.create_user_attribute('Group2')
-        @division = policy_machine.create_user_attribute('Division')
+            # Objects
+            @o1 = policy_machine.create_object('o1')
+            @o2 = policy_machine.create_object('o2')
+            @o3 = policy_machine.create_object('o3')
 
-        # Object Attributes
-        @project1 = policy_machine.create_object_attribute('Project1')
-        @project2 = policy_machine.create_object_attribute('Project2')
-        @projects = policy_machine.create_object_attribute('Projects')
+            # User Attributes
+            @group1 = policy_machine.create_user_attribute('Group1')
+            @group2 = policy_machine.create_user_attribute('Group2')
+            @division = policy_machine.create_user_attribute('Division')
 
-        # Operations
-        @r = policy_machine.create_operation('read')
-        @w = policy_machine.create_operation('write')
+            # Object Attributes
+            @project1 = policy_machine.create_object_attribute('Project1')
+            @project2 = policy_machine.create_object_attribute('Project2')
+            @projects = policy_machine.create_object_attribute('Projects')
 
-        # Policy Classes
-        @ou = policy_machine.create_policy_class("OU")
+            # Operations
+            @r = policy_machine.create_operation('read')
+            @w = policy_machine.create_operation('write')
 
-        # Assignments
-        policy_machine.add_assignment(@u1, @group1)
-        policy_machine.add_assignment(@u2, @group2)
-        policy_machine.add_assignment(@u3, @division)
-        policy_machine.add_assignment(@group1, @division)
-        policy_machine.add_assignment(@group2, @division)
-        policy_machine.add_assignment(@o1, @project1)
-        policy_machine.add_assignment(@o2, @project1)
-        policy_machine.add_assignment(@o3, @project2)
-        policy_machine.add_assignment(@project1, @projects)
-        policy_machine.add_assignment(@project2, @projects)
-        policy_machine.add_assignment(@division, @ou)
-        policy_machine.add_assignment(@projects, @ou)
+            # Policy Classes
+            @ou = policy_machine.create_policy_class("OU")
 
-        # Associations
-        policy_machine.add_association(@group1, Set.new([@w]), @project1)
-        policy_machine.add_association(@group2, Set.new([@w]), @project2)
-        policy_machine.add_association(@division, Set.new([@r]), @projects)
-      end
+            # Assignments
+            policy_machine.add_assignment(@u1, @group1)
+            policy_machine.add_assignment(@u2, @group2)
+            policy_machine.add_assignment(@u3, @division)
+            policy_machine.add_assignment(@group1, @division)
+            policy_machine.add_assignment(@group2, @division)
+            policy_machine.add_assignment(@o1, @project1)
+            policy_machine.add_assignment(@o2, @project1)
+            policy_machine.add_assignment(@o3, @project2)
+            policy_machine.add_assignment(@project1, @projects)
+            policy_machine.add_assignment(@project2, @projects)
+            policy_machine.add_assignment(@division, @ou)
+            policy_machine.add_assignment(@projects, @ou)
 
-      it 'returns all and only these privileges encoded by the policy machine' do
-        expected_privileges = [
-          [@u1, @w, @o1], [@u1, @w, @o2], [@u1, @r, @o1], [@u1, @r, @o2], [@u1, @r, @o3],
-          [@u2, @w, @o3], [@u2, @r, @o1], [@u2, @r, @o2], [@u2, @r, @o3],
-          [@u3, @r, @o1], [@u3, @r, @o2], [@u3, @r, @o3]
-        ]
+            # Associations
+            policy_machine.add_association(@group1, Set.new([@w]), @project1)
+            policy_machine.add_association(@group2, Set.new([@w]), @project2)
+            policy_machine.add_association(@division, Set.new([@r]), @projects)
+          end
+          if bulk_create_mode
+            policy_machine.bulk_create(&inserts)
+          else
+            inserts.call
+          end
+        end
 
-        assert_pm_privilege_expectations(policy_machine.privileges, expected_privileges)
+        it 'returns all and only these privileges encoded by the policy machine' do
+          expected_privileges = [
+            [@u1, @w, @o1], [@u1, @w, @o2], [@u1, @r, @o1], [@u1, @r, @o2], [@u1, @r, @o3],
+            [@u2, @w, @o3], [@u2, @r, @o1], [@u2, @r, @o2], [@u2, @r, @o3],
+            [@u3, @r, @o1], [@u3, @r, @o2], [@u3, @r, @o3]
+          ]
+
+          assert_pm_privilege_expectations(policy_machine.privileges, expected_privileges)
+        end
       end
     end
   end

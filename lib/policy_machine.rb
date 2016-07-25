@@ -34,7 +34,7 @@ class PolicyMachine
     assert_policy_element_in_machine(src_policy_element)
     assert_policy_element_in_machine(dst_policy_element)
 
-    src_policy_element.assign_to(dst_policy_element)
+    src_policy_element.assign_to(dst_policy_element, self.bulk_creating)
   end
 
   ##
@@ -56,7 +56,7 @@ class PolicyMachine
     operation_set.each{ |op| assert_policy_element_in_machine(op) }
     assert_policy_element_in_machine(object_attribute_pe)
 
-    PM::Association.create(user_attribute_pe, operation_set, object_attribute_pe, @uuid, @policy_machine_storage_adapter)
+    PM::Association.create(user_attribute_pe, operation_set, object_attribute_pe, @uuid, @policy_machine_storage_adapter, self.bulk_creating)
   end
 
   ##
@@ -241,7 +241,8 @@ class PolicyMachine
     define_method("create_#{pe_type}") do |unique_identifier, extra_attributes = {}|
       # when creating a policy element, we provide a unique_identifier, the uuid of this policy machine
       # and a policy machine storage adapter to allow us to persist the policy element.
-      pm_class.send(:create, unique_identifier, @uuid, @policy_machine_storage_adapter, extra_attributes)
+      meth = self.bulk_creating ? :create_later : :create
+      pm_class.send(meth, unique_identifier, @uuid, @policy_machine_storage_adapter, extra_attributes)
     end
 
     ##
@@ -265,6 +266,30 @@ class PolicyMachine
   # TODO: Possibly rescue NotImplementError and warn.
   def transaction(&block)
     policy_machine_storage_adapter.transaction(&block)
+  end
+
+  def bulk_create
+    if policy_machine_storage_adapter.respond_to?(:bulk_create!)
+      begin
+        self.bulk_creating = true
+        result = yield
+        policy_machine_storage_adapter.bulk_create!
+        result
+      ensure
+        self.bulk_creating = false
+        policy_machine_storage_adapter.clear_buffer!
+      end
+    else
+      yield
+    end
+  end
+
+  protected
+
+  attr_accessor :bulk_creating
+
+  def bulk_create!
+    policy_machine_storage_adapter.bulk_create!
   end
 
   private

@@ -27,11 +27,15 @@ module PM
 
     # Assigns self to destination policy element
     # This method is sensitive to the type of self and dst_policy_element
-    def assign_to(dst_policy_element)
+    def assign_to(dst_policy_element, bulk_creating = false)
       unless allowed_assignee_classes.any?{|aac| dst_policy_element.is_a?(aac)}
         raise(ArgumentError, "expected dst_policy_element to be one of #{allowed_assignee_classes.to_s}; got #{dst_policy_element.class} instead.")
       end
-      @pm_storage_adapter.assign(self.stored_pe, dst_policy_element.stored_pe)
+      if bulk_creating
+        @pm_storage_adapter.assign_later(parent: self.stored_pe, child: dst_policy_element.stored_pe)
+      else
+        @pm_storage_adapter.assign(self.stored_pe, dst_policy_element.stored_pe)
+      end
     end
 
     # Removes assignment from self to destination policy element
@@ -103,6 +107,13 @@ module PM
     def self.create(unique_identifier, policy_machine_uuid, pm_storage_adapter, extra_attributes = {})
       new_pe = new(unique_identifier, policy_machine_uuid, pm_storage_adapter, nil, extra_attributes)
       method_name = "add_#{self.name.split('::').last}".underscore.to_sym
+      new_pe.stored_pe = pm_storage_adapter.send(method_name, unique_identifier, policy_machine_uuid, extra_attributes)
+      new_pe
+    end
+
+    def self.create_later(unique_identifier, policy_machine_uuid, pm_storage_adapter, extra_attributes = {})
+      new_pe = new(unique_identifier, policy_machine_uuid, pm_storage_adapter, nil, extra_attributes)
+      method_name = "bulk_add_#{self.name.split('::').last}".underscore.to_sym
       new_pe.stored_pe = pm_storage_adapter.send(method_name, unique_identifier, policy_machine_uuid, extra_attributes)
       new_pe
     end
