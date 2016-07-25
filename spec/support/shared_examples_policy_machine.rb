@@ -595,7 +595,6 @@ shared_examples "a policy machine" do
 
   describe 'The Mail System:  Figure 8. (pg. 43)' do
     before do
-      policy_machine.bulk_create do
       # Users
       @u2 = policy_machine.create_user('u2')
 
@@ -639,7 +638,6 @@ shared_examples "a policy machine" do
       policy_machine.add_association(@id_u2, Set.new([@r, @w]), @out_u2)
       policy_machine.add_association(@id_u2, Set.new([@w]), @inboxes)
       policy_machine.add_association(@id_u2, Set.new([@r, @w]), @other_u2)
-      end
     end
 
     it 'returns all and only these privileges encoded by the policy machine' do
