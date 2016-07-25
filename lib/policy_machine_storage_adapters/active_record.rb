@@ -113,18 +113,14 @@ module PolicyMachineStorageAdapter
         :buffered
       end
 
-      def self.associate_later(*args)
-        associations_to_create << args
+      def self.associate_later(user_attribute, operation_set, object_attribute, policy_machine_uuid)
+        associations_to_create << [user_attribute, operation_set, object_attribute, policy_machine_uuid]
       end
 
       def self.bulk_create!
         result = import(elements_to_create)
-        assignments_to_create.map! do |attrs|
-          [attrs[:parent].id, attrs[:child].id]
-        end
-        Assignment.import([:parent_id, :child_id], assignments_to_create, on_duplicate_key_ignore: true)
-        #TODO: Make association create batched
-        associations_to_create.each { |assoc| PolicyElementAssociation.add_association(*assoc) }
+        bulk_create_assignments
+        bulk_create_associations
         result
       end
 
@@ -132,6 +128,27 @@ module PolicyMachineStorageAdapter
         elements_to_create.clear
         assignments_to_create.clear
         associations_to_create.clear
+      end
+
+      def self.bulk_create_assignments
+        assignments_to_create.map! do |attrs|
+          [attrs[:parent].id, attrs[:child].id]
+        end
+        Assignment.import([:parent_id, :child_id], assignments_to_create, on_duplicate_key_ignore: true)
+      end
+
+      def self.bulk_create_associations
+        associations_to_create.map! do |user_attribute, operation_set, object_attribute, policy_machine_uuid|
+          [PolicyElementAssociation.new(user_attribute_id: user_attribute.id, object_attribute_id: object_attribute.id),
+           operation_set]
+        end
+        PolicyElementAssociation.import(associations_to_create.map(&:first), on_duplicate_key_ignore: true)
+
+        #TODO: This should be a bulk upsert too but, among other things, AR doesn't understand nested arrays so deleting where a tuple
+        # isn't in a list of tuples seems to require raw SQL
+        associations_to_create.each do |model, operation_set|
+          model.operations = operation_set
+        end
       end
 
     end
