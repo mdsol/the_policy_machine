@@ -34,6 +34,26 @@ module PolicyMachineStorageAdapter
       require_relative("active_record/#{PolicyElement.configurations[Rails.env]['adapter']}")
     end
 
+    def can_buffer?
+      self.respond_to?(:persist_buffers!)
+    end
+
+    def self.buffering?
+      @buffering
+    end
+
+    def buffering?
+      self.class.buffering?
+    end
+
+    def self.begin_buffering!
+      @buffering = true
+    end
+
+    def self.stop_buffering!
+      @buffering = false
+    end
+
     class PolicyElement < ::ActiveRecord::Base
       alias_method :persisted, :persisted?
       singleton_class.send(:alias_method, :active_record_serialize, :serialize)
@@ -111,10 +131,6 @@ module PolicyMachineStorageAdapter
       def self.assign_later(parent: , child: )
         assignments_to_create << {parent: parent, child: child }
         :buffered
-      end
-
-      def self.associate_later(user_attribute, operation_set, object_attribute, policy_machine_uuid)
-        associations_to_create << [user_attribute, operation_set, object_attribute, policy_machine_uuid]
       end
 
       def self.bulk_persist!
@@ -384,7 +400,19 @@ module PolicyMachineStorageAdapter
     # Returns true if the association was added and false otherwise.
     #
     def add_association(user_attribute, operation_set, object_attribute, policy_machine_uuid)
+      if self.buffering?
+        add_association_later(user_attribute, operation_set, object_attribute, policy_machine_uuid)
+      else
+        add_association_now(user_attribute, operation_set, object_attribute, policy_machine_uuid)
+      end
+    end
+
+    def add_association_now(user_attribute, operation_set, object_attribute, policy_machine_uuid)
       PolicyElementAssociation.add_association(user_attribute, operation_set, object_attribute, policy_machine_uuid)
+    end
+
+    def add_association_later(user_attribute, operation_set, object_attribute, policy_machine_uuid)
+      associations_to_create << [user_attribute, operation_set, object_attribute, policy_machine_uuid]
     end
 
     ##
@@ -473,7 +501,7 @@ module PolicyMachineStorageAdapter
       end
     end
 
-    def bulk_create!
+    def bulk_persist!
       PolicyElement.bulk_persist!
     end
 
