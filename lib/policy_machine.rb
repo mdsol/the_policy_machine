@@ -270,7 +270,7 @@ class PolicyMachine
   end
 
   def bulk_persist
-    if policy_machine_storage_adapter.respond_to?(:bulk_create!)
+    if policy_machine_storage_adapter.respond_to?(:bulk_persist!)
       begin
         self.bulk_persisting = true
         result = yield
