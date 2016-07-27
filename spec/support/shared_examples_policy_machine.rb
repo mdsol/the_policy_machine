@@ -525,8 +525,8 @@ shared_examples "a policy machine" do
 
       # This PM is taken from the policy machine spec, Figure 4. (pg. 19)
       describe "Simple Example:  Figure 4. (pg. 19)#{bulk_create_mode}" do
-        let(:inserts) do
-          lambda do
+        before do
+            inserts = lambda do
             # Users
             @u1 = policy_machine.create_user('u1')
             @u2 = policy_machine.create_user('u2')
@@ -573,10 +573,11 @@ shared_examples "a policy machine" do
             policy_machine.add_association(@group2, Set.new([@w]), @project2)
             policy_machine.add_association(@division, Set.new([@r]), @projects)
           end
-        end
-
-        before do
-          bulk_create_mode ? policy_machine.bulk_persist(&inserts) : inserts.call
+          if bulk_create_mode
+            policy_machine.bulk_persist(&inserts)
+          else
+            inserts.call
+          end
         end
 
         it 'returns all and only these privileges encoded by the policy machine' do
