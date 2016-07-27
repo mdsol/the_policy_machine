@@ -105,13 +105,10 @@ module PM
     end
 
     def self.create(unique_identifier, policy_machine_uuid, pm_storage_adapter, extra_attributes = {})
+      new_pe = new(unique_identifier, policy_machine_uuid, pm_storage_adapter, nil, extra_attributes)
       method_name = "add_#{self.name.split('::').last}".underscore.to_sym
-      base_create(unique_identifier, policy_machine_uuid, pm_storage_adapter, extra_attributes, method_name)
-    end
-
-    def self.create_later(unique_identifier, policy_machine_uuid, pm_storage_adapter, extra_attributes = {})
-      method_name = "bulk_add_#{self.name.split('::').last}".underscore.to_sym
-      base_create(unique_identifier, policy_machine_uuid, pm_storage_adapter, extra_attributes, method_name)
+      new_pe.stored_pe = pm_storage_adapter.send(method_name, unique_identifier, policy_machine_uuid, extra_attributes)
+      new_pe
     end
 
     # Returns all policy elements of a particular type (e.g. all users)
@@ -124,14 +121,6 @@ module PM
       end
       all_result.define_singleton_method(:total_entries) { result.total_entries }
       all_result
-    end
-
-    private
-
-    def self.base_create(unique_identifier, policy_machine_uuid, pm_storage_adapter, extra_attributes, method_name)
-      new_pe = new(unique_identifier, policy_machine_uuid, pm_storage_adapter, nil, extra_attributes)
-      new_pe.stored_pe = pm_storage_adapter.send(method_name, unique_identifier, policy_machine_uuid, extra_attributes)
-      new_pe
     end
 
   end
