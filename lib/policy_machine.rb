@@ -274,11 +274,11 @@ class PolicyMachine
       begin
         self.bulk_persisting = true
         result = yield
-        policy_machine_storage_adapter.bulk_create!
+        policy_machine_storage_adapter.bulk_persist!
         result
       ensure
         self.bulk_persisting = false
-        policy_machine_storage_adapter.clear_buffer!
+        policy_machine_storage_adapter.clear_buffers!
       end
     else
       yield
@@ -289,8 +289,8 @@ class PolicyMachine
 
   attr_accessor :bulk_persisting
 
-  def bulk_create!
-    policy_machine_storage_adapter.bulk_create!
+  def bulk_persist!
+    policy_machine_storage_adapter.bulk_persist!
   end
 
   private
