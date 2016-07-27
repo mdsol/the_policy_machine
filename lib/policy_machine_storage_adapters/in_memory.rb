@@ -190,6 +190,19 @@ module PolicyMachineStorageAdapter
       end
     end
 
+    #TODO Consider moving into template?
+    def can_buffer?
+      false
+    end
+
+    def self.buffering?
+      false
+    end
+
+    def buffering?
+      false
+    end
+
 
     private
 
