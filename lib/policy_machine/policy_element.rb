@@ -57,18 +57,11 @@ module PM
     # Updates extra attributes with the passed-in values. Will not remove other
     # attributes not in the hash. Returns true if no errors occurred.
     def update(attr_hash)
-      self.pm_storage_adapter.buffering? ? update_later(attr_hash) : update_now(attr_hash)
-    end
-
-    def update_now(attr_hash)
       @extra_attributes.merge!(attr_hash)
       if self.stored_pe && self.stored_pe.persisted
         @pm_storage_adapter.update(self.stored_pe, attr_hash)
         true
       end
-    end
-
-    def update_later(attr_hash)
     end
 
     # Converts a stored_pe to an instantiated pe
