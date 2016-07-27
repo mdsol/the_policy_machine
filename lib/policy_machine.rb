@@ -35,7 +35,7 @@ class PolicyMachine
     assert_policy_element_in_machine(src_policy_element)
     assert_policy_element_in_machine(dst_policy_element)
 
-    src_policy_element.assign_to(dst_policy_element, self.bulk_persisting)
+    src_policy_element.assign_to(dst_policy_element)
   end
 
   ##
@@ -57,7 +57,7 @@ class PolicyMachine
     operation_set.each{ |op| assert_policy_element_in_machine(op) }
     assert_policy_element_in_machine(object_attribute_pe)
 
-    PM::Association.create(user_attribute_pe, operation_set, object_attribute_pe, @uuid, @policy_machine_storage_adapter, self.bulk_persisting)
+    PM::Association.create(user_attribute_pe, operation_set, object_attribute_pe, @uuid, @policy_machine_storage_adapter)
   end
 
   ##
@@ -270,14 +270,14 @@ class PolicyMachine
   end
 
   def bulk_persist
-    if policy_machine_storage_adapter.respond_to?(:bulk_persist!)
+    if policy_machine_storage_adapter.can_buffer?
       begin
-        self.bulk_persisting = true
+        self.start_buffering!
         result = yield
         policy_machine_storage_adapter.bulk_persist!
         result
       ensure
-        self.bulk_persisting = false
+        self.stop_buffering!
         policy_machine_storage_adapter.clear_buffers!
       end
     else

@@ -37,7 +37,7 @@ module PM
 
     # Create an association given persisted policy elements
     #
-    def self.create(user_attribute_pe, operation_set, object_attribute_pe, policy_machine_uuid, pm_storage_adapter, bulk_persisting = false)
+    def self.create(user_attribute_pe, operation_set, object_attribute_pe, policy_machine_uuid, pm_storage_adapter)
       # argument errors for user_attribute_pe
       raise(ArgumentError, "user_attribute_pe must be a UserAttribute.") unless user_attribute_pe.is_a?(PM::UserAttribute)
       unless user_attribute_pe.policy_machine_uuid == policy_machine_uuid
@@ -62,9 +62,7 @@ module PM
         raise(ArgumentError, "object_attribute_pe must be in policy machine with uuid #{policy_machine_uuid}")
       end
 
-      meth = bulk_persisting ? :add_association_later : :add_association
-
-      new_assoc = pm_storage_adapter.public_send(meth,
+      pm_storage_adapter.add_association(
         user_attribute_pe.stored_pe,
         Set.new(operation_set.map(&:stored_pe)),
         object_attribute_pe.stored_pe,
