@@ -27,11 +27,11 @@ module PM
 
     # Assigns self to destination policy element
     # This method is sensitive to the type of self and dst_policy_element
-    def assign_to(dst_policy_element, bulk_persisting = false)
+    def assign_to(dst_policy_element)
       unless allowed_assignee_classes.any?{|aac| dst_policy_element.is_a?(aac)}
         raise(ArgumentError, "expected dst_policy_element to be one of #{allowed_assignee_classes.to_s}; got #{dst_policy_element.class} instead.")
       end
-      if bulk_persisting
+      if self.pm_storage_adapter.buffering?
         @pm_storage_adapter.assign_later(parent: self.stored_pe, child: dst_policy_element.stored_pe)
       else
         @pm_storage_adapter.assign(self.stored_pe, dst_policy_element.stored_pe)
@@ -57,11 +57,18 @@ module PM
     # Updates extra attributes with the passed-in values. Will not remove other
     # attributes not in the hash. Returns true if no errors occurred.
     def update(attr_hash)
+      self.pm_storage_adapter.buffering? ? update_later(attr_hash) : update_now(attr_hash)
+    end
+
+    def update_now(attr_hash)
       @extra_attributes.merge!(attr_hash)
       if self.stored_pe && self.stored_pe.persisted
         @pm_storage_adapter.update(self.stored_pe, attr_hash)
         true
       end
+    end
+
+    def update_later(attr_hash)
     end
 
     # Converts a stored_pe to an instantiated pe
