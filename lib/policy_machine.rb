@@ -242,8 +242,7 @@ class PolicyMachine
     define_method("create_#{pe_type}") do |unique_identifier, extra_attributes = {}|
       # when creating a policy element, we provide a unique_identifier, the uuid of this policy machine
       # and a policy machine storage adapter to allow us to persist the policy element.
-      meth = self.bulk_persisting ? :create_later : :create
-      pm_class.send(meth, unique_identifier, @uuid, @policy_machine_storage_adapter, extra_attributes)
+      pm_class.send(:create, unique_identifier, @uuid, @policy_machine_storage_adapter, extra_attributes)
     end
 
     ##
