@@ -84,7 +84,7 @@ module PolicyMachineStorageAdapter
 
       def self.create_later(attrs)
         keys_to_ignore = %i[unique_identifier created_at updated_at] #FIXME
-        already_pending = elements_to_create.find do |elt|
+        already_pending = persistence_elements[:to_upsert].find do |elt|
           elt.class == self && attrs.symbolize_keys.except(*keys_to_ignore).all? { |k,v| elt.send(k).to_json == v.to_json }
         end
         if already_pending
@@ -96,8 +96,8 @@ module PolicyMachineStorageAdapter
         end
       end
 
-      def self.elements_to_create
-        Thread.current[:policy_machine_batch_create] ||= Array.new
+      def self.persistence_elements
+        Thread.current[:policy_machine_batch_persist] ||= {to_upsert: [], to_delete: []}
       end
 
       def self.assignments_to_create
@@ -117,11 +117,18 @@ module PolicyMachineStorageAdapter
         associations_to_create << [user_attribute, operation_set, object_attribute, policy_machine_uuid]
       end
 
-      def self.bulk_create!
-        result = import(elements_to_create)
+      def self.bulk_persist!
+        result = import(persistence_elements[:to_upsert])
+        bulk_destroy(persistence_elements[:to_delete])
         bulk_create_assignments
         bulk_create_associations
         result
+      end
+
+      def self.bulk_destroy(policy_elements)
+        # Ensure we always reference policy element, regardless of called subclass
+        # NB: delete_all in AR bypasses relation logic, which shouldn't matter here.
+        PolicyElement.where(unique_identifier: policy_elements.map(&:unique_identifier).delete_all)
       end
 
       def self.clear_buffer!
