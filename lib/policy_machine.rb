@@ -284,14 +284,6 @@ class PolicyMachine
     end
   end
 
-  protected
-
-  attr_accessor :bulk_persisting
-
-  def bulk_persist!
-    policy_machine_storage_adapter.bulk_persist!
-  end
-
   private
 
     # Raise unless the argument is a policy element.
