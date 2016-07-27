@@ -474,7 +474,7 @@ module PolicyMachineStorageAdapter
     end
 
     def bulk_create!
-      PolicyElement.bulk_create!
+      PolicyElement.bulk_persist!
     end
 
     def clear_buffer!

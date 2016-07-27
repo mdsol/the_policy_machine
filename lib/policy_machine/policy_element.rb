@@ -31,7 +31,7 @@ module PM
       unless allowed_assignee_classes.any?{|aac| dst_policy_element.is_a?(aac)}
         raise(ArgumentError, "expected dst_policy_element to be one of #{allowed_assignee_classes.to_s}; got #{dst_policy_element.class} instead.")
       end
-      if bulk_creating
+      if bulk_persisting
         @pm_storage_adapter.assign_later(parent: self.stored_pe, child: dst_policy_element.stored_pe)
       else
         @pm_storage_adapter.assign(self.stored_pe, dst_policy_element.stored_pe)

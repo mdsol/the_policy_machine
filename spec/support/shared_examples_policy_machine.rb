@@ -574,7 +574,7 @@ shared_examples "a policy machine" do
             policy_machine.add_association(@division, Set.new([@r]), @projects)
           end
           if bulk_create_mode
-            policy_machine.bulk_create(&inserts)
+            policy_machine.bulk_persist(&inserts)
           else
             inserts.call
           end
