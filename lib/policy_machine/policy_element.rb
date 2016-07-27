@@ -104,12 +104,6 @@ module PM
       raise "Must override this method in a subclass"
     end
 
-    private def self.base_create(unique_identifier, policy_machine_uuid, pm_storage_adapter, extra_attributes, method_name)
-      new_pe = new(unique_identifier, policy_machine_uuid, pm_storage_adapter, nil, extra_attributes)
-      new_pe.stored_pe = pm_storage_adapter.send(method_name, unique_identifier, policy_machine_uuid, extra_attributes)
-      new_pe
-    end
-
     def self.create(unique_identifier, policy_machine_uuid, pm_storage_adapter, extra_attributes = {})
       method_name = "add_#{self.name.split('::').last}".underscore.to_sym
       base_create(unique_identifier, policy_machine_uuid, pm_storage_adapter, extra_attributes, method_name)
@@ -131,6 +125,15 @@ module PM
       all_result.define_singleton_method(:total_entries) { result.total_entries }
       all_result
     end
+
+    private
+
+    def self.base_create(unique_identifier, policy_machine_uuid, pm_storage_adapter, extra_attributes, method_name)
+      new_pe = new(unique_identifier, policy_machine_uuid, pm_storage_adapter, nil, extra_attributes)
+      new_pe.stored_pe = pm_storage_adapter.send(method_name, unique_identifier, policy_machine_uuid, extra_attributes)
+      new_pe
+    end
+
   end
 
   # A user in a policy machine.
