@@ -34,8 +34,8 @@ module PolicyMachineStorageAdapter
       require_relative("active_record/#{PolicyElement.configurations[Rails.env]['adapter']}")
     end
 
-    def can_buffer?
-      self.respond_to?(:persist_buffers!)
+    def self.can_buffer?
+      respond_to?(:persist_buffers!)
     end
 
     def self.buffering?
@@ -46,12 +46,34 @@ module PolicyMachineStorageAdapter
       self.class.buffering?
     end
 
-    def self.begin_buffering!
+    def self.start_buffering!
       @buffering = true
     end
 
     def self.stop_buffering!
       @buffering = false
+    end
+
+    def self.buffers
+      #The associations thing being different is annoying. Causality sucks.
+      @buffers ||= {upsert: {}, delete:{}, assignments: {}, associations: [] }
+    end
+
+    def self.clear_buffers!
+      @buffers = nil
+    end
+
+    def buffers
+      self.class.buffers
+    end
+
+    def self.persist_buffers!
+      PolicyElement.import(buffers[:upsert].values)
+      PolicyElement.bulk_destroy(buffers[:delete].keys)
+      PolicyElement.bulk_assign(buffers[:assignments])
+      PolicyElement.bulk_associate(buffers[:associations])
+
+      true #TODO: More useful return value?
     end
 
     class PolicyElement < ::ActiveRecord::Base
@@ -102,74 +124,61 @@ module PolicyMachineStorageAdapter
         store_accessor store, name
       end
 
-      def self.create_later(attrs)
-        keys_to_ignore = %i[unique_identifier created_at updated_at] #FIXME
-        already_pending = persistence_elements[:to_upsert].find do |elt|
-          elt.class == self && attrs.symbolize_keys.except(*keys_to_ignore).all? { |k,v| elt.send(k).to_json == v.to_json }
-        end
-        if already_pending
-          already_pending
-        else
-          to_create = new(attrs)
-          elements_to_create << to_create
-          to_create
-        end
+      def buffers
+        pm_storage_adapter.buffers
       end
 
-      def self.persistence_elements
-        Thread.current[:policy_machine_batch_persist] ||= {to_upsert: [], to_delete: []}
+      def self.create_later(attrs, storage_adapter)
+        element = new(attrs)
+        storage_adapter.buffers[:upsert][element.unique_identifier] = element
+
+        # TODO: Why did we have to do this again? Don't get it
+        # keys_to_ignore = %i[unique_identifier created_at updated_at] #FIXME
+        # already_pending = persistence_elements[:to_upsert].find do |elt|
+        #   elt.class == self && attrs.symbolize_keys.except(*keys_to_ignore).all? { |k,v| elt.send(k).to_json == v.to_json }
+        # end
+        # if already_pending
+        #   already_pending
+        # else
+        #   to_create = new(attrs)
+
+        #   elements_to_create << to_create
+        #   to_create
+        # end
       end
 
-      def self.assignments_to_create
-        Thread.current[:policy_machine_batch_create_assignments] ||= Array.new
-      end
-
-      def self.associations_to_create
-        Thread.current[:policy_machine_batch_create_associations] ||= Array.new
-      end
-
-      def self.assign_later(parent: , child: )
-        assignments_to_create << {parent: parent, child: child }
+      def self.assign_later(parent:, child:, buffer:)
+        buffer.merge!(parent => child)
         :buffered
       end
 
-      def self.bulk_persist!
-        result = import(persistence_elements[:to_upsert])
-        bulk_destroy(persistence_elements[:to_delete])
-        bulk_create_assignments
-        bulk_create_associations
-        result
+      #TODO Are we not using PM UUID here?
+      def self.associate_later(user_attribute, operation_set, object_attribute, policy_machine_uuid, buffer)
+        buffer << [user_attribute, operation_set, object_attribute, policy_machine_uuid]
       end
 
-      def self.bulk_destroy(policy_elements)
+      def self.bulk_destroy(policy_element_identifiers)
         # Ensure we always reference policy element, regardless of called subclass
         # NB: delete_all in AR bypasses relation logic, which shouldn't matter here.
-        PolicyElement.where(unique_identifier: policy_elements.map(&:unique_identifier).delete_all)
+        # PolicyElement.where(unique_identifier: policy_elements_identifiers).delete_all
       end
 
-      def self.clear_buffer!
-        elements_to_create.clear
-        assignments_to_create.clear
-        associations_to_create.clear
+      def self.bulk_assign(parents_and_children)
+        id_pairs = parents_and_children.map { |parent, child| [parent.id, child.id]  }
+        Assignment.import([:parent_id, :child_id], id_pairs, on_duplicate_key_ignore: true)
       end
 
-      def self.bulk_create_assignments
-        assignments_to_create.map! do |attrs|
-          [attrs[:parent].id, attrs[:child].id]
-        end.uniq!
-        Assignment.import([:parent_id, :child_id], assignments_to_create, on_duplicate_key_ignore: true)
-      end
-
-      def self.bulk_create_associations
-        associations_to_create.map! do |user_attribute, operation_set, object_attribute, policy_machine_uuid|
+      def self.bulk_associate(associations)
+        associations.map! do |user_attribute, operation_set, object_attribute, policy_machine_uuid|
           [PolicyElementAssociation.new(user_attribute_id: user_attribute.id, object_attribute_id: object_attribute.id),
            operation_set]
         end
-        PolicyElementAssociation.import(associations_to_create.map(&:first), on_duplicate_key_ignore: true)
+        PolicyElementAssociation.import(associations.map(&:first), on_duplicate_key_ignore: true)
 
         #TODO: This should be a bulk upsert too but, among other things, AR doesn't understand nested arrays so deleting where a tuple
         # isn't in a list of tuples seems to require raw SQL
-        associations_to_create.each do |model, operation_set|
+        # NB: operations= is a persistence method
+        associations.each do |model, operation_set|
           model.operations = operation_set
         end
       end
@@ -244,28 +253,25 @@ module PolicyMachineStorageAdapter
       # The policy_machine_uuid is the uuid of the containing policy machine.
       #
 
-      ['bulk_', nil].each do |bulk|
+      #TODO: use the new stored attributes approach and a jsonb column for extra_attributes for the postgres adapter
+      define_method("add_#{pe_type}") do |unique_identifier, policy_machine_uuid, extra_attributes = {}|
+        klass = class_for_type(pe_type)
 
-        #TODO: use the new stored attributes approach and a jsonb column for extra_attributes for the postgres adapter
-        define_method("#{bulk}add_#{pe_type}") do |unique_identifier, policy_machine_uuid, extra_attributes = {}|
-          klass = class_for_type(pe_type)
+        stored_attribute_keys = klass.stored_attributes.except(:extra_attributes).values.flatten.map(&:to_s)
+        column_keys = klass.attribute_names + stored_attribute_keys
 
-          stored_attribute_keys = klass.stored_attributes.except(:extra_attributes).values.flatten.map(&:to_s)
-          column_keys = klass.attribute_names + stored_attribute_keys
+        active_record_attributes = extra_attributes.stringify_keys
+        extra_attributes = active_record_attributes.slice!(*column_keys)
 
-          active_record_attributes = extra_attributes.stringify_keys
-          extra_attributes = active_record_attributes.slice!(*column_keys)
+        element_attrs = {
+          unique_identifier: unique_identifier,
+          policy_machine_uuid: policy_machine_uuid,
+          extra_attributes: extra_attributes
+        }.merge(active_record_attributes)
 
-          element_attrs = {
-            unique_identifier: unique_identifier,
-            policy_machine_uuid: policy_machine_uuid,
-            extra_attributes: extra_attributes
-          }.merge(active_record_attributes)
-
-          bulk ? klass.create_later(element_attrs) : klass.create(element_attrs)
-        end
-
+        self.buffering? ? klass.create_later(element_attrs, self) : klass.create(element_attrs)
       end
+
 
       define_method("find_all_of_type_#{pe_type}") do |options = {}|
         conditions = options.slice!(:per_page, :page, :ignore_case).stringify_keys
@@ -382,7 +388,11 @@ module PolicyMachineStorageAdapter
     #
     def update(element, changes_hash)
       changes_hash.each { |k,v| element.send("#{k}=",v) }
-      element.save
+      self.buffering? ? update_later(element)  : element.save
+    end
+
+    def update_later(element)
+      persistence_elements[:to_upsert][element.unique_identifier] = element
     end
 
     ##
@@ -401,18 +411,11 @@ module PolicyMachineStorageAdapter
     #
     def add_association(user_attribute, operation_set, object_attribute, policy_machine_uuid)
       if self.buffering?
-        add_association_later(user_attribute, operation_set, object_attribute, policy_machine_uuid)
+        #TODO: move to right class
+        PolicyElement.associate_later(user_attribute, operation_set, object_attribute, policy_machine_uuid, buffers[:associations])
       else
-        add_association_now(user_attribute, operation_set, object_attribute, policy_machine_uuid)
+        PolicyElementAssociation.add_association(user_attribute, operation_set, object_attribute, policy_machine_uuid)
       end
-    end
-
-    def add_association_now(user_attribute, operation_set, object_attribute, policy_machine_uuid)
-      PolicyElementAssociation.add_association(user_attribute, operation_set, object_attribute, policy_machine_uuid)
-    end
-
-    def add_association_later(user_attribute, operation_set, object_attribute, policy_machine_uuid)
-      associations_to_create << [user_attribute, operation_set, object_attribute, policy_machine_uuid]
     end
 
     ##
@@ -424,7 +427,6 @@ module PolicyMachineStorageAdapter
     # If no associations are found then the empty array should be returned.
     #
     def associations_with(operation)
-
       assocs = operation.policy_element_associations(true).includes(:user_attribute, :operations, :object_attribute).all
       assocs.map do |assoc|
         assoc.clear_association_cache #TODO Either do this better (touch through HABTM on bulk insert?) or dont do this?
@@ -501,24 +503,16 @@ module PolicyMachineStorageAdapter
       end
     end
 
-    def bulk_persist!
-      PolicyElement.bulk_persist!
-    end
-
-    def clear_buffer!
-      PolicyElement.clear_buffer!
-    end
-
     def assign_later(parent: , child: )
       if !(Assignment.connection.supports_on_duplicate_key_ignore?) && parent.id && child.id
         Assignment.where(parent_id: parent.id, child_id: child.id).first_or_create
       else
-        PolicyElement.assign_later(parent: parent, child: child )
+        PolicyElement.assign_later(parent: parent, child: child, buffer: buffers[:assignments])
       end
     end
 
     def add_association_later(user_attribute, operation_set, object_attribute, policy_machine_uuid)
-      PolicyElement.associate_later(user_attribute, operation_set, object_attribute, policy_machine_uuid)
+      PolicyElement.associate_later(user_attribute, operation_set, object_attribute, policy_machine_uuid, buffers[:associations])
     end
 
     private
