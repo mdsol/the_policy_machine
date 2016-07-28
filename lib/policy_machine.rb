@@ -269,15 +269,17 @@ class PolicyMachine
   end
 
   def bulk_persist
-    if policy_machine_storage_adapter.can_buffer?
+    adapter_class = policy_machine_storage_adapter.class
+
+    if adapter_class.can_buffer?
       begin
-        self.start_buffering!
+        adapter_class.start_buffering!
         result = yield
-        policy_machine_storage_adapter.bulk_persist!
+        adapter_class.persist_buffers!
         result
       ensure
-        self.stop_buffering!
-        policy_machine_storage_adapter.clear_buffers!
+        adapter_class.stop_buffering!
+        adapter_class.clear_buffers!
       end
     else
       yield
