@@ -392,7 +392,7 @@ module PolicyMachineStorageAdapter
     end
 
     def update_later(element)
-      persistence_elements[:to_upsert][element.unique_identifier] = element
+      buffers[:upsert][element.unique_identifier] = element
     end
 
     ##
