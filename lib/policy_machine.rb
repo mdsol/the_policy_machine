@@ -271,7 +271,7 @@ class PolicyMachine
   def bulk_persist
     adapter_class = policy_machine_storage_adapter.class
 
-    if adapter_class.can_buffer?
+    if adapter_class.respond_to?(:buffering?)
       begin
         adapter_class.start_buffering!
         result = yield
