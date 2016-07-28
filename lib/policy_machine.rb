@@ -273,6 +273,7 @@ class PolicyMachine
 
     if adapter_class.respond_to?(:buffering?)
       begin
+        adapter_class.clear_buffers!
         adapter_class.start_buffering!
         result = yield
         adapter_class.persist_buffers!
