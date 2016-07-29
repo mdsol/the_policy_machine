@@ -67,10 +67,8 @@ module PolicyMachineStorageAdapter
       self.class.buffers
     end
 
+    # NB https://github.com/zdennis/activerecord-import/wiki/On-Duplicate-Key-Update
     def self.persist_buffers!
-      # TODO: if postgres needs all conflict targets specified, do we need this to be injectable?
-      # Also, we must move this into the pg adapter, since mysql behaves differently
-      # https://github.com/zdennis/activerecord-import/wiki/On-Duplicate-Key-Update
       column_keys = PolicyElement.column_names.map(&:to_sym)
       PolicyElement.import(buffers[:upsert].values, on_duplicate_key_update: column_keys - [:id])
       PolicyElement.bulk_destroy(buffers[:delete])
