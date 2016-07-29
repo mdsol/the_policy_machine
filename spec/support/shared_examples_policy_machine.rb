@@ -527,7 +527,6 @@ shared_examples "a policy machine" do
       #TODO better cleaner stronger faster tests needed
       describe "Simple Example:  Figure 4. (pg. 19)#{bulk_create_mode}" do
         before do
-          begin
           #Elements for update tests
           default_args = {foo: nil, color: nil}
           @u4 = policy_machine.create_user('u4', default_args)
@@ -622,8 +621,6 @@ shared_examples "a policy machine" do
             policy_machine.bulk_persist(&inserts)
           else
             inserts.call
-          end
-
           end
         end
 
