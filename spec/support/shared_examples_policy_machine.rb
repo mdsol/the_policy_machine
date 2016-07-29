@@ -524,17 +524,34 @@ shared_examples "a policy machine" do
     [nil, ' in bulk create mode'].each do |bulk_create_mode|
 
       # This PM is taken from the policy machine spec, Figure 4. (pg. 19)
+      #TODO better cleaner stronger faster tests needed
       describe "Simple Example:  Figure 4. (pg. 19)#{bulk_create_mode}" do
         before do
           begin
-          if policy_machine.policy_machine_storage_adapter.class == PolicyMachineStorageAdapter::ActiveRecord
-            @u4 = policy_machine.create_user('u4', {foo: nil})
-            @o4 = policy_machine.create_object('o4', {foo: nil})
-            @preexisting_group = policy_machine.create_user_attribute('preexisting_group', {foo: nil})
-            @preexisting_project = policy_machine.create_object_attribute('preexisting_project', {foo: nil})
-            @preexisting_policy_class = policy_machine.create_policy_class('preexisting_policy_class', {foo: nil})
-            @e = policy_machine.create_operation('edit')
-          end
+          #Elements for update tests
+          default_args = {foo: nil, color: nil}
+          @u4 = policy_machine.create_user('u4', default_args)
+          @o4 = policy_machine.create_object('o4', default_args)
+          @preexisting_group = policy_machine.create_user_attribute('preexisting_group', default_args)
+          @preexisting_project = policy_machine.create_object_attribute('preexisting_project', default_args)
+          @preexisting_policy_class = policy_machine.create_policy_class('preexisting_policy_class', default_args)
+          @e = policy_machine.create_operation('edit')
+
+          # Elements for delete tests
+          @u5 = policy_machine.create_user('u5')
+          @u6 = policy_machine.create_user('u6')
+          @o5 = policy_machine.create_object('o5')
+          @o6 = policy_machine.create_object('o6')
+          @group3 = policy_machine.create_user_attribute('Group3')
+          @project3 = policy_machine.create_object_attribute('Project3')
+
+          # Assignments for delete tests
+          policy_machine.add_assignment(@u5, @group3)
+          policy_machine.add_assignment(@u6, @group3)
+          policy_machine.add_assignment(@group3, @preexisting_policy_class)
+          policy_machine.add_assignment(@o5, @project3)
+          policy_machine.add_assignment(@o6, @project3)
+          policy_machine.add_assignment(@project3, @preexisting_policy_class)
 
           inserts = lambda do
             # Users
@@ -578,28 +595,27 @@ shared_examples "a policy machine" do
             policy_machine.add_assignment(@division, @ou)
             policy_machine.add_assignment(@projects, @ou)
 
-            #Updates for preexsiting objects
-            if policy_machine.policy_machine_storage_adapter.class == PolicyMachineStorageAdapter::ActiveRecord
-              #Assignments for preexisting objects
-              policy_machine.add_assignment(@u4, @preexisting_group)
-              policy_machine.add_assignment(@o4, @preexisting_project)
-              policy_machine.add_assignment(@preexisting_project, @preexisting_policy_class)
-              policy_machine.add_assignment(@preexisting_group, @preexisting_policy_class)
+            #Assignments for preexisting objects
+            policy_machine.add_assignment(@u4, @preexisting_group)
+            policy_machine.add_assignment(@o4, @preexisting_project)
+            policy_machine.add_assignment(@preexisting_project, @preexisting_policy_class)
+            policy_machine.add_assignment(@preexisting_group, @preexisting_policy_class)
 
-              # Updates of preexisting elements
-              @o4.update(foo: 'bar', color: 'purple')
-              @u4.update(foo: 'bar', color: 'purple')
-              @preexisting_group.update(foo: 'bar', color: 'purple')
-              @preexisting_project.update(foo: 'bar', color: 'purple')
+            # Updates of preexisting elements
+            @o4.update(foo: 'bar', color: 'purple')
+            @u4.update(foo: 'bar', color: 'purple')
+            @preexisting_group.update(foo: 'bar', color: 'purple')
+            @preexisting_project.update(foo: 'bar', color: 'purple')
 
-              #Associations for preexisting objects
-              policy_machine.add_association(@preexisting_group, Set.new([@e]), @preexisting_project)
-            end
+            #Associations for preexisting objects
+            policy_machine.add_association(@preexisting_group, Set.new([@e]), @preexisting_project)
 
             # Associations
             policy_machine.add_association(@group1, Set.new([@w]), @project1)
             policy_machine.add_association(@group2, Set.new([@w]), @project2)
             policy_machine.add_association(@division, Set.new([@r]), @projects)
+
+            [@u5, @u6, @o5, @o6, @group3, @project3].each(&:delete)
           end
 
           if bulk_create_mode
@@ -608,8 +624,6 @@ shared_examples "a policy machine" do
             inserts.call
           end
 
-          rescue => e
-            # binding.pry
           end
         end
 
@@ -624,11 +638,17 @@ shared_examples "a policy machine" do
         end
 
         it 'updates policy element attributes appropriately' do
-          if policy_machine.policy_machine_storage_adapter.class == PolicyMachineStorageAdapter::ActiveRecord
-            [@o4, @u4, @preexisting_group, @preexisting_project].each do |el|
-              expect(el.foo).to eq 'bar'
-              expect(el.color).to eq 'purple'
-            end
+          [@o4, @u4, @preexisting_group, @preexisting_project].each do |el|
+            expect(el.foo).to eq 'bar'
+            expect(el.color).to eq 'purple'
+          end
+        end
+
+        it 'deletes appropriate elements' do
+          [@u5, @u6, @o5, @o6, @group3, @project3].each do |el|
+            meth  = el.class.to_s.split("::").last.underscore.pluralize
+            match = policy_machine.send(meth, {unique_identifier: el.unique_identifier})
+            expect(match).to be_empty
           end
         end
       end
