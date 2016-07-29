@@ -131,11 +131,6 @@ module PolicyMachineStorageAdapter
         storage_adapter.buffers[:upsert][element.unique_identifier] = element
       end
 
-      def self.assign_later(parent:, child:, buffer:)
-        buffer << [parent, child]
-        :buffered
-      end
-
       # NB: delete_all in AR bypasses relation logic, which shouldn't matter here.
       def self.bulk_destroy(buffer)
         id_groups = buffer.reduce(Hash.new { |h,k| h[k] = [] }) do |memo,(_,el)|
@@ -332,11 +327,17 @@ module PolicyMachineStorageAdapter
     def assign(src, dst)
       assert_persisted_policy_element(src, dst)
       if self.buffering?
-        PolicyElement.assign_later(parent: src, child: dst, buffer: buffers[:assignments])
+        assign_later(parent: src, child: dst)
       else
         Assignment.where(parent_id: src.id, child_id: dst.id).first_or_create
       end
     end
+
+    def self.assign_later(parent:, child:)
+      buffers[:assignments] << [parent, child]
+      :buffered
+    end
+
 
     ##
     # Determine if there is a path from src to dst in the policy machine.
