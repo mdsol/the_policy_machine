@@ -132,8 +132,8 @@ module PolicyMachineStorageAdapter
       end
 
       # NB: delete_all in AR bypasses relation logic, which shouldn't matter here.
-      def self.bulk_destroy(buffer)
-        id_groups = buffer.reduce(Hash.new { |h,k| h[k] = [] }) do |memo,(_,el)|
+      def self.bulk_destroy(elements)
+        id_groups = elements.reduce(Hash.new { |h,k| h[k] = [] }) do |memo,(_,el)|
           if el.is_a?(UserAttribute) || el.is_a?(ObjectAttribute)
             memo[el.class] << el.id
           end
@@ -141,8 +141,8 @@ module PolicyMachineStorageAdapter
           memo
         end
 
-        PolicyElement.where(unique_identifier: buffer.keys).delete_all
-        Assignment.where(parent_id: buffer.keys).delete_all
+        PolicyElement.where(unique_identifier: elements.keys).delete_all
+        Assignment.where(parent_id: elements.keys).delete_all
         PolicyElementAssociation.where(user_attribute_id: id_groups[UserAttribute]).delete_all
         PolicyElementAssociation.where(object_attribute_id: id_groups[ObjectAttribute]).delete_all
       end
@@ -338,7 +338,6 @@ module PolicyMachineStorageAdapter
       :buffered
     end
 
-
     ##
     # Determine if there is a path from src to dst in the policy machine.
     # The two policy elements must be persisted policy elements; otherwise the method should raise
@@ -409,7 +408,6 @@ module PolicyMachineStorageAdapter
     #
     def add_association(user_attribute, operation_set, object_attribute, policy_machine_uuid)
       if self.buffering?
-        #TODO: move to right class
         associate_later(user_attribute, operation_set, object_attribute, policy_machine_uuid)
       else
         PolicyElementAssociation.add_association(user_attribute, operation_set, object_attribute, policy_machine_uuid)
