@@ -1,4 +1,3 @@
-# coding: utf-8
 require 'policy_machine/policy_element'
 require 'policy_machine/association'
 require 'securerandom'

@@ -34,10 +34,6 @@ module PolicyMachineStorageAdapter
       require_relative("active_record/#{PolicyElement.configurations[Rails.env]['adapter']}")
     end
 
-    def self.can_buffer?
-      respond_to?(:persist_buffers!)
-    end
-
     def self.buffering?
       @buffering
     end
