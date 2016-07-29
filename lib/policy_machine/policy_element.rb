@@ -58,6 +58,7 @@ module PM
     # attributes not in the hash. Returns true if no errors occurred.
     def update(attr_hash)
       @extra_attributes.merge!(attr_hash)
+      #TODO: consider removing the persisted check to allow for buffered writes
       if self.stored_pe && self.stored_pe.persisted
         @pm_storage_adapter.update(self.stored_pe, attr_hash)
         true
