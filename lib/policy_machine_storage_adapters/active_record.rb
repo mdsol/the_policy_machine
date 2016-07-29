@@ -506,10 +506,6 @@ module PolicyMachineStorageAdapter
       end
     end
 
-    def add_association_later(user_attribute, operation_set, object_attribute, policy_machine_uuid)
-      PolicyElement.associate_later(user_attribute, operation_set, object_attribute, policy_machine_uuid, buffers[:associations])
-    end
-
     private
 
     def relevant_associations(user_or_attribute, operation, object_or_attribute)
