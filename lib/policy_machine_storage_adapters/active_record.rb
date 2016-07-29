@@ -136,11 +136,6 @@ module PolicyMachineStorageAdapter
         :buffered
       end
 
-      #TODO PM uuid potentially useful for future optimization, currently unused
-      def self.associate_later(user_attribute, operation_set, object_attribute, policy_machine_uuid, buffer)
-        buffer << [user_attribute, operation_set, object_attribute, policy_machine_uuid]
-      end
-
       # NB: delete_all in AR bypasses relation logic, which shouldn't matter here.
       def self.bulk_destroy(buffer)
         id_groups = buffer.reduce(Hash.new { |h,k| h[k] = [] }) do |memo,(_,el)|
@@ -414,10 +409,15 @@ module PolicyMachineStorageAdapter
     def add_association(user_attribute, operation_set, object_attribute, policy_machine_uuid)
       if self.buffering?
         #TODO: move to right class
-        PolicyElement.associate_later(user_attribute, operation_set, object_attribute, policy_machine_uuid, buffers[:associations])
+        associate_later(user_attribute, operation_set, object_attribute, policy_machine_uuid)
       else
         PolicyElementAssociation.add_association(user_attribute, operation_set, object_attribute, policy_machine_uuid)
       end
+    end
+
+    #TODO PM uuid potentially useful for future optimization, currently unused
+    def associate_later(user_attribute, operation_set, object_attribute, policy_machine_uuid)
+      buffers[:associations] << [user_attribute, operation_set, object_attribute, policy_machine_uuid]
     end
 
     ##
