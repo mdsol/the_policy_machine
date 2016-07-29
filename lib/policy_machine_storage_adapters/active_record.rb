@@ -73,7 +73,7 @@ module PolicyMachineStorageAdapter
       # https://github.com/zdennis/activerecord-import/wiki/On-Duplicate-Key-Update
       column_keys = PolicyElement.column_names.map(&:to_sym)
       PolicyElement.import(buffers[:upsert].values, on_duplicate_key_update: column_keys - [:id])
-      PolicyElement.bulk_destroy(buffers[:delete].keys)
+      PolicyElement.bulk_destroy(buffers[:delete])
       PolicyElement.bulk_assign(buffers[:assignments])
       PolicyElement.bulk_associate(buffers[:associations])
 
@@ -161,10 +161,20 @@ module PolicyMachineStorageAdapter
         buffer << [user_attribute, operation_set, object_attribute, policy_machine_uuid]
       end
 
-      def self.bulk_destroy(policy_element_identifiers)
-        # Ensure we always reference policy element, regardless of called subclass
-        # NB: delete_all in AR bypasses relation logic, which shouldn't matter here.
-        # PolicyElement.where(unique_identifier: policy_elements_identifiers).delete_all
+      # NB: delete_all in AR bypasses relation logic, which shouldn't matter here.
+      def self.bulk_destroy(buffer)
+        id_groups = buffer.reduce(Hash.new { [] }) do |memo,(_,el)|
+          if el.is_a?(UserAttribute) || el.is_a?(ObjectAttribute)
+            memo[el.class] << el.id
+          end
+
+          memo
+        end
+
+        PolicyElement.where(unique_identifier: buffer.keys).delete_all
+        Assignment.where(parent_id: buffer.keys).delete_all
+        PolicyElementAssociation.where(user_attribute_id: id_groups[UserAttribute]).delete_all
+        PolicyElementAssociation.where(object_attribute_id: id_groups[ObjectAttribute]).delete_all
       end
 
       def self.bulk_assign(parents_and_children)
@@ -346,7 +356,11 @@ module PolicyMachineStorageAdapter
     #
     def assign(src, dst)
       assert_persisted_policy_element(src, dst)
-      Assignment.where(parent_id: src.id, child_id: dst.id).first_or_create
+      if self.buffering?
+        PolicyElement.assign_later(parent: src, child: dst, buffer: buffers[:assignments])
+      else
+        Assignment.where(parent_id: src.id, child_id: dst.id).first_or_create
+      end
     end
 
     ##
@@ -382,7 +396,11 @@ module PolicyMachineStorageAdapter
     # Returns true if the delete succeeded.
     #
     def delete(element)
-      element.destroy
+      self.buffering? ? delete_later(element) : element.destroy
+    end
+
+    def delete_later(element)
+      buffers[:delete].merge!(element.unique_identifier => element)
     end
 
     ##
@@ -504,14 +522,6 @@ module PolicyMachineStorageAdapter
         candidates
       else
         candidates - accessible_objects(user_or_attribute, prohibition, options.merge(ignore_prohibitions: true))
-      end
-    end
-
-    def assign_later(parent: , child: )
-      if !(Assignment.connection.supports_on_duplicate_key_ignore?) && parent.id && child.id
-        Assignment.where(parent_id: parent.id, child_id: child.id).first_or_create
-      else
-        PolicyElement.assign_later(parent: parent, child: child, buffer: buffers[:assignments])
       end
     end
 
