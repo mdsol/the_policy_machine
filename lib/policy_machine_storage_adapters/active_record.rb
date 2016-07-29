@@ -141,14 +141,14 @@ module PolicyMachineStorageAdapter
         :buffered
       end
 
-      #TODO Are we not using PM UUID here?
+      #TODO PM uuid potentially useful for future optimization, currently unused
       def self.associate_later(user_attribute, operation_set, object_attribute, policy_machine_uuid, buffer)
         buffer << [user_attribute, operation_set, object_attribute, policy_machine_uuid]
       end
 
       # NB: delete_all in AR bypasses relation logic, which shouldn't matter here.
       def self.bulk_destroy(buffer)
-        id_groups = buffer.reduce(Hash.new { [] }) do |memo,(_,el)|
+        id_groups = buffer.reduce(Hash.new { |h,k| h[k] = [] }) do |memo,(_,el)|
           if el.is_a?(UserAttribute) || el.is_a?(ObjectAttribute)
             memo[el.class] << el.id
           end
