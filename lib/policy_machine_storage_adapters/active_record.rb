@@ -130,23 +130,10 @@ module PolicyMachineStorageAdapter
         pm_storage_adapter.buffers
       end
 
+      # TODO: support databases that dont support upserts(pg 9.4, etc)
       def self.create_later(attrs, storage_adapter)
         element = new(attrs)
         storage_adapter.buffers[:upsert][element.unique_identifier] = element
-
-        # TODO: Why did we have to do this again? Don't get it
-        # keys_to_ignore = %i[unique_identifier created_at updated_at] #FIXME
-        # already_pending = persistence_elements[:to_upsert].find do |elt|
-        #   elt.class == self && attrs.symbolize_keys.except(*keys_to_ignore).all? { |k,v| elt.send(k).to_json == v.to_json }
-        # end
-        # if already_pending
-        #   already_pending
-        # else
-        #   to_create = new(attrs)
-
-        #   elements_to_create << to_create
-        #   to_create
-        # end
       end
 
       def self.assign_later(parent:, child:, buffer:)
