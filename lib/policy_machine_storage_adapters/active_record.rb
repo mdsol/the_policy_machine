@@ -333,7 +333,7 @@ module PolicyMachineStorageAdapter
       end
     end
 
-    def self.assign_later(parent:, child:)
+    def assign_later(parent:, child:)
       buffers[:assignments] << [parent, child]
       :buffered
     end
