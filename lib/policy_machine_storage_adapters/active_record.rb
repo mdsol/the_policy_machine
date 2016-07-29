@@ -55,8 +55,7 @@ module PolicyMachineStorageAdapter
     end
 
     def self.buffers
-      #The associations thing being different is annoying. Causality sucks.
-      @buffers ||= {upsert: {}, delete:{}, assignments: {}, associations: [] }
+      @buffers ||= {upsert: {}, delete:{}, assignments: [], associations: [] }
     end
 
     def self.clear_buffers!
@@ -137,7 +136,7 @@ module PolicyMachineStorageAdapter
       end
 
       def self.assign_later(parent:, child:, buffer:)
-        buffer.merge!(parent => child)
+        buffer << [parent, child]
         :buffered
       end
 
