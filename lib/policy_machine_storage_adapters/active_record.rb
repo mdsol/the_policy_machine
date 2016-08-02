@@ -129,7 +129,6 @@ module PolicyMachineStorageAdapter
       def self.create_later(attrs, storage_adapter)
         element = new(attrs)
         storage_adapter.buffers[:upsert][element.unique_identifier] = element
-        element
       end
 
       # NB: delete_all in AR bypasses relation logic, which shouldn't matter here.
