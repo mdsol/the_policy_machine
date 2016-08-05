@@ -267,6 +267,29 @@ class PolicyMachine
     policy_machine_storage_adapter.transaction(&block)
   end
 
+  # TODO: For now, the adapter class itself mitigates buffering, so multiple instances of the
+  # adapter may share the same buffer.  In the future, we will move this to be adapter
+  # instance specific, so multiple policy machines sharing the same adapter may also
+  # share the same buffer without leaking global state.
+  def bulk_persist
+    adapter_class = policy_machine_storage_adapter.class
+
+    if adapter_class.respond_to?(:buffering?)
+      begin
+        adapter_class.clear_buffers!
+        adapter_class.start_buffering!
+        result = yield
+        adapter_class.persist_buffers!
+        result
+      ensure
+        adapter_class.stop_buffering!
+        adapter_class.clear_buffers!
+      end
+    else
+      yield
+    end
+  end
+
   private
 
     # Raise unless the argument is a policy element.

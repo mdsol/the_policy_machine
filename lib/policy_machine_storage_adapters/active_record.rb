@@ -34,6 +34,45 @@ module PolicyMachineStorageAdapter
       require_relative("active_record/#{PolicyElement.configurations[Rails.env]['adapter']}")
     end
 
+    def self.buffering?
+      @buffering
+    end
+
+    def buffering?
+      self.class.buffering?
+    end
+
+    def self.start_buffering!
+      @buffering = true
+    end
+
+    def self.stop_buffering!
+      @buffering = false
+    end
+
+    def self.buffers
+      @buffers ||= {upsert: {}, delete:{}, assignments: [], associations: [] }
+    end
+
+    def self.clear_buffers!
+      @buffers = nil
+    end
+
+    def buffers
+      self.class.buffers
+    end
+
+    # NB https://github.com/zdennis/activerecord-import/wiki/On-Duplicate-Key-Update
+    def self.persist_buffers!
+      column_keys = PolicyElement.column_names.map(&:to_sym)
+      PolicyElement.import(buffers[:upsert].values, on_duplicate_key_update: column_keys - [:id])
+      PolicyElement.bulk_destroy(buffers[:delete])
+      PolicyElement.bulk_assign(buffers[:assignments])
+      PolicyElement.bulk_associate(buffers[:associations])
+
+      true #TODO: More useful return value?
+    end
+
     class PolicyElement < ::ActiveRecord::Base
       alias_method :persisted, :persisted?
       singleton_class.send(:alias_method, :active_record_serialize, :serialize)
@@ -82,6 +121,52 @@ module PolicyMachineStorageAdapter
         store_accessor store, name
       end
 
+      def buffers
+        pm_storage_adapter.buffers
+      end
+
+      # TODO: support databases that dont support upserts(pg 9.4, etc)
+      def self.create_later(attrs, storage_adapter)
+        element = new(attrs)
+        storage_adapter.buffers[:upsert][element.unique_identifier] = element
+      end
+
+      # NB: delete_all in AR bypasses relation logic, which shouldn't matter here.
+      def self.bulk_destroy(elements)
+        id_groups = elements.reduce(Hash.new { |h,k| h[k] = [] }) do |memo,(_,el)|
+          if el.is_a?(UserAttribute) || el.is_a?(ObjectAttribute)
+            memo[el.class] << el.id
+          end
+
+          memo
+        end
+
+        PolicyElement.where(unique_identifier: elements.keys).delete_all
+        Assignment.where(parent_id: elements.keys).delete_all
+        PolicyElementAssociation.where(user_attribute_id: id_groups[UserAttribute]).delete_all
+        PolicyElementAssociation.where(object_attribute_id: id_groups[ObjectAttribute]).delete_all
+      end
+
+      def self.bulk_assign(parents_and_children)
+        id_pairs = parents_and_children.map { |parent, child| [parent.id, child.id]  }
+        Assignment.import([:parent_id, :child_id], id_pairs, on_duplicate_key_ignore: true)
+      end
+
+      def self.bulk_associate(associations)
+        associations.map! do |user_attribute, operation_set, object_attribute, policy_machine_uuid|
+          [PolicyElementAssociation.new(user_attribute_id: user_attribute.id, object_attribute_id: object_attribute.id),
+           operation_set]
+        end
+        PolicyElementAssociation.import(associations.map(&:first), on_duplicate_key_ignore: true)
+
+        #TODO: This should be a bulk upsert too but, among other things, AR doesn't understand nested arrays so deleting where a tuple
+        # isn't in a list of tuples seems to require raw SQL
+        # NB: operations= is a persistence method
+        associations.each do |model, operation_set|
+          model.operations = operation_set
+        end
+      end
+
     end
 
     class User < PolicyElement
@@ -91,7 +176,7 @@ module PolicyMachineStorageAdapter
       has_many :policy_element_associations, dependent: :destroy
     end
 
-     class ObjectAttribute < PolicyElement
+    class ObjectAttribute < PolicyElement
       has_many :policy_element_associations, dependent: :destroy
     end
 
@@ -130,6 +215,14 @@ module PolicyMachineStorageAdapter
         end
         self.clear_association_cache
       end
+
+      def self.add_association(user_attribute, operation_set, object_attribute, policy_machine_uuid)
+        where(
+          user_attribute_id: user_attribute.id,
+          object_attribute_id: object_attribute.id
+        ).first_or_create.operations = operation_set.to_a
+      end
+
     end
 
     class OperationsPolicyElementAssociation < ::ActiveRecord::Base
@@ -160,8 +253,9 @@ module PolicyMachineStorageAdapter
           extra_attributes: extra_attributes
         }.merge(active_record_attributes)
 
-        klass.create(element_attrs)
+        self.buffering? ? klass.create_later(element_attrs, self) : klass.create(element_attrs)
       end
+
 
       define_method("find_all_of_type_#{pe_type}") do |options = {}|
         conditions = options.slice!(:per_page, :page, :ignore_case).stringify_keys
@@ -232,7 +326,16 @@ module PolicyMachineStorageAdapter
     #
     def assign(src, dst)
       assert_persisted_policy_element(src, dst)
-      Assignment.where(parent_id: src.id, child_id: dst.id).first_or_create
+      if self.buffering?
+        assign_later(parent: src, child: dst)
+      else
+        Assignment.where(parent_id: src.id, child_id: dst.id).first_or_create
+      end
+    end
+
+    def assign_later(parent:, child:)
+      buffers[:assignments] << [parent, child]
+      :buffered
     end
 
     ##
@@ -268,7 +371,11 @@ module PolicyMachineStorageAdapter
     # Returns true if the delete succeeded.
     #
     def delete(element)
-      element.destroy
+      self.buffering? ? delete_later(element) : element.destroy
+    end
+
+    def delete_later(element)
+      buffers[:delete].merge!(element.unique_identifier => element)
     end
 
     ##
@@ -278,7 +385,11 @@ module PolicyMachineStorageAdapter
     #
     def update(element, changes_hash)
       changes_hash.each { |k,v| element.send("#{k}=",v) }
-      element.save
+      self.buffering? ? update_later(element)  : element.save
+    end
+
+    def update_later(element)
+      buffers[:upsert][element.unique_identifier] = element
     end
 
     ##
@@ -296,10 +407,16 @@ module PolicyMachineStorageAdapter
     # Returns true if the association was added and false otherwise.
     #
     def add_association(user_attribute, operation_set, object_attribute, policy_machine_uuid)
-      PolicyElementAssociation.where(
-        user_attribute_id: user_attribute.id,
-        object_attribute_id: object_attribute.id
-      ).first_or_create.operations = operation_set.to_a
+      if self.buffering?
+        associate_later(user_attribute, operation_set, object_attribute, policy_machine_uuid)
+      else
+        PolicyElementAssociation.add_association(user_attribute, operation_set, object_attribute, policy_machine_uuid)
+      end
+    end
+
+    #TODO PM uuid potentially useful for future optimization, currently unused
+    def associate_later(user_attribute, operation_set, object_attribute, policy_machine_uuid)
+      buffers[:associations] << [user_attribute, operation_set, object_attribute, policy_machine_uuid]
     end
 
     ##
@@ -311,7 +428,6 @@ module PolicyMachineStorageAdapter
     # If no associations are found then the empty array should be returned.
     #
     def associations_with(operation)
-
       assocs = operation.policy_element_associations(true).includes(:user_attribute, :operations, :object_attribute).all
       assocs.map do |assoc|
         assoc.clear_association_cache #TODO Either do this better (touch through HABTM on bulk insert?) or dont do this?

@@ -190,7 +190,6 @@ module PolicyMachineStorageAdapter
       end
     end
 
-
     private
 
       # Raise argument error if argument is not suitable for consumption in

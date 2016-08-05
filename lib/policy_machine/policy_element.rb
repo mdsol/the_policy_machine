@@ -31,6 +31,7 @@ module PM
       unless allowed_assignee_classes.any?{|aac| dst_policy_element.is_a?(aac)}
         raise(ArgumentError, "expected dst_policy_element to be one of #{allowed_assignee_classes.to_s}; got #{dst_policy_element.class} instead.")
       end
+
       @pm_storage_adapter.assign(self.stored_pe, dst_policy_element.stored_pe)
     end
 
@@ -54,6 +55,7 @@ module PM
     # attributes not in the hash. Returns true if no errors occurred.
     def update(attr_hash)
       @extra_attributes.merge!(attr_hash)
+      #TODO: consider removing the persisted check to allow for buffered writes
       if self.stored_pe && self.stored_pe.persisted
         @pm_storage_adapter.update(self.stored_pe, attr_hash)
         true
@@ -118,6 +120,7 @@ module PM
       all_result.define_singleton_method(:total_entries) { result.total_entries }
       all_result
     end
+
   end
 
   # A user in a policy machine.
