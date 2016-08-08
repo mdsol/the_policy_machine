@@ -624,6 +624,27 @@ shared_examples "a policy machine" do
           end
         end
 
+        PolicyMachine::POLICY_ELEMENT_TYPES.each do |type|
+          let(:document) { {'some' => 'hash'}}
+
+          before do
+            inserts = lambda do
+              policy_machine.send("create_#{type}", SecureRandom.uuid, {document: document})
+            end
+
+            @obj = if bulk_create_mode
+              policy_machine.bulk_persist(&inserts)
+            else
+              inserts.call
+            end
+          end
+
+          it 'persists arbitrary documents correctly' do
+            expect(@obj.document).to eq document
+          end
+        end
+
+
         it 'returns all and only these privileges encoded by the policy machine' do
           expected_privileges = [
             [@u1, @w, @o1], [@u1, @w, @o2], [@u1, @r, @o1], [@u1, @r, @o2], [@u1, @r, @o3],
@@ -648,6 +669,7 @@ shared_examples "a policy machine" do
             expect(match).to be_empty
           end
         end
+
       end
     end
   end
