@@ -70,9 +70,9 @@ module PolicyMachineStorageAdapter
       # during import, we set all attributes again in bulk here.  It is important
       # that these changes are mutative, since the default ActiveRecord magic
       # being relied on for assignments and associations will break, otherwise
-      buffers[:upsert].values.each { |element| element.attributes = element.attributes.slice(*column_keys) }
+      buffers[:upsert].values.each { |el| el.attributes = el.attributes.slice(*column_keys) }
 
-      PolicyElement.import(elements_to_upsert, on_duplicate_key_update: column_keys.map(&:to_sym) - [:id])
+      PolicyElement.import(buffers[:upsert].values, on_duplicate_key_update: column_keys.map(&:to_sym) - [:id])
       PolicyElement.bulk_destroy(buffers[:delete])
       PolicyElement.bulk_assign(buffers[:assignments])
       PolicyElement.bulk_associate(buffers[:associations])
