@@ -64,8 +64,15 @@ module PolicyMachineStorageAdapter
 
     # NB https://github.com/zdennis/activerecord-import/wiki/On-Duplicate-Key-Update
     def self.persist_buffers!
-      column_keys = PolicyElement.column_names.map(&:to_sym)
-      PolicyElement.import(buffers[:upsert].values, on_duplicate_key_update: column_keys - [:id])
+      column_keys = PolicyElement.column_names
+
+      # Because activerecord-import cannot yet handle arbitrary serialized values
+      # during import, we set all attributes again in bulk here.  It is important
+      # that these changes are mutative, since the default ActiveRecord magic
+      # being relied on for assignments and associations will break, otherwise
+      buffers[:upsert].values.each { |el| el.attributes = el.attributes.slice(*column_keys) }
+
+      PolicyElement.import(buffers[:upsert].values, on_duplicate_key_update: column_keys.map(&:to_sym) - [:id])
       PolicyElement.bulk_destroy(buffers[:delete])
       PolicyElement.bulk_assign(buffers[:assignments])
       PolicyElement.bulk_associate(buffers[:associations])
