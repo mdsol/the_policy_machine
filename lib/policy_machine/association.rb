@@ -62,7 +62,7 @@ module PM
         raise(ArgumentError, "object_attribute_pe must be in policy machine with uuid #{policy_machine_uuid}")
       end
 
-      new_assoc = pm_storage_adapter.add_association(
+      pm_storage_adapter.add_association(
         user_attribute_pe.stored_pe,
         Set.new(operation_set.map(&:stored_pe)),
         object_attribute_pe.stored_pe,

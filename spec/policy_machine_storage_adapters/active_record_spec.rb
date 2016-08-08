@@ -7,7 +7,11 @@ DatabaseCleaner.strategy = :truncation
 describe 'ActiveRecord' do
   before(:all) do
     ENV["RAILS_ENV"] = "test"
-    require_relative '../../test/testapp/config/environment.rb' #TODO better error message when setup has not been run
+    begin
+      require_relative '../../test/testapp/config/environment.rb'
+    rescue LoadError
+      raise "Failed to locate test/testapp/config/environment.rb. Execute 'rake pm:test:prepare' to generate test/testapp."
+    end
     Rails.backtrace_cleaner.remove_silencers!
   end
 
@@ -117,6 +121,35 @@ describe 'ActiveRecord' do
   describe 'PolicyMachine integration with PolicyMachineStorageAdapter::ActiveRecord' do
     it_behaves_like 'a policy machine' do
       let(:policy_machine) { PolicyMachine.new(:name => 'ActiveRecord PM', :storage_adapter => PolicyMachineStorageAdapter::ActiveRecord) }
+
+      #TODO: move to shared example group when in memory equivalent exists
+      describe '.serialize' do
+        before(:all) do
+          klass = PolicyMachineStorageAdapter::ActiveRecord::PolicyElement
+          klass.serialize(store: :document, name: :is_arbitrary, serializer: JSON)
+        end
+
+        (PolicyMachine::POLICY_ELEMENT_TYPES).each do |type|
+          describe 'store' do
+            it 'can specify a root store level store supported by the backing system' do
+              some_hash = {'foo' => 'bar'}
+              obj = policy_machine.send("create_#{type}", SecureRandom.uuid, {document: some_hash})
+
+              expect(obj.stored_pe.document).to eq some_hash
+              expect(obj.stored_pe.extra_attributes).to be_empty
+            end
+
+            it 'can specify additional key names to be serialized' do
+              another_hash = {'is_arbitrary' => ['thing']}
+              obj = policy_machine.send("create_#{type}", SecureRandom.uuid, another_hash)
+
+              expect(obj.stored_pe.is_arbitrary).to eq another_hash['is_arbitrary']
+              expect(obj.stored_pe.document).to eq another_hash
+              expect(obj.stored_pe.extra_attributes).to be_empty
+            end
+          end
+        end
+      end
     end
   end
 end

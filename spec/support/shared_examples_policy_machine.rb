@@ -27,8 +27,8 @@ shared_examples "a policy machine" do
 
     it 'raises when uuid is blank' do
       ['', '   '].each do |blank_value|
-        expect{ PolicyMachine.new(:uuid => blank_value) }.
-          to raise_error(ArgumentError, 'uuid cannot be blank')
+        expect{ PolicyMachine.new(:uuid => blank_value) }
+          .to raise_error(ArgumentError, 'uuid cannot be blank')
       end
     end
 
@@ -42,7 +42,6 @@ shared_examples "a policy machine" do
           should be_a(::PolicyMachineStorageAdapter::Neography)
       end
     end
-
   end
 
   describe 'Assignments' do
@@ -80,30 +79,30 @@ shared_examples "a policy machine" do
 
       it 'raises when first argument is not a policy element' do
         pe = policy_machine.create_user_attribute(SecureRandom.uuid)
-        expect{ policy_machine.add_assignment(1, pe) }.
-          to raise_error(ArgumentError, "arg must each be a kind of PolicyElement; got Fixnum instead")
+        expect{ policy_machine.add_assignment(1, pe) }
+          .to raise_error(ArgumentError, "arg must each be a kind of PolicyElement; got Fixnum instead")
       end
 
       it 'raises when first argument is not in policy machine' do
         pm2 = PolicyMachine.new
         pe0 = pm2.create_user_attribute(SecureRandom.uuid)
         pe1 = policy_machine.create_user_attribute(SecureRandom.uuid)
-        expect{ policy_machine.add_assignment(pe0, pe1) }.
-          to raise_error(ArgumentError, "#{pe0.unique_identifier} is not in policy machine with uuid #{policy_machine.uuid}")
+        expect{ policy_machine.add_assignment(pe0, pe1) }
+          .to raise_error(ArgumentError, "#{pe0.unique_identifier} is not in policy machine with uuid #{policy_machine.uuid}")
       end
 
       it 'raises when second argument is not a policy element' do
         pe = policy_machine.create_user_attribute(SecureRandom.uuid)
-        expect{ policy_machine.add_assignment(pe, "hello") }.
-          to raise_error(ArgumentError, "arg must each be a kind of PolicyElement; got String instead")
+        expect{ policy_machine.add_assignment(pe, "hello") }
+          .to raise_error(ArgumentError, "arg must each be a kind of PolicyElement; got String instead")
       end
 
       it 'raises when second argument is not in policy machine' do
         pm2 = PolicyMachine.new
         pe0 = policy_machine.create_user_attribute(SecureRandom.uuid)
         pe1 = pm2.create_user_attribute(SecureRandom.uuid)
-        expect{ policy_machine.add_assignment(pe0, pe1) }.
-          to raise_error(ArgumentError, "#{pe1.unique_identifier} is not in policy machine with uuid #{policy_machine.uuid}")
+        expect{ policy_machine.add_assignment(pe0, pe1) }
+          .to raise_error(ArgumentError, "#{pe1.unique_identifier} is not in policy machine with uuid #{policy_machine.uuid}")
       end
     end
 
@@ -123,29 +122,29 @@ shared_examples "a policy machine" do
       end
 
       it 'raises when first argument is not a policy element' do
-        expect{ policy_machine.add_assignment(1, @pe1) }.
-          to raise_error(ArgumentError, "arg must each be a kind of PolicyElement; got Fixnum instead")
+        expect{ policy_machine.add_assignment(1, @pe1) }
+          .to raise_error(ArgumentError, "arg must each be a kind of PolicyElement; got Fixnum instead")
       end
 
       it 'raises when first argument is not in policy machine' do
         pm2 = PolicyMachine.new
         pe0 = pm2.create_user_attribute(SecureRandom.uuid)
         pe1 = policy_machine.create_user_attribute(SecureRandom.uuid)
-        expect{ policy_machine.remove_assignment(pe0, pe1) }.
-          to raise_error(ArgumentError, "#{pe0.unique_identifier} is not in policy machine with uuid #{policy_machine.uuid}")
+        expect{ policy_machine.remove_assignment(pe0, pe1) }
+          .to raise_error(ArgumentError, "#{pe0.unique_identifier} is not in policy machine with uuid #{policy_machine.uuid}")
       end
 
       it 'raises when second argument is not a policy element' do
-        expect{ policy_machine.add_assignment(@pe0, "hello") }.
-          to raise_error(ArgumentError, "arg must each be a kind of PolicyElement; got String instead")
+        expect{ policy_machine.add_assignment(@pe0, "hello") }
+          .to raise_error(ArgumentError, "arg must each be a kind of PolicyElement; got String instead")
       end
 
       it 'raises when second argument is not in policy machine' do
         pm2 = PolicyMachine.new
         pe0 = policy_machine.create_user_attribute(SecureRandom.uuid)
         pe1 = pm2.create_user_attribute(SecureRandom.uuid)
-        expect{ policy_machine.remove_assignment(pe0, pe1) }.
-          to raise_error(ArgumentError, "#{pe1.unique_identifier} is not in policy machine with uuid #{policy_machine.uuid}")
+        expect{ policy_machine.remove_assignment(pe0, pe1) }
+          .to raise_error(ArgumentError, "#{pe1.unique_identifier} is not in policy machine with uuid #{policy_machine.uuid}")
       end
     end
   end
@@ -168,8 +167,8 @@ shared_examples "a policy machine" do
       it 'raises when first argument is not in policy machine' do
         pm2 = PolicyMachine.new
         ua = pm2.create_user_attribute(SecureRandom.uuid)
-        expect{ policy_machine.add_association(ua, @operation_set, @object_attribute) }.
-          to raise_error(ArgumentError, "#{ua.unique_identifier} is not in policy machine with uuid #{policy_machine.uuid}")
+        expect{ policy_machine.add_association(ua, @operation_set, @object_attribute) }
+          .to raise_error(ArgumentError, "#{ua.unique_identifier} is not in policy machine with uuid #{policy_machine.uuid}")
       end
 
       it 'raises when third argument is not a PolicyElement' do
@@ -180,8 +179,8 @@ shared_examples "a policy machine" do
       it 'raises when third argument is not in policy machine' do
         pm2 = PolicyMachine.new
         oa = pm2.create_object_attribute(SecureRandom.uuid)
-        expect{ policy_machine.add_association(@user_attribute, @operation_set, oa) }.
-          to raise_error(ArgumentError, "#{oa.unique_identifier} is not in policy machine with uuid #{policy_machine.uuid}")
+        expect{ policy_machine.add_association(@user_attribute, @operation_set, oa) }
+          .to raise_error(ArgumentError, "#{oa.unique_identifier} is not in policy machine with uuid #{policy_machine.uuid}")
       end
 
       it 'allows an association to be made between an existing user_attribute, operation set and object attribute (returns true)' do
@@ -200,14 +199,12 @@ shared_examples "a policy machine" do
           .to change{ policy_machine.scoped_privileges(@user_attribute, @object_attribute) }
           .from( [[@user_attribute, @operation1, @object_attribute]] )
           .to(   [[@user_attribute, @operation2, @object_attribute]] )
-
       end
-
     end
   end
 
   describe 'All methods for policy elements' do
-    (PolicyMachine::POLICY_ELEMENT_TYPES - %w(policy_class)).each do |pe_type|
+    PolicyMachine::POLICY_ELEMENT_TYPES.each do |pe_type|
       it "returns an array of all #{pe_type.to_s.pluralize}" do
         pe = policy_machine.send("create_#{pe_type}", 'some name')
         policy_machine.send(pe_type.to_s.pluralize).should == [pe]
@@ -220,18 +217,9 @@ shared_examples "a policy machine" do
         policy_machine.send(pe_type.to_s.pluralize).should == [pe]
       end
     end
-
-    (PolicyMachine::POLICY_ELEMENT_TYPES - %w(user user_attribute object object_attribute operation)).each do |pe_type|
-      it "raises when calling #{pe_type.to_s.pluralize}" do
-        pe = policy_machine.send("create_#{pe_type}", 'some name')
-        expect{ policy_machine.send(pe_type.to_s.pluralize) }.
-          to raise_error(NoMethodError)
-      end
-    end
   end
 
   describe 'Operations' do
-
     it 'does not allow an operation to start with a ~' do
       expect{policy_machine.create_operation('~apple')}.to raise_error(ArgumentError)
       expect{policy_machine.create_operation('apple~')}.not_to raise_error
@@ -258,37 +246,28 @@ shared_examples "a policy machine" do
     it 'can negate operations expressed as PM::Operations' do
       expect(PM::Prohibition.on(policy_machine.create_operation('fly'))).to be_a PM::Operation
     end
-
   end
 
   describe 'User Attributes' do
-
     describe '#extra_attributes' do
-
       it 'accepts and persists arbitrary extra attributes' do
         @ua = policy_machine.create_user_attribute('ua1', foo: 'bar')
         @ua.foo.should == 'bar'
         policy_machine.user_attributes.last.foo.should == 'bar'
       end
-
     end
 
     describe '#delete' do
-
       it 'successfully deletes itself' do
         @ua = policy_machine.create_user_attribute('ua1')
         @ua.delete
         policy_machine.user_attributes.should_not include(@ua)
       end
-
     end
-
   end
 
   describe 'Users' do
-
     describe '#extra_attributes' do
-
       it 'accepts and persists arbitrary extra attributes' do
         @u = policy_machine.create_user('u1', foo: 'bar')
         @u.foo.should == 'bar'
@@ -326,9 +305,7 @@ shared_examples "a policy machine" do
           policy_machine.users(foo: 'bar', attitude: 'sassy').should be_none
         end
       end
-
     end
-
   end
 
   describe '#is_privilege?' do
@@ -488,9 +465,7 @@ shared_examples "a policy machine" do
           policy_machine.is_privilege?(@u1, @w, @o1, 'in_user_attribute' => @group1, 'in_object_attribute' => project2).
             should be_false
         end
-
       end
-
     end
   end
 
@@ -520,7 +495,6 @@ shared_examples "a policy machine" do
     it 'raises an argument error when passed anything other than a user' do
       expect {policy_machine.list_user_attributes(@group1)}.to raise_error ArgumentError, /Expected a PM::User/
     end
-
   end
 
   describe '#transaction' do
@@ -547,64 +521,155 @@ shared_examples "a policy machine" do
 
   describe '#privileges' do
 
-    # This PM is taken from the policy machine spec, Figure 4. (pg. 19)
-    describe 'Simple Example:  Figure 4. (pg. 19)' do
-      before do
-        # Users
-        @u1 = policy_machine.create_user('u1')
-        @u2 = policy_machine.create_user('u2')
-        @u3 = policy_machine.create_user('u3')
+    [nil, ' in bulk create mode'].each do |bulk_create_mode|
 
-        # Objects
-        @o1 = policy_machine.create_object('o1')
-        @o2 = policy_machine.create_object('o2')
-        @o3 = policy_machine.create_object('o3')
+      # This PM is taken from the policy machine spec, Figure 4. (pg. 19)
+      #TODO better cleaner stronger faster tests needed
+      describe "Simple Example:  Figure 4. (pg. 19)#{bulk_create_mode}" do
+        before do
+          #Elements for update tests
+          default_args = {foo: nil, color: nil}
+          @u4 = policy_machine.create_user('u4', default_args)
+          @o4 = policy_machine.create_object('o4', default_args)
+          @preexisting_group = policy_machine.create_user_attribute('preexisting_group', default_args)
+          @preexisting_project = policy_machine.create_object_attribute('preexisting_project', default_args)
+          @preexisting_policy_class = policy_machine.create_policy_class('preexisting_policy_class', default_args)
+          @e = policy_machine.create_operation('edit')
 
-        # User Attributes
-        @group1 = policy_machine.create_user_attribute('Group1')
-        @group2 = policy_machine.create_user_attribute('Group2')
-        @division = policy_machine.create_user_attribute('Division')
+          # Elements for delete tests
+          @u5 = policy_machine.create_user('u5')
+          @u6 = policy_machine.create_user('u6')
+          @o5 = policy_machine.create_object('o5')
+          @o6 = policy_machine.create_object('o6')
+          @group3 = policy_machine.create_user_attribute('Group3')
+          @project3 = policy_machine.create_object_attribute('Project3')
 
-        # Object Attributes
-        @project1 = policy_machine.create_object_attribute('Project1')
-        @project2 = policy_machine.create_object_attribute('Project2')
-        @projects = policy_machine.create_object_attribute('Projects')
+          # Assignments for delete tests
+          policy_machine.add_assignment(@u5, @group3)
+          policy_machine.add_assignment(@u6, @group3)
+          policy_machine.add_assignment(@group3, @preexisting_policy_class)
+          policy_machine.add_assignment(@o5, @project3)
+          policy_machine.add_assignment(@o6, @project3)
+          policy_machine.add_assignment(@project3, @preexisting_policy_class)
 
-        # Operations
-        @r = policy_machine.create_operation('read')
-        @w = policy_machine.create_operation('write')
+          inserts = lambda do
+            # Users
+            @u1 = policy_machine.create_user('u1')
+            @u2 = policy_machine.create_user('u2')
+            @u3 = policy_machine.create_user('u3')
 
-        # Policy Classes
-        @ou = policy_machine.create_policy_class("OU")
+            # Objects
+            @o1 = policy_machine.create_object('o1')
+            @o2 = policy_machine.create_object('o2')
+            @o3 = policy_machine.create_object('o3')
 
-        # Assignments
-        policy_machine.add_assignment(@u1, @group1)
-        policy_machine.add_assignment(@u2, @group2)
-        policy_machine.add_assignment(@u3, @division)
-        policy_machine.add_assignment(@group1, @division)
-        policy_machine.add_assignment(@group2, @division)
-        policy_machine.add_assignment(@o1, @project1)
-        policy_machine.add_assignment(@o2, @project1)
-        policy_machine.add_assignment(@o3, @project2)
-        policy_machine.add_assignment(@project1, @projects)
-        policy_machine.add_assignment(@project2, @projects)
-        policy_machine.add_assignment(@division, @ou)
-        policy_machine.add_assignment(@projects, @ou)
+            # User Attributes
+            @group1 = policy_machine.create_user_attribute('Group1')
+            @group2 = policy_machine.create_user_attribute('Group2')
+            @division = policy_machine.create_user_attribute('Division')
 
-        # Associations
-        policy_machine.add_association(@group1, Set.new([@w]), @project1)
-        policy_machine.add_association(@group2, Set.new([@w]), @project2)
-        policy_machine.add_association(@division, Set.new([@r]), @projects)
-      end
+            # Object Attributes
+            @project1 = policy_machine.create_object_attribute('Project1')
+            @project2 = policy_machine.create_object_attribute('Project2')
+            @projects = policy_machine.create_object_attribute('Projects')
 
-      it 'returns all and only these privileges encoded by the policy machine' do
-        expected_privileges = [
-          [@u1, @w, @o1], [@u1, @w, @o2], [@u1, @r, @o1], [@u1, @r, @o2], [@u1, @r, @o3],
-          [@u2, @w, @o3], [@u2, @r, @o1], [@u2, @r, @o2], [@u2, @r, @o3],
-          [@u3, @r, @o1], [@u3, @r, @o2], [@u3, @r, @o3]
-        ]
+            # Operations
+            @r = policy_machine.create_operation('read')
+            @w = policy_machine.create_operation('write')
 
-        assert_pm_privilege_expectations(policy_machine.privileges, expected_privileges)
+            # Policy Classes
+            @ou = policy_machine.create_policy_class("OU")
+
+            # Assignments
+            policy_machine.add_assignment(@u1, @group1)
+            policy_machine.add_assignment(@u2, @group2)
+            policy_machine.add_assignment(@u3, @division)
+            policy_machine.add_assignment(@group1, @division)
+            policy_machine.add_assignment(@group2, @division)
+            policy_machine.add_assignment(@o1, @project1)
+            policy_machine.add_assignment(@o2, @project1)
+            policy_machine.add_assignment(@o3, @project2)
+            policy_machine.add_assignment(@project1, @projects)
+            policy_machine.add_assignment(@project2, @projects)
+            policy_machine.add_assignment(@division, @ou)
+            policy_machine.add_assignment(@projects, @ou)
+
+            #Assignments for preexisting objects
+            policy_machine.add_assignment(@u4, @preexisting_group)
+            policy_machine.add_assignment(@o4, @preexisting_project)
+            policy_machine.add_assignment(@preexisting_project, @preexisting_policy_class)
+            policy_machine.add_assignment(@preexisting_group, @preexisting_policy_class)
+
+            # Updates of preexisting elements
+            @o4.update(foo: 'bar', color: 'purple')
+            @u4.update(foo: 'bar', color: 'purple')
+            @preexisting_group.update(foo: 'bar', color: 'purple')
+            @preexisting_project.update(foo: 'bar', color: 'purple')
+
+            #Associations for preexisting objects
+            policy_machine.add_association(@preexisting_group, Set.new([@e]), @preexisting_project)
+
+            # Associations
+            policy_machine.add_association(@group1, Set.new([@w]), @project1)
+            policy_machine.add_association(@group2, Set.new([@w]), @project2)
+            policy_machine.add_association(@division, Set.new([@r]), @projects)
+
+            [@u5, @u6, @o5, @o6, @group3, @project3].each(&:delete)
+          end
+
+          if bulk_create_mode
+            policy_machine.bulk_persist(&inserts)
+          else
+            inserts.call
+          end
+        end
+
+        PolicyMachine::POLICY_ELEMENT_TYPES.each do |type|
+          let(:document) { {'some' => 'hash'}}
+
+          before do
+            inserts = lambda do
+              policy_machine.send("create_#{type}", SecureRandom.uuid, {document: document})
+            end
+
+            @obj = if bulk_create_mode
+              policy_machine.bulk_persist(&inserts)
+            else
+              inserts.call
+            end
+          end
+
+          it 'persists arbitrary documents correctly' do
+            expect(@obj.document).to eq document
+          end
+        end
+
+
+        it 'returns all and only these privileges encoded by the policy machine' do
+          expected_privileges = [
+            [@u1, @w, @o1], [@u1, @w, @o2], [@u1, @r, @o1], [@u1, @r, @o2], [@u1, @r, @o3],
+            [@u2, @w, @o3], [@u2, @r, @o1], [@u2, @r, @o2], [@u2, @r, @o3],
+            [@u3, @r, @o1], [@u3, @r, @o2], [@u3, @r, @o3], [@u4, @e, @o4]
+          ]
+
+          assert_pm_privilege_expectations(policy_machine.privileges, expected_privileges)
+        end
+
+        it 'updates policy element attributes appropriately' do
+          [@o4, @u4, @preexisting_group, @preexisting_project].each do |el|
+            expect(el.foo).to eq 'bar'
+            expect(el.color).to eq 'purple'
+          end
+        end
+
+        it 'deletes appropriate elements' do
+          [@u5, @u6, @o5, @o6, @group3, @project3].each do |el|
+            meth  = el.class.to_s.split("::").last.underscore.pluralize
+            match = policy_machine.send(meth, {unique_identifier: el.unique_identifier})
+            expect(match).to be_empty
+          end
+        end
+
       end
     end
   end
@@ -671,7 +736,6 @@ shared_examples "a policy machine" do
       with_prohibitions = policy_machine.scoped_privileges(@u2, @in_u2).map{ |_,op,_| op.unique_identifier }
       expect(ignoring_prohibitions - with_prohibitions).to eq([@w.unique_identifier])
     end
-
   end
 
   describe 'The DAC Operating System:  Figure 11. (pg. 47)' do
@@ -820,4 +884,95 @@ shared_examples "a policy machine" do
 
   end
 
+
+  describe 'batch_find' do
+
+    before do
+      @one_fish = policy_machine.create_object('one:fish')
+      @two_fish = policy_machine.create_object('two:fish')
+      @red_one = policy_machine.create_object('red:one')
+      @read = policy_machine.create_operation('read')
+      @write = policy_machine.create_operation('write')
+      @u1 = policy_machine.create_user('u1')
+      @ua = policy_machine.create_user_attribute('ua')
+      [@one_fish, @two_fish, @red_one].each do |object|
+        policy_machine.add_association(@ua, Set.new([@read]), object)
+      end
+      @oa = policy_machine.create_object_attribute('oa')
+      policy_machine.add_association(@ua, Set.new([@write]), @oa)
+      policy_machine.add_assignment(@u1, @ua)
+      policy_machine.add_assignment(@red_one, @oa)
+    end
+
+    context 'when given a block' do
+
+      it 'calls the block' do
+        expect do |spy|
+          policy_machine.batch_find(type: :object, query: { unique_identifier: 'one:fish' }, &spy)
+        end.to yield_control
+      end
+
+      context 'and search terms' do
+        it 'returns the matching records' do
+          policy_machine.batch_find(type: :object, query: { unique_identifier: 'one:fish' }) do |batch|
+            expect(batch.size).to eq 1
+            expect(batch.first.unique_identifier).to eq 'one:fish'
+          end
+        end
+      end
+
+      context 'and config options' do
+        it 'returns the correct batch size' do
+          policy_machine.batch_find(type: :object, config: { batch_size: 1 }) do |batch|
+            expect(batch.size).to eq 1
+          end
+
+          policy_machine.batch_find(type: :object, config: { batch_size: 3 }) do |batch|
+            expect(batch.size).to eq 3
+          end
+        end
+      end
+    end
+
+    context 'when not given a block' do
+
+      it 'returns an enumerator' do
+        result = policy_machine.batch_find(type: :object)
+        expect(result).to be_a Enumerator
+      end
+
+      it 'the results are chainable and returns the relevant results' do
+        enum = policy_machine.batch_find(type: :object)
+        results = enum.flat_map do |batch|
+          batch.map { |pe| pe.unique_identifier }
+        end
+        expected = %w(one:fish two:fish red:one)
+        expect(results).to include(*expected)
+      end
+
+      context 'but given search terms' do
+        it 'the results are chainable and returns the relevant results' do
+          enum = policy_machine.batch_find(type: :object, query: { unique_identifier: 'one:fish' })
+        results = enum.flat_map do |batch|
+          batch.map { |pe| pe.unique_identifier }
+        end
+          expected = 'one:fish'
+          expect(results.first).to eq(expected)
+        end
+      end
+
+      context 'but given config options' do
+        it 'resepects batch size configs while return all results' do
+          enum = policy_machine.batch_find(type: :object, config: { batch_size: 3})
+          results = enum.flat_map do |batch|
+            expect(batch.size).to eq 3
+            batch.map { |pe| pe.unique_identifier }
+          end
+          expected = %w(one:fish two:fish red:one)
+          expect(results).to include(*expected)
+        end
+      end
+
+    end
+  end
 end

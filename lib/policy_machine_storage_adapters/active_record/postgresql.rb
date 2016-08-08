@@ -13,17 +13,32 @@ module PolicyMachineStorageAdapter
       end
 
       def self.descendants_of(element_or_scope)
-        recursive_query = join_recursive do |query|
-          query.start_with(parent_id: element_or_scope).connect_by(child_id: :parent_id).nocycle
+        #FIXME: Preloading with to_a seems to be necessary because putting complex sql in start_with can
+        # lead to degenerate performance (noticed in ancestors_of call in accessible_objects)
+        # Ideally, fix the SQL so it's both a single call and performant
+        element_or_scope = [*element_or_scope]
+        case element_or_scope.size
+        when 0
+          PolicyElement.none
+        when 1
+          PolicyElement.where('"policy_elements"."id" IN (SELECT assignments__recursive.child_id FROM (WITH RECURSIVE "assignments__recursive" AS ( SELECT "assignments"."id", "assignments"."child_id", "assignments"."parent_id" FROM "assignments" WHERE "assignments"."parent_id" = ? UNION ALL SELECT "assignments"."id", "assignments"."child_id", "assignments"."parent_id" FROM "assignments" INNER JOIN "assignments__recursive" ON "assignments__recursive"."child_id" = "assignments"."parent_id" ) SELECT "assignments__recursive".* FROM "assignments__recursive") AS "assignments__recursive")', element_or_scope.first.id)
+        else
+          PolicyElement.where('"policy_elements"."id" IN (SELECT assignments__recursive.child_id FROM (WITH RECURSIVE "assignments__recursive" AS ( SELECT "assignments"."id", "assignments"."child_id", "assignments"."parent_id" FROM "assignments" WHERE "assignments"."parent_id" in (?) UNION ALL SELECT "assignments"."id", "assignments"."child_id", "assignments"."parent_id" FROM "assignments" INNER JOIN "assignments__recursive" ON "assignments__recursive"."child_id" = "assignments"."parent_id" ) SELECT "assignments__recursive".* FROM "assignments__recursive") AS "assignments__recursive")', element_or_scope.map(&:id))
         end
-        PolicyElement.where(id: recursive_query.select('assignments.child_id'))
       end
 
       def self.ancestors_of(element_or_scope)
-        recursive_query = join_recursive do |query|
-          query.start_with(child_id: element_or_scope).connect_by(parent_id: :child_id).nocycle
+        #FIXME: Also, removing the superfluous join of Assignment onto the recursive call is hugely beneficial to performance, but not supported
+        # by hierarchical_query. Since this is a major performance pain point, generating raw SQL for now.
+        element_or_scope = [*element_or_scope]
+        case element_or_scope.size
+        when 0
+          PolicyElement.none
+        when 1
+          PolicyElement.where('"policy_elements"."id" IN (SELECT assignments__recursive.parent_id FROM (WITH RECURSIVE "assignments__recursive" AS ( SELECT "assignments"."id", "assignments"."parent_id", "assignments"."child_id" FROM "assignments" WHERE "assignments"."child_id" = ? UNION ALL SELECT "assignments"."id", "assignments"."parent_id", "assignments"."child_id" FROM "assignments" INNER JOIN "assignments__recursive" ON "assignments__recursive"."parent_id" = "assignments"."child_id" ) SELECT "assignments__recursive".* FROM "assignments__recursive") AS "assignments__recursive")', element_or_scope.first.id)
+        else
+          PolicyElement.where('"policy_elements"."id" IN (SELECT assignments__recursive.parent_id FROM (WITH RECURSIVE "assignments__recursive" AS ( SELECT "assignments"."id", "assignments"."parent_id", "assignments"."child_id" FROM "assignments" WHERE "assignments"."child_id" in (?) UNION ALL SELECT "assignments"."id", "assignments"."parent_id", "assignments"."child_id" FROM "assignments" INNER JOIN "assignments__recursive" ON "assignments__recursive"."parent_id" = "assignments"."child_id" ) SELECT "assignments__recursive".* FROM "assignments__recursive") AS "assignments__recursive")', element_or_scope.map(&:id))
         end
-        PolicyElement.where(id: recursive_query.select('assignments.parent_id'))
       end
 
     end
