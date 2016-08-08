@@ -66,6 +66,10 @@ module PolicyMachineStorageAdapter
     def self.persist_buffers!
       column_keys = PolicyElement.column_names
 
+      # Because activerecord-import cannot yet handle arbitrary serialized values
+      # during import, we set all attributes again in bulk here.  It is important
+      # that these changes are mutative, since the default ActiveRecord magic
+      # being relied on for assignments and associations will break, otherwise
       elements_to_upsert = buffers[:upsert].values.map do |element|
         element.attributes =  element.attributes.slice(*column_keys)
         element
