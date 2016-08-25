@@ -149,7 +149,8 @@ module PolicyMachineStorageAdapter
         end
 
         PolicyElement.where(unique_identifier: elements.keys).delete_all
-        Assignment.where(parent_id: elements.keys).delete_all
+        Assignment.where(parent_id: elements.values.flat_map(&:id)).delete_all
+        Assignment.where(child_id: elements.values.flat_map(&:id)).delete_all
         PolicyElementAssociation.where(user_attribute_id: id_groups[UserAttribute]).delete_all
         PolicyElementAssociation.where(object_attribute_id: id_groups[ObjectAttribute]).delete_all
       end

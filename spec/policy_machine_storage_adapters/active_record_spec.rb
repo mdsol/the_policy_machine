@@ -74,6 +74,25 @@ describe 'ActiveRecord' do
           end
         end
       end
+
+      describe 'bulk_deletion' do
+        it 'deletes only those assignments that were on deleted elements' do
+          @pm = PolicyMachine.new(:name => 'ActiveRecord PM', :storage_adapter => PolicyMachineStorageAdapter::ActiveRecord)
+          @u1 = @pm.create_user('u1')
+          @op = @pm.create_operation('own')
+          @user_attribute = @pm.create_user_attribute('ua1')
+          @object_attribute = @pm.create_object_attribute('oa1')
+          @object = @pm.create_object('o1')
+          @pm.add_assignment(@u1, @user_attribute)
+          @pm.add_association(@user_attribute, Set.new([@op]), @object_attribute)
+          @pm.add_assignment(@object, @object_attribute)
+          expect(@pm.is_privilege?(@u1,@op,@object)).to be
+          @elt = @pm.create_object(@u1.stored_pe.id.to_s)
+          @pm.bulk_persist { @elt.delete }
+          expect(@pm.is_privilege?(@u1,@op,@object)).to be
+        end
+      end
+
     end
 
     describe 'method_missing' do
