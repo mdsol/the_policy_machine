@@ -523,7 +523,7 @@ module PolicyMachineStorageAdapter
     end
 
     def is_privilege_single_policy_class(user_or_attribute, operation, object_or_attribute)
-      relevant_associations(user_or_attribute, operation, object_or_attribute).any?
+      relevant_associations(user_or_attribute, operation, object_or_attribute).exists?
     end
 
     def is_privilege_multiple_policy_classes(user_or_attribute, operation, object_or_attribute, policy_classes_containing_object)
