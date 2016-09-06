@@ -562,8 +562,8 @@ module PolicyMachineStorageAdapter
 
     def associations_between(user_or_attribute, object_or_attribute)
       class_for_type('policy_element_association').where(
-        object_attribute_id: Assignment.descendants_of(object_or_attribute) | [object_or_attribute],
-        user_attribute_id: Assignment.descendants_of(user_or_attribute) | [user_or_attribute]
+        object_attribute_id: Assignment.descendants_of(object_or_attribute).pluck(:id) << object_or_attribute.id,
+        user_attribute_id: Assignment.descendants_of(user_or_attribute).pluck(:id) << user_or_attribute.id
       )
     end
 
