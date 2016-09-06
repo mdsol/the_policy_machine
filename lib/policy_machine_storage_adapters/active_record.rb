@@ -523,7 +523,7 @@ module PolicyMachineStorageAdapter
     end
 
     def is_privilege_single_policy_class(user_or_attribute, operation, object_or_attribute)
-      relevant_associations(user_or_attribute, operation, object_or_attribute).any?
+      relevant_associations(user_or_attribute, operation, object_or_attribute).exists?
     end
 
     def is_privilege_multiple_policy_classes(user_or_attribute, operation, object_or_attribute, policy_classes_containing_object)
@@ -562,8 +562,8 @@ module PolicyMachineStorageAdapter
 
     def associations_between(user_or_attribute, object_or_attribute)
       class_for_type('policy_element_association').where(
-        object_attribute_id: Assignment.descendants_of(object_or_attribute) | [object_or_attribute],
-        user_attribute_id: Assignment.descendants_of(user_or_attribute) | [user_or_attribute]
+        object_attribute_id: Assignment.descendants_of(object_or_attribute).pluck(:id) << object_or_attribute.id,
+        user_attribute_id: Assignment.descendants_of(user_or_attribute).pluck(:id) << user_or_attribute.id
       )
     end
 
