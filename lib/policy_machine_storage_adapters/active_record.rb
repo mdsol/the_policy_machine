@@ -97,7 +97,7 @@ module PolicyMachineStorageAdapter
         if respond_to?(meth)
           send(meth, *args)
         elsif meth.to_s[-1] == '='
-          @extra_attributes_hash[meth.to_s] = args.first
+          @extra_attributes_hash[meth.to_s.chop] = args.first
         else
           super
         end
