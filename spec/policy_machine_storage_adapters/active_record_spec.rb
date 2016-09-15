@@ -137,6 +137,55 @@ describe 'ActiveRecord' do
 
   end
 
+  describe 'relationships' do
+    before do
+      n = 2
+      @pm = PolicyMachine.new(:name => 'ActiveRecord PM', :storage_adapter => PolicyMachineStorageAdapter::ActiveRecord)
+      @u1 = @pm.create_user('u1')
+      @op = @pm.create_operation('own')
+      @user_attributes = (1..n).map { |i| @pm.create_user_attribute("ua#{i}") }
+      @object_attributes = (1..n).map { |i| @pm.create_object_attribute("oa#{i}") }
+      @objects = (1..n).map { |i| @pm.create_object("o#{i}") }
+      @user_attributes.each { |ua| @pm.add_assignment(@u1, ua) }
+      @object_attributes.product(@user_attributes) { |oa, ua| @pm.add_association(ua, Set.new([@op]), oa) }
+      @object_attributes.zip(@objects) { |oa, o| @pm.add_assignment(o, oa) }
+      @pm.add_assignment(@user_attributes.first, @user_attributes.second)
+    end
+
+    describe 'ancestors' do
+
+    end
+
+    describe '#descendants' do
+      # TODO normalize return value types
+      it 'returns appropriate descendants' do
+        expect(@u1.descendants).to match_array @user_attributes.map(&:stored_pe)
+      end
+    end
+
+    describe '#ancestors' do
+      it 'returns appropriate ancestors' do
+        expect(@user_attributes.first.ancestors).to match_array [@u1.stored_pe]
+      end
+    end
+
+    context 'multiple levels of ancestors' do
+
+      describe '#parents' do
+        it 'returns appropriate parents' do
+          expect(@user_attributes.second.parents).to match_array [@user_attributes.first.stored_pe, @u1.stored_pe]
+        end
+      end
+
+      describe '#children' do
+        it 'returns appropriate children' do
+          expect(@user_attributes.first.children).to match_array [@user_attributes.second.stored_pe]
+        end
+      end
+    end
+
+  end
+
   describe 'PolicyMachine integration with PolicyMachineStorageAdapter::ActiveRecord' do
     it_behaves_like 'a policy machine' do
       let(:policy_machine) { PolicyMachine.new(:name => 'ActiveRecord PM', :storage_adapter => PolicyMachineStorageAdapter::ActiveRecord) }
