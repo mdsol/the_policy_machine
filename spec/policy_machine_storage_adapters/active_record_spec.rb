@@ -140,7 +140,7 @@ describe 'ActiveRecord' do
   describe 'relationships' do
     before do
       n = 2
-      @pm = PolicyMachine.new(:name => 'ActiveRecord PM', :storage_adapter => PolicyMachineStorageAdapter::ActiveRecord)
+      @pm = PolicyMachine.new(name: 'ActiveRecord PM', storage_adapter: PolicyMachineStorageAdapter::ActiveRecord)
       @u1 = @pm.create_user('u1')
       @op = @pm.create_operation('own')
       @user_attributes = (1..n).map { |i| @pm.create_user_attribute("ua#{i}") }
@@ -150,10 +150,6 @@ describe 'ActiveRecord' do
       @object_attributes.product(@user_attributes) { |oa, ua| @pm.add_association(ua, Set.new([@op]), oa) }
       @object_attributes.zip(@objects) { |oa, o| @pm.add_assignment(o, oa) }
       @pm.add_assignment(@user_attributes.first, @user_attributes.second)
-    end
-
-    describe 'ancestors' do
-
     end
 
     describe '#descendants' do
