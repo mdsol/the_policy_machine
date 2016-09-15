@@ -87,8 +87,9 @@ module PolicyMachineStorageAdapter
       # needs unique_identifier, policy_machine_uuid, type, extra_attributes columns
       has_many :assignments, foreign_key: :parent_id, dependent: :destroy
       has_many :filial_ties, class_name: 'Assignment', foreign_key: :child_id
-      has_many :children, through: :assignments, dependent: :destroy #this doesn't actually destroy the children, just the assignment
-      has_many :parents, through: :filial_ties
+      #these don't actually destroy the relations, just the assignments
+      has_many :children, through: :assignments, dependent: :destroy
+      has_many :parents, through: :filial_ties, dependent: :destroy
 
       attr_accessor :extra_attributes_hash
 
