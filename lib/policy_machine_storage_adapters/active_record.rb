@@ -86,7 +86,10 @@ module PolicyMachineStorageAdapter
 
       # needs unique_identifier, policy_machine_uuid, type, extra_attributes columns
       has_many :assignments, foreign_key: :parent_id, dependent: :destroy
-      has_many :children, through: :assignments, dependent: :destroy #this doesn't actually destroy the children, just the assignment
+      has_many :filial_ties, class_name: 'Assignment', foreign_key: :child_id
+      #these don't actually destroy the relations, just the assignments
+      has_many :children, through: :assignments, dependent: :destroy
+      has_many :parents, through: :filial_ties, dependent: :destroy
 
       attr_accessor :extra_attributes_hash
 
@@ -97,7 +100,7 @@ module PolicyMachineStorageAdapter
         if respond_to?(meth)
           send(meth, *args)
         elsif meth.to_s[-1] == '='
-          @extra_attributes_hash[meth.to_s] = args.first
+          @extra_attributes_hash[meth.to_s.chop] = args.first
         else
           super
         end
@@ -523,7 +526,7 @@ module PolicyMachineStorageAdapter
     end
 
     def is_privilege_single_policy_class(user_or_attribute, operation, object_or_attribute)
-      relevant_associations(user_or_attribute, operation, object_or_attribute).any?
+      relevant_associations(user_or_attribute, operation, object_or_attribute).exists?
     end
 
     def is_privilege_multiple_policy_classes(user_or_attribute, operation, object_or_attribute, policy_classes_containing_object)
@@ -562,8 +565,8 @@ module PolicyMachineStorageAdapter
 
     def associations_between(user_or_attribute, object_or_attribute)
       class_for_type('policy_element_association').where(
-        object_attribute_id: Assignment.descendants_of(object_or_attribute) | [object_or_attribute],
-        user_attribute_id: Assignment.descendants_of(user_or_attribute) | [user_or_attribute]
+        object_attribute_id: Assignment.descendants_of(object_or_attribute).pluck(:id) << object_or_attribute.id,
+        user_attribute_id: Assignment.descendants_of(user_or_attribute).pluck(:id) << user_or_attribute.id
       )
     end
 
