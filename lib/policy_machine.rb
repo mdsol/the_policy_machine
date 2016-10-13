@@ -197,8 +197,12 @@ class PolicyMachine
   ##
   # Search for and iterate over a collection in batches
   def batch_find(type:, query: {}, config: {}, &blk)
+    return to_enum(__callee__, type: type, query: query, config: config) unless block_given?
+    pm_class = "PM::#{type.to_s.camelize}".constantize
     if policy_machine_storage_adapter.respond_to?(:batch_find)
-      policy_machine_storage_adapter.batch_find(type, query, config, &blk)
+      policy_machine_storage_adapter.batch_find(type, query, config) do |batch|
+        yield(batch.map { |elt| pm_class.convert_stored_pe_to_pe(elt, policy_machine_storage_adapter) })
+      end
     else
       batch_size = config.fetch(:batch_size, 1)
       method(type.to_s.pluralize).call(query).each_slice(batch_size, &blk)
