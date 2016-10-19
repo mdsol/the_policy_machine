@@ -63,7 +63,7 @@ module PM
     end
 
     # Converts a stored_pe to an instantiated pe
-    def self.convert_stored_pe_to_pe(stored_pe, pm_storage_adapter, pe_class)
+    def self.convert_stored_pe_to_pe(stored_pe, pm_storage_adapter, pe_class = self)
       pe_class.new(
         stored_pe.unique_identifier,
         stored_pe.policy_machine_uuid,

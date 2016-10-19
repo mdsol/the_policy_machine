@@ -917,6 +917,7 @@ shared_examples "a policy machine" do
           policy_machine.batch_find(type: :object, query: { unique_identifier: 'one:fish' }) do |batch|
             expect(batch.size).to eq 1
             expect(batch.first.unique_identifier).to eq 'one:fish'
+            expect(batch.first).to be_a(PM::Object)
           end
         end
       end
