@@ -1,5 +1,4 @@
 require 'policy_machine'
-require 'query_plan_hints'
 require 'set'
 
 # This class stores policy elements in a SQL database using whatever
@@ -15,7 +14,6 @@ end
 module PolicyMachineStorageAdapter
 
   class ActiveRecord
-    extend QueryPlanHints
 
     require 'activerecord-import' # Gem for bulk inserts
 
@@ -527,42 +525,50 @@ module PolicyMachineStorageAdapter
       end
     end
 
-    disable_mergejoin def is_privilege_single_policy_class(user_or_attribute, operation, object_or_attribute)
-      relevant_associations(user_or_attribute, operation, object_or_attribute).exists?
+    def is_privilege_single_policy_class(user_or_attribute, operation, object_or_attribute)
+      transaction_without_mergejoin do
+        relevant_associations(user_or_attribute, operation, object_or_attribute).exists?
+      end
     end
 
-    disable_mergejoin def is_privilege_multiple_policy_classes(user_or_attribute, operation, object_or_attribute, policy_classes_containing_object)
-      #Outstanding active record sql adapter prevents chaining an additional where using the association.
-      # TODO: fix when active record is fixed
-      policy_classes_containing_object.all? do |pc|
-        if operation.is_a?(class_for_type('operation'))
-          associations_between(user_or_attribute, object_or_attribute).where(id: operation.policy_element_associations.to_a, object_attribute_id: pc.ancestors).any?
-        else
-          associations_between(user_or_attribute, object_or_attribute).joins(:operations).where(policy_elements: {unique_identifier: operation}, object_attribute_id: pc.ancestors).any?
+    def is_privilege_multiple_policy_classes(user_or_attribute, operation, object_or_attribute, policy_classes_containing_object)
+      transaction_without_mergejoin do
+        #Outstanding active record sql adapter prevents chaining an additional where using the association.
+        # TODO: fix when active record is fixed
+        policy_classes_containing_object.all? do |pc|
+          if operation.is_a?(class_for_type('operation'))
+            associations_between(user_or_attribute, object_or_attribute).where(id: operation.policy_element_associations.to_a, object_attribute_id: pc.ancestors).any?
+          else
+            associations_between(user_or_attribute, object_or_attribute).joins(:operations).where(policy_elements: {unique_identifier: operation}, object_attribute_id: pc.ancestors).any?
+          end
         end
       end
     end
 
     # Pass in options to allow forced row ordering by id in results
-    disable_mergejoin def scoped_privileges_single_policy_class(user_or_attribute, object_or_attribute, options = {})
-      associations = associations_between(user_or_attribute, object_or_attribute).includes(:operations)
-      operations = associations.flat_map do |assoc|
-        assoc.clear_association_cache
-        assoc.operations
-      end.uniq
-      options[:order] ? operations.sort : operations
-    end
-
-    disable_mergejoin def scoped_privileges_multiple_policy_classes(user_or_attribute, object_or_attribute, policy_classes_containing_object, options = {})
-      base_scope = associations_between(user_or_attribute, object_or_attribute)
-      operations_for_policy_classes = policy_classes_containing_object.map do |pc|
-        associations = base_scope.where(object_attribute_id: pc.ancestors).includes(:operations)
-        associations.flat_map do |assoc|
+    def scoped_privileges_single_policy_class(user_or_attribute, object_or_attribute, options = {})
+      transaction_without_mergejoin do
+        associations = associations_between(user_or_attribute, object_or_attribute).includes(:operations)
+        operations = associations.flat_map do |assoc|
           assoc.clear_association_cache
           assoc.operations
         end.uniq
+        options[:order] ? operations.sort : operations
       end
-      operations_for_policy_classes.inject(:&) || []
+    end
+
+    def scoped_privileges_multiple_policy_classes(user_or_attribute, object_or_attribute, policy_classes_containing_object, options = {})
+      transaction_without_mergejoin do
+        base_scope = associations_between(user_or_attribute, object_or_attribute)
+        operations_for_policy_classes = policy_classes_containing_object.map do |pc|
+          associations = base_scope.where(object_attribute_id: pc.ancestors).includes(:operations)
+          associations.flat_map do |assoc|
+            assoc.clear_association_cache
+            assoc.operations
+          end.uniq
+        end
+        operations_for_policy_classes.inject(:&) || []
+      end
     end
 
     def associations_between(user_or_attribute, object_or_attribute)
@@ -575,6 +581,13 @@ module PolicyMachineStorageAdapter
     def assert_persisted_policy_element(*arguments)
       arguments.each do |argument|
         raise ArgumentError, "expected policy elements, got #{argument}" unless argument.is_a?(PolicyElement)
+      end
+    end
+
+    def transaction_without_mergejoin(&block)
+      PolicyMachineStorageAdapter::ActiveRecord::Assignment.transaction do
+        PolicyMachineStorageAdapter::ActiveRecord::Assignment.connection.execute("set local enable_mergejoin = false")
+        yield
       end
     end
 
