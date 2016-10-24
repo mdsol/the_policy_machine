@@ -46,8 +46,8 @@ module PolicyMachineStorageAdapter
       end
 
       def self.transaction_without_mergejoin(&block)
-        Assignment.transaction do
-          Assignment.connection.execute("set local enable_mergejoin = false")
+        self.transaction do
+          self.connection.execute("set local enable_mergejoin = false")
           yield
         end
       end
