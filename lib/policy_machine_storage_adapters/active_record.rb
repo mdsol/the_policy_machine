@@ -1,4 +1,5 @@
 require 'policy_machine'
+require 'query_plan_hints'
 require 'set'
 
 # This class stores policy elements in a SQL database using whatever
@@ -14,6 +15,7 @@ end
 module PolicyMachineStorageAdapter
 
   class ActiveRecord
+    extend QueryPlanHints
 
     require 'activerecord-import' # Gem for bulk inserts
 
@@ -525,11 +527,11 @@ module PolicyMachineStorageAdapter
       end
     end
 
-    def is_privilege_single_policy_class(user_or_attribute, operation, object_or_attribute)
+    disable_mergejoin def is_privilege_single_policy_class(user_or_attribute, operation, object_or_attribute)
       relevant_associations(user_or_attribute, operation, object_or_attribute).exists?
     end
 
-    def is_privilege_multiple_policy_classes(user_or_attribute, operation, object_or_attribute, policy_classes_containing_object)
+    disable_mergejoin def is_privilege_multiple_policy_classes(user_or_attribute, operation, object_or_attribute, policy_classes_containing_object)
       #Outstanding active record sql adapter prevents chaining an additional where using the association.
       # TODO: fix when active record is fixed
       policy_classes_containing_object.all? do |pc|
@@ -542,7 +544,7 @@ module PolicyMachineStorageAdapter
     end
 
     # Pass in options to allow forced row ordering by id in results
-    def scoped_privileges_single_policy_class(user_or_attribute, object_or_attribute, options = {})
+    disable_mergejoin def scoped_privileges_single_policy_class(user_or_attribute, object_or_attribute, options = {})
       associations = associations_between(user_or_attribute, object_or_attribute).includes(:operations)
       operations = associations.flat_map do |assoc|
         assoc.clear_association_cache
@@ -551,7 +553,7 @@ module PolicyMachineStorageAdapter
       options[:order] ? operations.sort : operations
     end
 
-    def scoped_privileges_multiple_policy_classes(user_or_attribute, object_or_attribute, policy_classes_containing_object, options = {})
+    disable_mergejoin def scoped_privileges_multiple_policy_classes(user_or_attribute, object_or_attribute, policy_classes_containing_object, options = {})
       base_scope = associations_between(user_or_attribute, object_or_attribute)
       operations_for_policy_classes = policy_classes_containing_object.map do |pc|
         associations = base_scope.where(object_attribute_id: pc.ancestors).includes(:operations)
