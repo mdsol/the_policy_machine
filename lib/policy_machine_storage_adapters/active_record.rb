@@ -585,8 +585,12 @@ module PolicyMachineStorageAdapter
     end
 
     def transaction_without_mergejoin(&block)
-      PolicyMachineStorageAdapter::ActiveRecord::Assignment.transaction do
-        PolicyMachineStorageAdapter::ActiveRecord::Assignment.connection.execute("set local enable_mergejoin = false")
+      if PolicyMachineStorageAdapter::ActiveRecord::Assignment.connection.is_a? ::ActiveRecord::ConnectionAdapters::PostgreSQLAdapter
+        PolicyMachineStorageAdapter::ActiveRecord::Assignment.transaction do
+          PolicyMachineStorageAdapter::ActiveRecord::Assignment.connection.execute("set local enable_mergejoin = false")
+          yield
+        end
+      else
         yield
       end
     end
