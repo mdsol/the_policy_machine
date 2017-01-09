@@ -167,9 +167,9 @@ describe 'ActiveRecord' do
 
     context 'multiple levels of ancestors' do
 
-      describe '#parents' do
-        it 'returns appropriate parents' do
-          expect(@user_attributes.second.parents).to match_array [@user_attributes.first.stored_pe, @u1.stored_pe]
+      describe '#immediate_ancestors' do
+        it 'returns appropriate immediate_ancestors' do
+          expect(@user_attributes.second.immediate_ancestors).to match_array [@user_attributes.first.stored_pe, @u1.stored_pe]
         end
       end
 
