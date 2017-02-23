@@ -43,6 +43,46 @@ module PolicyMachineStorageAdapter
 
     end
 
+    class CrossAssignment < ::ActiveRecord::Base
+
+      belongs_to :parent, class_name: 'PolicyElement', foreign_key: :parent_id
+      belongs_to :child, class_name: 'PolicyElement', foreign_key: :child_id
+
+      def self.transitive_closure?(ancestor, descendant)
+        descendants_of(ancestor).include?(descendant)
+      end
+
+      def self.descendants_of(element_or_scope)
+        #FIXME: Preloading with to_a seems to be necessary because putting complex sql in start_with can
+        # lead to degenerate performance (noticed in ancestors_of call in accessible_objects)
+        # Ideally, fix the SQL so it's both a single call and performant
+        element_or_scope = [*element_or_scope]
+        case element_or_scope.size
+        when 0
+          PolicyElement.none
+        when 1
+          PolicyElement.where('"policy_elements"."id" IN (SELECT cross_assignments__recursive.child_id FROM (WITH RECURSIVE "cross_assignments__recursive" AS ( SELECT "cross_assignments"."id", "cross_assignments"."child_id", "cross_assignments"."parent_id" FROM "cross_assignments" WHERE "cross_assignments"."parent_id" = ? UNION ALL SELECT "cross_assignments"."id", "cross_assignments"."child_id", "cross_assignments"."parent_id" FROM "cross_assignments" INNER JOIN "cross_assignments__recursive" ON "cross_assignments__recursive"."child_id" = "cross_assignments"."parent_id" ) SELECT "cross_assignments__recursive".* FROM "cross_assignments__recursive") AS "cross_assignments__recursive")', element_or_scope.first.id)
+        else
+          PolicyElement.where('"policy_elements"."id" IN (SELECT cross_assignments__recursive.child_id FROM (WITH RECURSIVE "cross_assignments__recursive" AS ( SELECT "cross_assignments"."id", "cross_assignments"."child_id", "cross_assignments"."parent_id" FROM "cross_assignments" WHERE "cross_assignments"."parent_id" in (?) UNION ALL SELECT "cross_assignments"."id", "cross_assignments"."child_id", "cross_assignments"."parent_id" FROM "cross_assignments" INNER JOIN "cross_assignments__recursive" ON "cross_assignments__recursive"."child_id" = "cross_assignments"."parent_id" ) SELECT "cross_assignments__recursive".* FROM "cross_assignments__recursive") AS "cross_assignments__recursive")', element_or_scope.map(&:id))
+        end
+      end
+
+      def self.ancestors_of(element_or_scope)
+        #FIXME: Also, removing the superfluous join of Assignment onto the recursive call is hugely beneficial to performance, but not supported
+        # by hierarchical_query. Since this is a major performance pain point, generating raw SQL for now.
+        element_or_scope = [*element_or_scope]
+        case element_or_scope.size
+        when 0
+          PolicyElement.none
+        when 1
+          PolicyElement.where('"policy_elements"."id" IN (SELECT cross_assignments__recursive.parent_id FROM (WITH RECURSIVE "cross_assignments__recursive" AS ( SELECT "cross_assignments"."id", "cross_assignments"."parent_id", "cross_assignments"."child_id" FROM "cross_assignments" WHERE "cross_assignments"."child_id" = ? UNION ALL SELECT "cross_assignments"."id", "cross_assignments"."parent_id", "cross_assignments"."child_id" FROM "cross_assignments" INNER JOIN "cross_assignments__recursive" ON "cross_assignments__recursive"."parent_id" = "cross_assignments"."child_id" ) SELECT "cross_assignments__recursive".* FROM "cross_assignments__recursive") AS "cross_assignments__recursive")', element_or_scope.first.id)
+        else
+          PolicyElement.where('"policy_elements"."id" IN (SELECT cross_assignments__recursive.parent_id FROM (WITH RECURSIVE "cross_assignments__recursive" AS ( SELECT "cross_assignments"."id", "cross_assignments"."parent_id", "cross_assignments"."child_id" FROM "cross_assignments" WHERE "cross_assignments"."child_id" in (?) UNION ALL SELECT "cross_assignments"."id", "cross_assignments"."parent_id", "cross_assignments"."child_id" FROM "cross_assignments" INNER JOIN "cross_assignments__recursive" ON "cross_assignments__recursive"."parent_id" = "cross_assignments"."child_id" ) SELECT "cross_assignments__recursive".* FROM "cross_assignments__recursive") AS "cross_assignments__recursive")', element_or_scope.map(&:id))
+        end
+      end
+
+    end
+
     class Adapter
 
       # Support substring searching and Postgres Array membership

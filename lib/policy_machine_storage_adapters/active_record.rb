@@ -17,12 +17,13 @@ module PolicyMachineStorageAdapter
 
     require 'activerecord-import' # Gem for bulk inserts
 
-    # Load the Assignment and Adapter classes at runtime because it's implemented differently by different adapters
-    # And which database adapter is active is not always determinable at class definition time
-    # Assignment must inherit from ActiveRecord::Base and have class methods ancestors_of, descendants_of, and transitive_closure?
-    # Adapter must implement apply_include_condition
+    # Load the CrossAssignment, Assignment, and Adapter classes at runtime because they're
+    # implemented differently by different adapters, and which database adapter is active is
+    # not always determinable at class definition time. Assignment and CrossAssignment must
+    # inherit from ActiveRecord::Base and have class methods ancestors_of, descendants_of,
+    # and transitive_closure?. Adapter must implement apply_include_condition.
     def self.const_missing(name)
-      if %w[Assignment Adapter].include?(name.to_s)
+      if %w[Assignment CrossAssignment Adapter].include?(name.to_s)
         load_db_adapter!
         const_get(name)
       else
@@ -129,11 +130,11 @@ module PolicyMachineStorageAdapter
       end
 
       def descendants
-        Assignment.descendants_of(self)
+        Assignment.descendants_of(self) + CrossAssignment.descendants_of(self)
       end
 
       def ancestors
-        Assignment.ancestors_of(self)
+        Assignment.ancestors_of(self) + CrossAssignment.ancestors_of(self)
       end
 
       def self.serialize(store:, name:, serializer: nil)
@@ -164,18 +165,22 @@ module PolicyMachineStorageAdapter
 
         PolicyElement.where(unique_identifier: elements.keys).delete_all
 
-        # TODO: Combine these into 1 db call.
-        Assignment.where(parent_id: elements.values.flat_map(&:id)).delete_all
-        Assignment.where(child_id: elements.values.flat_map(&:id)).delete_all
+        ids = elements.values.flat_map(&:id)
+        Assignment.where("parent_id IN (?) OR child_id IN (?)", ids, ids).delete_all
+        CrossAssignment.where("parent_id IN (?) OR child_id IN (?)", ids, ids).delete_all
 
-        # TODO: Combine these into 1 db call.
-        PolicyElementAssociation.where(user_attribute_id: id_groups[UserAttribute]).delete_all
-        PolicyElementAssociation.where(object_attribute_id: id_groups[ObjectAttribute]).delete_all
+        id_groups = id_groups[UserAttribute]
+        PolicyElementAssociation.where("user_attribute_id = (?) OR object_attribute_id = (?)", *id_groups, *id_groups).delete_all
       end
 
       def self.bulk_assign(parents_and_children)
         id_pairs = parents_and_children.map { |parent, child| [parent.id, child.id]  }
         Assignment.import([:parent_id, :child_id], id_pairs, on_duplicate_key_ignore: true)
+      end
+
+      def self.bulk_cross_assign(parents_and_children)
+        id_pairs = parents_and_children.map { |parent, child| [parent.id, child.id]  }
+        CrossAssignment.import([:parent_id, :child_id], id_pairs, on_duplicate_key_ignore: true)
       end
 
       def self.bulk_associate(associations)
@@ -392,7 +397,7 @@ module PolicyMachineStorageAdapter
     #
     def connected?(src, dst)
       assert_persisted_policy_element(src, dst)
-      src == dst || Assignment.transitive_closure?(src, dst)
+      src == dst || Assignment.transitive_closure?(src, dst) || CrossAssignment.transitive_closure?(src, dst)
     end
 
     ##
@@ -543,14 +548,19 @@ module PolicyMachineStorageAdapter
     def accessible_objects(user_or_attribute, operation, options = {})
       operation = class_for_type('operation').find_by_unique_identifier!(operation.to_s) unless operation.is_a?(class_for_type('operation'))
       permitting_oas = PolicyElement.where(id: operation.policy_element_associations.where(
-        user_attribute_id: user_or_attribute.descendants | [user_or_attribute],
-      ).select(:object_attribute_id))
+                                            user_attribute_id: user_or_attribute.descendants | [user_or_attribute],
+                                          ).select(:object_attribute_id))
+
       direct_scope = permitting_oas.where(type: class_for_type('object'))
+
       indirect_scope = Assignment.ancestors_of(permitting_oas).where(type: class_for_type('object'))
+      indirect_scope += CrossAssignment.ancestors_of(permitting_oas).where(type: class_for_type('object'))
+
       if inclusion = options[:includes]
         direct_scope = Adapter.apply_include_condition(scope: direct_scope, key: options[:key], value: inclusion, klass: class_for_type('object'))
         indirect_scope = Adapter.apply_include_condition(scope: indirect_scope, key: options[:key], value: inclusion, klass: class_for_type('object'))
       end
+
       candidates = direct_scope | indirect_scope
       if options[:ignore_prohibitions] || !(prohibition = class_for_type('operation').find_by_unique_identifier("~#{operation.unique_identifier}"))
         candidates
@@ -616,10 +626,16 @@ module PolicyMachineStorageAdapter
     end
 
     def associations_between(user_or_attribute, object_or_attribute)
-      class_for_type('policy_element_association').where(
-        object_attribute_id: Assignment.descendants_of(object_or_attribute).pluck(:id) << object_or_attribute.id,
-        user_attribute_id: Assignment.descendants_of(user_or_attribute).pluck(:id) << user_or_attribute.id
-      )
+      assignment_obj_attr_ids = Assignment.descendants_of(object_or_attribute).pluck(:id) << object_or_attribute.id
+      cross_assignment_obj_attr_ids = CrossAssignment.descendants_of(object_or_attribute).pluck(:id) << object_or_attribute.id
+      obj_attr_ids = assignment_obj_attr_ids + cross_assignment_obj_attr_ids
+
+      assignment_user_attr_ids = Assignment.descendants_of(user_or_attribute).pluck(:id) << user_or_attribute.id
+      cross_assignment_user_attr_ids = CrossAssignment.descendants_of(user_or_attribute).pluck(:id) << user_or_attribute.id
+      user_attr_ids = assignment_user_attr_ids + cross_assignment_user_attr_ids
+
+      query = "object_attribute_id IN (?) OR user_attribute_id IN (?)"
+      class_for_type('policy_element_association').where(query, *obj_attr_ids, *user_attr_ids)
     end
 
     def assert_persisted_policy_element(*arguments)
@@ -632,6 +648,7 @@ module PolicyMachineStorageAdapter
       if PolicyMachineStorageAdapter::ActiveRecord::Assignment.connection.is_a? ::ActiveRecord::ConnectionAdapters::PostgreSQLAdapter
         PolicyMachineStorageAdapter::ActiveRecord::Assignment.transaction do
           PolicyMachineStorageAdapter::ActiveRecord::Assignment.connection.execute("set local enable_mergejoin = false")
+          PolicyMachineStorageAdapter::ActiveRecord::CrossAssignment.connection.execute("set local enable_mergejoin = false")
           yield
         end
       else
