@@ -35,6 +35,22 @@ module PM
       @pm_storage_adapter.assign(self.stored_pe, dst_policy_element.stored_pe)
     end
 
+    # Assigns self to destination policy element in a different policy machine
+    def cross_assign_to(dst_policy_element)
+      unless allowed_assignee_classes.any?{ |aac| dst_policy_element.is_a?(aac) }
+        raise(ArgumentError, "expected dst_policy_element to be one of #{allowed_assignee_classes.to_s}; got #{dst_policy_element.class} instead.")
+      end
+
+      @pm_storage_adapter.cross_assign(self.stored_pe, dst_policy_element.stored_pe)
+    end
+
+    # Removes an assignment from self to destination policy element where the
+    # destination policy element is in a different policy machine.
+    # Returns boolean indicating whether assignment was successfully removed.
+    def cross_unassign(dst_policy_element)
+      @pm_storage_adapter.cross_unassign(self.stored_pe, dst_policy_element.stored_pe)
+    end
+
     # Removes assignment from self to destination policy element
     # Returns boolean indicating whether assignment was successfully removed.
     def unassign(dst_policy_element)

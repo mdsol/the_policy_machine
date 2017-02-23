@@ -51,7 +51,13 @@ module PolicyMachineStorageAdapter
     end
 
     def self.buffers
-      @buffers ||= {upsert: {}, delete:{}, assignments: [], associations: [] }
+      @buffers ||= {
+                     upsert: {},
+                     delete: {},
+                     assignments: [],
+                     cross_assignments: [],
+                     associations: []
+                   }
     end
 
     def self.clear_buffers!
@@ -75,6 +81,7 @@ module PolicyMachineStorageAdapter
       PolicyElement.import(buffers[:upsert].values, on_duplicate_key_update: column_keys.map(&:to_sym) - [:id])
       PolicyElement.bulk_destroy(buffers[:delete])
       PolicyElement.bulk_assign(buffers[:assignments])
+      PolicyElement.bulk_cross_assign(buffers[:cross_assignments])
       PolicyElement.bulk_associate(buffers[:associations])
 
       true #TODO: More useful return value?
@@ -86,10 +93,14 @@ module PolicyMachineStorageAdapter
 
       # needs unique_identifier, policy_machine_uuid, type, extra_attributes columns
       has_many :assignments, foreign_key: :parent_id, dependent: :destroy
+      has_many :cross_assignments, foreign_key: :parent_id, dependent: :destroy
       has_many :filial_ties, class_name: 'Assignment', foreign_key: :child_id
-      #these don't actually destroy the relations, just the assignments
+      has_many :cross_filial_ties, class_name: 'CrossAssignment', foreign_key: :child_id
+      # these don't actually destroy the relations, just the assignments
       has_many :children, through: :assignments, dependent: :destroy
       has_many :parents, through: :filial_ties, dependent: :destroy
+      has_many :children, through: :cross_assignments, dependent: :destroy
+      has_many :parents, through: :cross_filial_ties, dependent: :destroy
 
       attr_accessor :extra_attributes_hash
 
@@ -152,8 +163,12 @@ module PolicyMachineStorageAdapter
         end
 
         PolicyElement.where(unique_identifier: elements.keys).delete_all
+
+        # TODO: Combine these into 1 db call.
         Assignment.where(parent_id: elements.values.flat_map(&:id)).delete_all
         Assignment.where(child_id: elements.values.flat_map(&:id)).delete_all
+
+        # TODO: Combine these into 1 db call.
         PolicyElementAssociation.where(user_attribute_id: id_groups[UserAttribute]).delete_all
         PolicyElementAssociation.where(object_attribute_id: id_groups[ObjectAttribute]).delete_all
       end
@@ -350,6 +365,25 @@ module PolicyMachineStorageAdapter
     end
 
     ##
+    # Assign src to dst in policy machine.
+    # The two policy elements must be persisted policy elements
+    # Returns true if the assignment occurred, false otherwise.
+    #
+    def cross_assign(src, dst)
+      assert_persisted_policy_element(src, dst)
+      if self.buffering?
+        cross_assign_later(parent: src, child: dst)
+      else
+        CrossAssignment.where(parent_id: src.id, child_id: dst.id).first_or_create
+      end
+    end
+
+    def cross_assign_later(parent:, child:)
+      buffers[:cross_assignments] << [parent, child]
+      :buffered
+    end
+
+    ##
     # Determine if there is a path from src to dst in the policy machine.
     # The two policy elements must be persisted policy elements; otherwise the method should raise
     # an ArgumentError.
@@ -372,6 +406,16 @@ module PolicyMachineStorageAdapter
     def unassign(src, dst)
       assert_persisted_policy_element(src, dst)
       if assignment = src.assignments.where(child_id: dst.id).first
+        assignment.destroy
+      end
+    end
+
+    ##
+    # Disconnects two policy elements in different machines.
+    # Returns true if the unassignment succeeds or false otherwise.
+    def cross_unassign(src, dst)
+      assert_persisted_policy_element(src, dst)
+      if assignment = src.cross_assignments.where(child_id: dst.id).first
         assignment.destroy
       end
     end
