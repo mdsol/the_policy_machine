@@ -1,4 +1,4 @@
-class AddTableCrossAssignments < ActiveRecord::Migration
+class AddCrossAssignmentsTable < ActiveRecord::Migration
   def change
 
     create_table :cross_assignments do |t|

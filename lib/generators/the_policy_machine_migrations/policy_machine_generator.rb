@@ -6,7 +6,7 @@ class PolicyMachineGenerator < ::ActiveRecord::Generators::MigrationGenerator
   source_root File.expand_path('../templates', __FILE__)
 
   def initialize(*args)
-    args[0] = ['generate_policy_machine']
+    args[0] = ['generate_policy_machine', 'add_cross_table_assignments']
     super(*args)
   end
 

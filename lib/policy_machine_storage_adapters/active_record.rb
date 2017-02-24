@@ -177,8 +177,8 @@ module PolicyMachineStorageAdapter
         Assignment.where("parent_id IN (?) OR child_id IN (?)", ids, ids).delete_all
         CrossAssignment.where("parent_id IN (?) OR child_id IN (?)", ids, ids).delete_all
 
-        id_groups = id_groups[UserAttribute]
-        PolicyElementAssociation.where("user_attribute_id = (?) OR object_attribute_id = (?)", *id_groups, *id_groups).delete_all
+        groups = id_groups[UserAttribute]
+        PolicyElementAssociation.where("user_attribute_id = (?) OR object_attribute_id = (?)", *groups, *groups).delete_all
       end
 
       def self.bulk_assign(parents_and_children)
