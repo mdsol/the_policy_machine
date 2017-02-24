@@ -1,5 +1,4 @@
-#require 'rails/generators/active_record/migration/migration_generator'
-module ThePolicyMachineMigrations
+module ThePolicyMachine
   module Generators
     class AddCrossAssignmentsTableGenerator < Rails::Generators::Base
       source_root File.expand_path('../../../migrations', __FILE__)

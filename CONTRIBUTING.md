@@ -22,21 +22,21 @@ Configure the test app with:
 bundle exec rake pm:test:prepare
 ```
 
-By default, it will configure the test database to be postgresql, but you can change this with:
+By default, the above command will configure the test database to be postgresql, but you can change this with:
 
 ```
 bundle exec rake pm:test:prepare[mysql]
 ```
 
-If nokogiri fails to install for the test app, then try installing it with your local system libraries like:
+If nokogiri fails to install for the test app, then try installing it specifying your local system libraries like:
 ```
 gem install nokogiri --use-system-libraries
 ```
 
-Run all rspec with:
+Run all rspec tests with:
 
 ```
-[bundle exec] rspec
+bundle exec rspec
 ```
 
 Simplecov code coverage is generated automatically.  Any changes you make to this repository should
@@ -51,13 +51,13 @@ To test your storage adapter, adapt the tests in either `spec/policy_machine_sto
 
 ## Adding New Database Migrations
 
-`the_policy_machine` manages its database migrations using rails migrations and generators. Applications using `the_policy_machine` gem will update their code base with `the_policy_machine`'s latest database migrations by running:
+`the_policy_machine` manages its database migrations using Rails migrations and generators. Applications using `the_policy_machine` gem will update their code base with `the_policy_machine`'s latest database migrations by running:
 ```
-bundle exec rails generate the_policy_machine_migrations:a_migration
+bundle exec rails generate the_policy_machine:a_migration
 ```
-In the above command, "the_policy_machine_migrations"  refers to the name of the directory `lib/generators/the_policy_machine_migrations`. It's just a namespace. `a_migration` referes to the name of a generator in that directory.
+In the above command, "the_policy_machine"  refers to the name of the directory `lib/generators/the_policy_machine`. It's just a namespace. "a_migration" refers to the name of a generator file in that directory.
 
-To add a database migration for applications consuming `the_policy_machine` to use, add a new migration file in `lib/migrations/`, and add a new generator file in `lib/generators/`. Preferably namespace the generator by adding it under `lib/generators/the_policy_machine_migrations/`.
+To add a database migration for applications consuming `the_policy_machine` to use, add a new migration file in `lib/migrations/`, and add a new generator file in `lib/generators/`. Preferably namespace the generator by adding it under `lib/generators/the_policy_machine/`.
 
 ### Add New DB Migration Example
 
@@ -72,8 +72,8 @@ end
 ```
 
 ```ruby
-# lib/generators/the_policy_machine_migrations/add_parent_policy_machine_uuid_column_generator.rb
-module ThePolicyMachineMigrations
+# lib/generators/the_policy_machine/add_parent_policy_machine_uuid_column_generator.rb
+module ThePolicyMachine
   module Generators
     class AddParentPolicyMachineUUIDColumnGenerator < Rails::Generators::Base
       source_root File.expand_path('../../../migrations', __FILE__)
@@ -90,5 +90,5 @@ end
 
 Then, you would update the changelog for the next version of `the_policy_machine` to specify that applications should include this new migration in their codebases by running:
 ```
-bundle exec rails generate the_policy_machine_migrations:add_parent_policy_machine_uuid_column
+bundle exec rails generate the_policy_machine:add_parent_policy_machine_uuid_column
 ```

@@ -1,4 +1,4 @@
-class GeneratePolicyMachine < ActiveRecord::Migration
+class AddInitialPolicyMachineTables < ActiveRecord::Migration
   def change
 
     create_table :policy_elements do |t|
