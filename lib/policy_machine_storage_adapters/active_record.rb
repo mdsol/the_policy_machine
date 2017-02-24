@@ -100,8 +100,8 @@ module PolicyMachineStorageAdapter
       # these don't actually destroy the relations, just the assignments
       has_many :children, through: :assignments, dependent: :destroy
       has_many :parents, through: :filial_ties, dependent: :destroy
-      has_many :children, through: :cross_assignments, dependent: :destroy
-      has_many :parents, through: :cross_filial_ties, dependent: :destroy
+      has_many :cross_children, through: :cross_assignments, dependent: :destroy
+      has_many :cross_parents, through: :cross_filial_ties, dependent: :destroy
 
       attr_accessor :extra_attributes_hash
 
@@ -130,11 +130,19 @@ module PolicyMachineStorageAdapter
       end
 
       def descendants
-        Assignment.descendants_of(self) + CrossAssignment.descendants_of(self)
+        Assignment.descendants_of(self)
+      end
+
+      def cross_descendants
+        CrossAssignment.descendants_of(self)
       end
 
       def ancestors
-        Assignment.ancestors_of(self) + CrossAssignment.ancestors_of(self)
+        Assignment.ancestors_of(self)
+      end
+
+      def cross_ancestors
+        CrossAssignment.ancestors_of(self)
       end
 
       def self.serialize(store:, name:, serializer: nil)
@@ -370,16 +378,20 @@ module PolicyMachineStorageAdapter
     end
 
     ##
-    # Assign src to dst in policy machine.
-    # The two policy elements must be persisted policy elements
-    # Returns true if the assignment occurred, false otherwise.
-    #
+    # Assign src to dst. The two policy elements must be persisted policy
+    # elements in different policy machines. Returns true if the assignment
+    # occurred, false otherwise.
     def cross_assign(src, dst)
       assert_persisted_policy_element(src, dst)
       if self.buffering?
         cross_assign_later(parent: src, child: dst)
       else
-        CrossAssignment.where(parent_id: src.id, child_id: dst.id).first_or_create
+        CrossAssignment.where(
+          parent_id: src.id,
+          child_id: dst.id,
+          parent_policy_machine_uuid: src.policy_machine_uuid,
+          child_policy_machine_uuid: dst.policy_machine_uuid
+        ).first_or_create
       end
     end
 
@@ -397,7 +409,7 @@ module PolicyMachineStorageAdapter
     #
     def connected?(src, dst)
       assert_persisted_policy_element(src, dst)
-      src == dst || Assignment.transitive_closure?(src, dst) || CrossAssignment.transitive_closure?(src, dst)
+      src == dst || Assignment.transitive_closure?(src, dst)
     end
 
     ##
@@ -554,7 +566,6 @@ module PolicyMachineStorageAdapter
       direct_scope = permitting_oas.where(type: class_for_type('object'))
 
       indirect_scope = Assignment.ancestors_of(permitting_oas).where(type: class_for_type('object'))
-      indirect_scope += CrossAssignment.ancestors_of(permitting_oas).where(type: class_for_type('object'))
 
       if inclusion = options[:includes]
         direct_scope = Adapter.apply_include_condition(scope: direct_scope, key: options[:key], value: inclusion, klass: class_for_type('object'))
@@ -626,16 +637,10 @@ module PolicyMachineStorageAdapter
     end
 
     def associations_between(user_or_attribute, object_or_attribute)
-      assignment_obj_attr_ids = Assignment.descendants_of(object_or_attribute).pluck(:id) << object_or_attribute.id
-      cross_assignment_obj_attr_ids = CrossAssignment.descendants_of(object_or_attribute).pluck(:id) << object_or_attribute.id
-      obj_attr_ids = assignment_obj_attr_ids + cross_assignment_obj_attr_ids
-
-      assignment_user_attr_ids = Assignment.descendants_of(user_or_attribute).pluck(:id) << user_or_attribute.id
-      cross_assignment_user_attr_ids = CrossAssignment.descendants_of(user_or_attribute).pluck(:id) << user_or_attribute.id
-      user_attr_ids = assignment_user_attr_ids + cross_assignment_user_attr_ids
-
-      query = "object_attribute_id IN (?) OR user_attribute_id IN (?)"
-      class_for_type('policy_element_association').where(query, *obj_attr_ids, *user_attr_ids)
+      class_for_type('policy_element_association').where(
+        object_attribute_id: Assignment.descendants_of(object_or_attribute).pluck(:id) << object_or_attribute.id,
+        user_attribute_id: Assignment.descendants_of(user_or_attribute).pluck(:id) << user_or_attribute.id
+      )
     end
 
     def assert_persisted_policy_element(*arguments)
@@ -648,7 +653,6 @@ module PolicyMachineStorageAdapter
       if PolicyMachineStorageAdapter::ActiveRecord::Assignment.connection.is_a? ::ActiveRecord::ConnectionAdapters::PostgreSQLAdapter
         PolicyMachineStorageAdapter::ActiveRecord::Assignment.transaction do
           PolicyMachineStorageAdapter::ActiveRecord::Assignment.connection.execute("set local enable_mergejoin = false")
-          PolicyMachineStorageAdapter::ActiveRecord::CrossAssignment.connection.execute("set local enable_mergejoin = false")
           yield
         end
       else
