@@ -6,8 +6,7 @@ env:
   global:
     - DB=postgresql
     - RAILS_ENV=test
-    - CUCUMBER_FORMAT=progress
-    - CI_NODE_TOTAL=6
+    - CI_NODE_TOTAL=1
     - PGPORT=5432
     - PGHOST=localhost
   matrix:
@@ -25,7 +24,7 @@ addons:
     - libcurl3-gnutls
     - libcurl4-openssl-dev
   postgresql: 9.5
-bundler_args: --jobs=3 --retry=3 --deployment --without development
+bundler_args: --jobs=1 --retry=3 --deployment --without development
 before_script:
   - sudo cp /etc/postgresql/9.4/main/pg_hba.conf /etc/postgresql/9.5/main/pg_hba.conf
   - sudo /etc/init.d/postgresql restart
