@@ -141,15 +141,28 @@ describe 'ActiveRecord' do
     before do
       n = 2
       @pm = PolicyMachine.new(name: 'ActiveRecord PM', storage_adapter: PolicyMachineStorageAdapter::ActiveRecord)
+      @pm2 = PolicyMachine.new(name: '2nd ActiveRecord PM', storage_adapter: PolicyMachineStorageAdapter::ActiveRecord)
+      @pm3 = PolicyMachine.new(name: '3rd ActiveRecord PM', storage_adapter: PolicyMachineStorageAdapter::ActiveRecord)
+
       @u1 = @pm.create_user('u1')
+      @another_u1 = @pm2.create_user('another u1')
+
       @op = @pm.create_operation('own')
+      @another_op = @pm2.create_operation('another op')
+
       @user_attributes = (1..n).map { |i| @pm.create_user_attribute("ua#{i}") }
       @object_attributes = (1..n).map { |i| @pm.create_object_attribute("oa#{i}") }
       @objects = (1..n).map { |i| @pm.create_object("o#{i}") }
+      @another_user_attribute = @pm3.create_user_attribute('another_user_attribute')
+
       @user_attributes.each { |ua| @pm.add_assignment(@u1, ua) }
       @object_attributes.product(@user_attributes) { |oa, ua| @pm.add_association(ua, Set.new([@op]), oa) }
       @object_attributes.zip(@objects) { |oa, o| @pm.add_assignment(o, oa) }
       @pm.add_assignment(@user_attributes.first, @user_attributes.second)
+
+      @pm.add_cross_assignment(@u1, @another_u1)
+      @pm.add_cross_assignment(@u1, @another_op)
+      @pm.add_cross_assignment(@another_op, @another_user_attribute)
     end
 
     describe '#descendants' do
@@ -159,27 +172,52 @@ describe 'ActiveRecord' do
       end
     end
 
+    describe '#cross_descendants' do
+      it 'returns appropriate cross descendants' do
+        desc = [@another_u1.stored_pe, @another_op.stored_pe, @another_user_attribute.stored_pe]
+        expect(@u1.cross_descendants).to match_array desc
+      end
+    end
+
     describe '#ancestors' do
       it 'returns appropriate ancestors' do
         expect(@user_attributes.first.ancestors).to match_array [@u1.stored_pe]
       end
     end
 
-    context 'multiple levels of ancestors' do
-
-      describe '#parents' do
-        it 'returns appropriate parents' do
-          expect(@user_attributes.second.parents).to match_array [@user_attributes.first.stored_pe, @u1.stored_pe]
-        end
+    describe '#cross_ancestors' do
+      it 'returns appropriate cross ancestors one level deep' do
+        expect(@another_u1.cross_ancestors).to match_array [@u1.stored_pe]
       end
 
-      describe '#children' do
-        it 'returns appropriate children' do
-          expect(@user_attributes.first.children).to match_array [@user_attributes.second.stored_pe]
-        end
+      it 'returns appropriate cross ancestors multiple levels deep' do
+        expect(@another_user_attribute.cross_ancestors).to match_array [@another_op.stored_pe, @u1.stored_pe]
       end
     end
 
+    describe '#parents' do
+      it 'returns appropriate parents' do
+        expect(@user_attributes.second.parents).to match_array [@user_attributes.first.stored_pe, @u1.stored_pe]
+      end
+    end
+
+    describe '#cross_parents' do
+      it 'returns appropriate parents' do
+        expect(@another_user_attribute.cross_parents).to match_array [@another_op.stored_pe]
+      end
+    end
+
+    describe '#children' do
+      it 'returns appropriate children' do
+        expect(@user_attributes.first.children).to match_array [@user_attributes.second.stored_pe]
+      end
+    end
+
+    describe '#cross_children' do
+      it 'returns appropriate children' do
+        expect(@u1.cross_children).to match_array [@another_u1.stored_pe, @another_op.stored_pe]
+      end
+    end
   end
 
   describe 'PolicyMachine integration with PolicyMachineStorageAdapter::ActiveRecord' do
