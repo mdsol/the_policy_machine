@@ -85,10 +85,9 @@ module ThePolicyMachine
     end
   end
 end
-
 ```
 
-Then, you would update the changelog for the next version of `the_policy_machine` to specify that applications should include this new migration in their codebases by running:
+Then, you would update the changelog for the next version of `the_policy_machine` to specify that applications should include this new migration in their codebase by running:
 ```
 bundle exec rails generate the_policy_machine:add_parent_policy_machine_uuid_column
 ```

@@ -15,7 +15,6 @@ gem 'policy_machine'
 ```
 
 # Configuration
-_These instructions are only for PostgreSQL_
 
 The policy machine requires a specific set of tables. Generate the migrations for these tables by running:
 ```
