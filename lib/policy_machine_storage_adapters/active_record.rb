@@ -387,7 +387,7 @@ module PolicyMachineStorageAdapter
     def cross_assign(src, dst)
       assert_persisted_policy_element(src, dst)
       if self.buffering?
-        cross_assign_later(parent: src, child: dst)
+        cross_assign_later(cross_parent: src, cross_child: dst)
       else
         CrossAssignment.where(
           cross_parent_id: src.id,
@@ -398,8 +398,8 @@ module PolicyMachineStorageAdapter
       end
     end
 
-    def cross_assign_later(parent:, child:)
-      buffers[:cross_assignments] << [parent, child]
+    def cross_assign_later(cross_parent:, cross_child:)
+      buffers[:cross_assignments] << [cross_parent, cross_child]
       :buffered
     end
 
@@ -435,7 +435,7 @@ module PolicyMachineStorageAdapter
     # Returns true if the unassignment succeeds or false otherwise.
     def cross_unassign(src, dst)
       assert_persisted_policy_element(src, dst)
-      if assignment = src.cross_assignments.where(child_id: dst.id).first
+      if assignment = src.cross_assignments.where(cross_child_id: dst.id).first
         assignment.destroy
       end
     end

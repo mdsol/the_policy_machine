@@ -149,6 +149,69 @@ shared_examples "a policy machine" do
     end
   end
 
+  describe 'CrossAssignments' do
+    let(:pm1) { PolicyMachine.new }
+    let(:pm2) { PolicyMachine.new }
+    let(:pe1) { pm1.create_user_attribute(SecureRandom.uuid) }
+    let(:pe2) { pm2.create_user_attribute(SecureRandom.uuid) }
+    let(:pe3) { pm1.create_user_attribute(SecureRandom.uuid) }
+
+    # All possible combinations of two policy machine types are allowed to be cross assigned.
+    allowed_cross_assignments = policy_element_types.product(policy_element_types)
+
+    describe 'Adding' do
+      allowed_cross_assignments.each do |aca|
+        it "allows a #{aca[0]} to be assigned a #{aca[1]}" do
+          policy_element1 = pm1.send("create_#{aca[0]}", SecureRandom.uuid)
+          policy_element2 = pm2.send("create_#{aca[1]}", SecureRandom.uuid)
+
+          pm1.add_cross_assignment(policy_element1, policy_element2).should be_true
+        end
+      end
+
+      it 'raises when the first argument is not a policy element' do
+        err_msg = 'args must each be a kind of PolicyElement; got a Fixnum and PolicyElement instead'
+        expect{ pm1.add_cross_assignment(1, pe1) }.to raise_error(ArgumentError, err_msg)
+      end
+
+      it 'raises when the second argument is not a policy element' do
+        err_msg = 'args must each be a kind of PolicyElement; got a PolicyElement and Fixnum instead'
+        expect{ pm1.add_cross_assignment(pe1, 1) }.to raise_error(ArgumentError, err_msg)
+      end
+
+      it 'raises when the arguments are in the same policy machine' do
+        err_msg = "#{pe1.unique_identifier} and #{pe3.unique_identifier} are in the same policy machine"
+        expect{ pm1.add_cross_assignment(pe1, pe3) }.to raise_error(ArgumentError, err_msg)
+      end
+    end
+
+    describe 'Removing' do
+      it 'removes an existing assignment' do
+        pm1.add_cross_assignment(pe1, pe2)
+        expect(pm1.remove_cross_assignment(pe1, pe2)).to eq true
+      end
+
+      it 'does not remove a non-existant assignment' do
+        expect(pm1.remove_cross_assignment(pe1, pe2)).to eq false
+      end
+
+      it 'raises when first argument is not a policy element' do
+        err_msg = 'args must each be a kind of PolicyElement; got a Fixnum and PolicyElement instead'
+        expect{ pm1.add_cross_assignment(1, pe1) }.to raise_error(ArgumentError, err_msg)
+      end
+
+      it 'raises when the second argument is not a policy element' do
+        err_msg = 'args must each be a kind of PolicyElement; got a PolicyElement and String instead'
+        expect{ pm1.add_cross_assignment(pe1, 'pe2') }.to raise_error(ArgumentError, err_msg)
+      end
+
+      it 'raises when the first argument is in the same policy machine' do
+        err_msg = "#{pe1.unique_identifier} and #{pe3.unique_identifier} are in the same policy machine"
+        expect{ pm1.remove_assignment(pe, pe3) }.to raise_error(ArgumentError, err_msg)
+      end
+    end
+  end
+
   describe 'Associations' do
     describe 'Adding' do
       before do

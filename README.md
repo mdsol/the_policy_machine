@@ -90,6 +90,11 @@ policy_machine.add_association(division, Set.new([r,prohibit_w]),project1)
 # is_privilege?(division,w,project1) will always be false, regardless of other associations.
 ```
 
+# Cross Assignments
+another_policy_machine = PolicyMachine.new('another_policy_machine', ::PolicyMachineStorageAdapter::InMemory)
+u4 = another_policy_machine.create_user('u4')
+policy_machine.add_cross_assignment(u1, u4)
+
 # Storage Adapters
 
 Note that the Policy Machine in the above example stores policy elements in memory.  Other persistent
