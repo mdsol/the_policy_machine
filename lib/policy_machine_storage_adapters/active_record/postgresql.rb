@@ -45,8 +45,8 @@ module PolicyMachineStorageAdapter
 
     class CrossAssignment < ::ActiveRecord::Base
 
-      belongs_to :parent, class_name: 'PolicyElement', foreign_key: :parent_id
-      belongs_to :child, class_name: 'PolicyElement', foreign_key: :child_id
+      belongs_to :cross_parent, class_name: 'PolicyElement', foreign_key: :cross_parent_id
+      belongs_to :cross_child, class_name: 'PolicyElement', foreign_key: :cross_child_id
 
       def self.transitive_closure?(ancestor, descendant)
         descendants_of(ancestor).include?(descendant)
@@ -75,9 +75,9 @@ module PolicyMachineStorageAdapter
         when 0
           PolicyElement.none
         when 1
-          PolicyElement.where('"policy_elements"."id" IN (SELECT cross_assignments__recursive.parent_id FROM (WITH RECURSIVE "cross_assignments__recursive" AS ( SELECT "cross_assignments"."id", "cross_assignments"."parent_id", "cross_assignments"."child_id" FROM "cross_assignments" WHERE "cross_assignments"."child_id" = ? UNION ALL SELECT "cross_assignments"."id", "cross_assignments"."parent_id", "cross_assignments"."child_id" FROM "cross_assignments" INNER JOIN "cross_assignments__recursive" ON "cross_assignments__recursive"."parent_id" = "cross_assignments"."child_id" ) SELECT "cross_assignments__recursive".* FROM "cross_assignments__recursive") AS "cross_assignments__recursive")', element_or_scope.first.id)
+          PolicyElement.where('"policy_elements"."id" IN (SELECT cross_assignments__recursive.cross_parent_id FROM (WITH RECURSIVE "cross_assignments__recursive" AS ( SELECT "cross_assignments"."id", "cross_assignments"."cross_parent_id", "cross_assignments"."cross_child_id" FROM "cross_assignments" WHERE "cross_assignments"."cross_child_id" = ? UNION ALL SELECT "cross_assignments"."id", "cross_assignments"."cross_parent_id", "cross_assignments"."cross_child_id" FROM "cross_assignments" INNER JOIN "cross_assignments__recursive" ON "cross_assignments__recursive"."cross_parent_id" = "cross_assignments"."cross_child_id" ) SELECT "cross_assignments__recursive".* FROM "cross_assignments__recursive") AS "cross_assignments__recursive")', element_or_scope.first.id)
         else
-          PolicyElement.where('"policy_elements"."id" IN (SELECT cross_assignments__recursive.parent_id FROM (WITH RECURSIVE "cross_assignments__recursive" AS ( SELECT "cross_assignments"."id", "cross_assignments"."parent_id", "cross_assignments"."child_id" FROM "cross_assignments" WHERE "cross_assignments"."child_id" in (?) UNION ALL SELECT "cross_assignments"."id", "cross_assignments"."parent_id", "cross_assignments"."child_id" FROM "cross_assignments" INNER JOIN "cross_assignments__recursive" ON "cross_assignments__recursive"."parent_id" = "cross_assignments"."child_id" ) SELECT "cross_assignments__recursive".* FROM "cross_assignments__recursive") AS "cross_assignments__recursive")', element_or_scope.map(&:id))
+          PolicyElement.where('"policy_elements"."id" IN (SELECT cross_assignments__recursive.cross_parent_id FROM (WITH RECURSIVE "cross_assignments__recursive" AS ( SELECT "cross_assignments"."id", "cross_assignments"."cross_parent_id", "cross_assignments"."cross_child_id" FROM "cross_assignments" WHERE "cross_assignments"."cross_child_id" in (?) UNION ALL SELECT "cross_assignments"."id", "cross_assignments"."cross_parent_id", "cross_assignments"."cross_child_id" FROM "cross_assignments" INNER JOIN "cross_assignments__recursive" ON "cross_assignments__recursive"."cross_parent_id" = "cross_assignments"."cross_child_id" ) SELECT "cross_assignments__recursive".* FROM "cross_assignments__recursive") AS "cross_assignments__recursive")', element_or_scope.map(&:id))
         end
       end
 

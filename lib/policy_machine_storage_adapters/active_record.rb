@@ -94,9 +94,9 @@ module PolicyMachineStorageAdapter
 
       # needs unique_identifier, policy_machine_uuid, type, extra_attributes columns
       has_many :assignments, foreign_key: :parent_id, dependent: :destroy
-      has_many :cross_assignments, foreign_key: :parent_id, dependent: :destroy
+      has_many :cross_assignments, foreign_key: :cross_parent_id, dependent: :destroy
       has_many :filial_ties, class_name: 'Assignment', foreign_key: :child_id
-      has_many :cross_filial_ties, class_name: 'CrossAssignment', foreign_key: :child_id
+      has_many :cross_filial_ties, class_name: 'CrossAssignment', foreign_key: :cross_child_id
       # these don't actually destroy the relations, just the assignments
       has_many :children, through: :assignments, dependent: :destroy
       has_many :parents, through: :filial_ties, dependent: :destroy
@@ -174,11 +174,14 @@ module PolicyMachineStorageAdapter
         PolicyElement.where(unique_identifier: elements.keys).delete_all
 
         ids = elements.values.flat_map(&:id)
-        Assignment.where("parent_id IN (?) OR child_id IN (?)", ids, ids).delete_all
-        CrossAssignment.where("parent_id IN (?) OR child_id IN (?)", ids, ids).delete_all
+        Assignment.where(parent_id: ids).delete_all
+        Assignment.where(child_id: ids).delete_all
 
-        groups = id_groups[UserAttribute]
-        PolicyElementAssociation.where("user_attribute_id = (?) OR object_attribute_id = (?)", *groups, *groups).delete_all
+        CrossAssignment.where(cross_parent_id: ids).delete_all
+        CrossAssignment.where(cross_child_id: ids).delete_all
+
+        PolicyElementAssociation.where(user_attribute_id: id_groups[UserAttribute]).delete_all
+        PolicyElementAssociation.where(object_attribute_id: id_groups[ObjectAttribute]).delete_all
       end
 
       def self.bulk_assign(parents_and_children)
@@ -188,7 +191,7 @@ module PolicyMachineStorageAdapter
 
       def self.bulk_cross_assign(parents_and_children)
         id_pairs = parents_and_children.map { |parent, child| [parent.id, child.id]  }
-        CrossAssignment.import([:parent_id, :child_id], id_pairs, on_duplicate_key_ignore: true)
+        CrossAssignment.import([:cross_parent_id, :cross_child_id], id_pairs, on_duplicate_key_ignore: true)
       end
 
       def self.bulk_associate(associations)
@@ -387,10 +390,10 @@ module PolicyMachineStorageAdapter
         cross_assign_later(parent: src, child: dst)
       else
         CrossAssignment.where(
-          parent_id: src.id,
-          child_id: dst.id,
-          parent_policy_machine_uuid: src.policy_machine_uuid,
-          child_policy_machine_uuid: dst.policy_machine_uuid
+          cross_parent_id: src.id,
+          cross_child_id: dst.id,
+          cross_parent_policy_machine_uuid: src.policy_machine_uuid,
+          cross_child_policy_machine_uuid: dst.policy_machine_uuid
         ).first_or_create
       end
     end
@@ -560,18 +563,14 @@ module PolicyMachineStorageAdapter
     def accessible_objects(user_or_attribute, operation, options = {})
       operation = class_for_type('operation').find_by_unique_identifier!(operation.to_s) unless operation.is_a?(class_for_type('operation'))
       permitting_oas = PolicyElement.where(id: operation.policy_element_associations.where(
-                                            user_attribute_id: user_or_attribute.descendants | [user_or_attribute],
-                                          ).select(:object_attribute_id))
-
+        user_attribute_id: user_or_attribute.descendants | [user_or_attribute],
+      ).select(:object_attribute_id))
       direct_scope = permitting_oas.where(type: class_for_type('object'))
-
       indirect_scope = Assignment.ancestors_of(permitting_oas).where(type: class_for_type('object'))
-
       if inclusion = options[:includes]
         direct_scope = Adapter.apply_include_condition(scope: direct_scope, key: options[:key], value: inclusion, klass: class_for_type('object'))
         indirect_scope = Adapter.apply_include_condition(scope: indirect_scope, key: options[:key], value: inclusion, klass: class_for_type('object'))
       end
-
       candidates = direct_scope | indirect_scope
       if options[:ignore_prohibitions] || !(prohibition = class_for_type('operation').find_by_unique_identifier("~#{operation.unique_identifier}"))
         candidates

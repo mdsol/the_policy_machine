@@ -14,6 +14,17 @@ Add the following to your Gemfile:
 gem 'policy_machine'
 ```
 
+# Configuration
+_These instructions are only for PostgreSQL_
+
+The policy machine requires a specific set of tables. Generate the migrations for these tables by running:
+```
+bundle exec rails generate the_policy_machine:add_initial_policy_machine_tables
+bundle exec rails generate the_policy_machine:add_cross_assignments_table
+
+```
+Then just make sure to run `bundle exec rake db:migrate`.
+
 # Usage
 ```
 require 'policy_machine'
