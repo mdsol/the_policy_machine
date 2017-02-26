@@ -325,7 +325,7 @@ module PolicyMachineStorageAdapter
             self.policy_machine_uuid == other.policy_machine_uuid &&
             self.pe_type == other.pe_type
         end
+      end
 
-    end
   end
 end

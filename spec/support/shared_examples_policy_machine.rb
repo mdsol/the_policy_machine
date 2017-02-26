@@ -150,8 +150,8 @@ shared_examples "a policy machine" do
   end
 
   describe 'CrossAssignments' do
-    let(:pm1) { PolicyMachine.new }
-    let(:pm2) { PolicyMachine.new }
+    let(:pm1) { PolicyMachine.new(name: 'PM 1', storage_adapter: policy_machine.policy_machine_storage_adapter.class) }
+    let(:pm2) { PolicyMachine.new(name: 'PM 2', storage_adapter: policy_machine.policy_machine_storage_adapter.class) }
     let(:pe1) { pm1.create_user_attribute(SecureRandom.uuid) }
     let(:pe2) { pm2.create_user_attribute(SecureRandom.uuid) }
     let(:pe3) { pm1.create_user_attribute(SecureRandom.uuid) }
@@ -188,11 +188,11 @@ shared_examples "a policy machine" do
     describe 'Removing' do
       it 'removes an existing assignment' do
         pm1.add_cross_assignment(pe1, pe2)
-        expect(pm1.remove_cross_assignment(pe1, pe2)).to eq true
+        expect(pm1.remove_cross_assignment(pe1, pe2)).to be_true
       end
 
       it 'does not remove a non-existant assignment' do
-        expect(pm1.remove_cross_assignment(pe1, pe2)).to eq false
+        expect(pm1.remove_cross_assignment(pe1, pe2)).to be_false
       end
 
       it 'raises when first argument is not a policy element' do
@@ -387,6 +387,30 @@ shared_examples "a policy machine" do
 
       # Associations
       policy_machine.add_association(@group1, Set.new([@w]), @project1)
+
+      # Cross Assignments included to show that privilege derivations are unaffected
+      pm2 = PolicyMachine.new(name: 'Another PM', storage_adapter: policy_machine.policy_machine_storage_adapter.class)
+      @another_u1 = pm2.create_user('Another u1')
+      @another_o1 = pm2.create_object('Another o1')
+      @another_o2 = pm2.create_object('Another o2')
+      @another_group1 = pm2.create_user_attribute('Another Group1')
+      @another_project1 = pm2.create_object_attribute('Another Project1')
+      @another_w = pm2.create_operation('Another write')
+
+      pm2.add_cross_assignment(@u1, @another_u1)
+      pm2.add_cross_assignment(@o1, @another_o1)
+      pm2.add_cross_assignment(@o2, @another_o2)
+      pm2.add_cross_assignment(@group1, @another_group1)
+      pm2.add_cross_assignment(@project1, @another_project1)
+      pm2.add_cross_assignment(@w, @another_w)
+
+      pm2.add_cross_assignment(@u1, @another_group1)
+      pm2.add_cross_assignment(@o1, @another_project1)
+      pm2.add_cross_assignment(@project1, @another_w)
+
+      pm2.add_cross_assignment(@another_u1, @group1)
+      pm2.add_cross_assignment(@another_o1, @project1)
+      pm2.add_cross_assignment(@another_project1, @w)
     end
 
     it 'raises when the first argument is not a user or user_attribute' do
