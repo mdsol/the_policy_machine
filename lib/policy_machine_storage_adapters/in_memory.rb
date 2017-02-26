@@ -67,10 +67,21 @@ module PolicyMachineStorageAdapter
     # Assign src to dst in policy machine
     #
     def assign(src, dst)
+      assert_valid_policy_element(src)
+      assert_valid_policy_element(dst)
+
+      assignments << [src, dst]
+      true
+    end
+
+    ##
+    # Assign src to dst for policy elements in different policy machines
+    #
+    def cross_assign(src, dst)
       assert_persisted_policy_element(src)
       assert_persisted_policy_element(dst)
 
-      assignments << [src, dst]
+      cross_assignments << [src, dst]
       true
     end
 
@@ -78,8 +89,8 @@ module PolicyMachineStorageAdapter
     # Determine if there is a path from src to dst in the policy machine
     #
     def connected?(src, dst)
-      assert_persisted_policy_element(src)
-      assert_persisted_policy_element(dst)
+      assert_valid_policy_element(src)
+      assert_valid_policy_element(dst)
 
       return true if src == dst
 
@@ -91,8 +102,8 @@ module PolicyMachineStorageAdapter
     # Disconnect two policy elements in the machine
     #
     def unassign(src, dst)
-      assert_persisted_policy_element(src)
-      assert_persisted_policy_element(dst)
+      assert_valid_policy_element(src)
+      assert_valid_policy_element(dst)
 
       assignment = assignments.find{|assgn| assgn[0] == src && assgn[1] == dst}
       if assignment
@@ -104,10 +115,27 @@ module PolicyMachineStorageAdapter
     end
 
     ##
+    # Disconnect two policy elements across different policy machines
+    #
+    def cross_unassign(src, dst)
+      assert_persisted_policy_element(src)
+      assert_persisted_policy_element(dst)
+
+      cross_assignment = cross_assignments.find{ |assgn| assgn[0] == src && assgn[1] == dst}
+      if cross_assignment
+        cross_assignments.delete(cross_assignment)
+        true
+      else
+        false
+      end
+    end
+
+    ##
     # Remove a persisted policy element
     #
     def delete(element)
       assignments.delete_if{ |assgn| assgn.include?(element) }
+      cross_assignments.delete_if{ |assgn| assgn.include?(element) }
       associations.delete_if { |_,assoc| assoc.include?(element) }
       policy_elements.delete(element)
     end
@@ -194,8 +222,16 @@ module PolicyMachineStorageAdapter
 
       # Raise argument error if argument is not suitable for consumption in
       # public methods.
+      def assert_valid_policy_element(arg)
+        assert_persisted_policy_element(arg)
+        assert_in_machine(arg)
+      end
+
       def assert_persisted_policy_element(arg)
         raise(ArgumentError, "arg must be a PersistedPolicyElement; got #{arg.class.name}") unless arg.is_a?(PersistedPolicyElement)
+      end
+
+      def assert_in_machine(arg)
         raise(ArgumentError, "arg must be persisted") unless element_in_machine?(arg)
       end
 
@@ -207,6 +243,11 @@ module PolicyMachineStorageAdapter
       # The policy element assignments in the persisted policy machine.
       def assignments
         @assignments ||= []
+      end
+
+      # The policy element cross assignments in the persisted policy machine.
+      def cross_assignments
+        @crosss_assignments ||= []
       end
 
       # All persisted associations

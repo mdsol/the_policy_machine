@@ -71,6 +71,13 @@ module PolicyMachineStorageAdapter
       end
     end
 
+    ##
+    # Assign src to dst in different policy machines
+    #
+    def cross_assign(src, dst)
+      assign(src, dst)
+    end
+
     # Allow ignore_case to be a boolean, string, symbol, or array of symbols or strings
     def ignore_case_applies?(ignore_case, key)
       ignore_case == true || ignore_case.to_s == key || ( ignore_case.respond_to?(:any?) && ignore_case.any?{ |k| k.to_s == key.to_s} )
@@ -111,6 +118,14 @@ module PolicyMachineStorageAdapter
       else
         false
       end
+    end
+
+    ##
+    # Disconnects two policy elements in different machines.
+    # Returns true if the unassignment succeeds or false otherwise.
+    #
+    def unassign(src, dst)
+      unassign(src, dst)
     end
 
     ##

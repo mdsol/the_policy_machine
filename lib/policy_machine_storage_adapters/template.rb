@@ -76,6 +76,15 @@ module PolicyMachineStorageAdapter
     end
 
     ##
+    # Assign src to dst. The two policy elements must be persisted policy
+    # elements in different policy machines. Returns true if the assignment
+    # occurred and false otherwise.
+    #
+    def cross_assign(src, dst)
+
+    end
+
+    ##
     # Determine if there is a path from src to dst in the policy machine.
     # The two policy elements must be persisted policy elements; otherwise the method should raise
     # an ArgumentError.
@@ -95,6 +104,14 @@ module PolicyMachineStorageAdapter
     # first place.
     #
     def unassign(src, dst)
+
+    end
+
+    ##
+    # Disconnects two policy elements in different machines.
+    # Returns true if the unassignment succeeds or false otherwise.
+    #
+    def cross_unassign(src, dst)
 
     end
 

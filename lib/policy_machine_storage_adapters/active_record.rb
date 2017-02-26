@@ -383,7 +383,8 @@ module PolicyMachineStorageAdapter
     ##
     # Assign src to dst. The two policy elements must be persisted policy
     # elements in different policy machines. Returns true if the assignment
-    # occurred, false otherwise.
+    # occurred and false otherwise.
+    #
     def cross_assign(src, dst)
       assert_persisted_policy_element(src, dst)
       if self.buffering?
@@ -433,6 +434,7 @@ module PolicyMachineStorageAdapter
     ##
     # Disconnects two policy elements in different machines.
     # Returns true if the unassignment succeeds or false otherwise.
+    #
     def cross_unassign(src, dst)
       assert_persisted_policy_element(src, dst)
       if assignment = src.cross_assignments.where(cross_child_id: dst.id).first

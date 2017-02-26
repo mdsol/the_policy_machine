@@ -170,12 +170,12 @@ shared_examples "a policy machine" do
       end
 
       it 'raises when the first argument is not a policy element' do
-        err_msg = 'args must each be a kind of PolicyElement; got a Fixnum and PolicyElement instead'
+        err_msg = 'args must each be a kind of PolicyElement; got a Fixnum and PM::UserAttribute instead'
         expect{ pm1.add_cross_assignment(1, pe1) }.to raise_error(ArgumentError, err_msg)
       end
 
       it 'raises when the second argument is not a policy element' do
-        err_msg = 'args must each be a kind of PolicyElement; got a PolicyElement and Fixnum instead'
+        err_msg = 'args must each be a kind of PolicyElement; got a PM::UserAttribute and Fixnum instead'
         expect{ pm1.add_cross_assignment(pe1, 1) }.to raise_error(ArgumentError, err_msg)
       end
 
@@ -196,18 +196,18 @@ shared_examples "a policy machine" do
       end
 
       it 'raises when first argument is not a policy element' do
-        err_msg = 'args must each be a kind of PolicyElement; got a Fixnum and PolicyElement instead'
+        err_msg = 'args must each be a kind of PolicyElement; got a Fixnum and PM::UserAttribute instead'
         expect{ pm1.add_cross_assignment(1, pe1) }.to raise_error(ArgumentError, err_msg)
       end
 
       it 'raises when the second argument is not a policy element' do
-        err_msg = 'args must each be a kind of PolicyElement; got a PolicyElement and String instead'
+        err_msg = 'args must each be a kind of PolicyElement; got a PM::UserAttribute and String instead'
         expect{ pm1.add_cross_assignment(pe1, 'pe2') }.to raise_error(ArgumentError, err_msg)
       end
 
       it 'raises when the first argument is in the same policy machine' do
         err_msg = "#{pe1.unique_identifier} and #{pe3.unique_identifier} are in the same policy machine"
-        expect{ pm1.remove_assignment(pe, pe3) }.to raise_error(ArgumentError, err_msg)
+        expect{ pm1.remove_cross_assignment(pe1, pe3) }.to raise_error(ArgumentError, err_msg)
       end
     end
   end
