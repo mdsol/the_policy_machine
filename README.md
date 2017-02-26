@@ -14,16 +14,6 @@ Add the following to your Gemfile:
 gem 'policy_machine'
 ```
 
-# Configuration
-
-The policy machine requires a specific set of tables. Generate the migrations for these tables by running:
-```
-bundle exec rails generate the_policy_machine:add_initial_policy_machine_tables
-bundle exec rails generate the_policy_machine:add_cross_assignments_table
-
-```
-Then just make sure to run `bundle exec rake db:migrate`.
-
 # Usage
 ```
 require 'policy_machine'
@@ -89,11 +79,6 @@ prohibit_w = w.prohibition
 policy_machine.add_association(division, Set.new([r,prohibit_w]),project1)
 # is_privilege?(division,w,project1) will always be false, regardless of other associations.
 ```
-
-# Cross Assignments
-another_policy_machine = PolicyMachine.new('another_policy_machine', ::PolicyMachineStorageAdapter::InMemory)
-u4 = another_policy_machine.create_user('u4')
-policy_machine.add_cross_assignment(u1, u4)
 
 # Storage Adapters
 
