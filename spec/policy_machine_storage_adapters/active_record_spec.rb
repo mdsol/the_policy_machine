@@ -108,6 +108,18 @@ describe 'ActiveRecord' do
           expect(pm.user_attributes).to eq [attr]
           expect(pm.users).to be_empty
         end
+
+        it 'deletes preexisting policy elements that have been updated in the persistence buffer' do
+          user = pm.create_user('alice')
+          attr = pm.bulk_persist do
+            user.update(color: 'blue')
+            user.delete
+            pm.create_user_attribute('caffeinated')
+          end
+
+          expect(pm.user_attributes).to eq [attr]
+          expect(pm.users).to be_empty
+        end
       end
     end
 
