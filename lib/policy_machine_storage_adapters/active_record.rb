@@ -72,8 +72,8 @@ module PolicyMachineStorageAdapter
       # being relied on for assignments and associations will break, otherwise
       buffers[:upsert].values.each { |el| el.attributes = el.attributes.slice(*column_keys) }
 
-      PolicyElement.import(buffers[:upsert].values, on_duplicate_key_update: column_keys.map(&:to_sym) - [:id])
       PolicyElement.bulk_destroy(buffers[:delete])
+      PolicyElement.import(buffers[:upsert].values, on_duplicate_key_update: column_keys.map(&:to_sym) - [:id])
       PolicyElement.bulk_assign(buffers[:assignments])
       PolicyElement.bulk_associate(buffers[:associations])
 
@@ -138,7 +138,7 @@ module PolicyMachineStorageAdapter
       # TODO: support databases that dont support upserts(pg 9.4, etc)
       def self.create_later(attrs, storage_adapter)
         element = new(attrs)
-        storage_adapter.buffers[:delete].delete(element.unique_identifier)
+
         storage_adapter.buffers[:upsert][element.unique_identifier] = element
       end
 
