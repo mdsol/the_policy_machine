@@ -93,6 +93,22 @@ describe 'ActiveRecord' do
         end
       end
 
+      describe '#bulk_persist' do
+        let(:pm) { PolicyMachine.new(name: 'AR PM', storage_adapter: PolicyMachineStorageAdapter::ActiveRecord) }
+
+        it 'deletes a policy element that has been created and then deleted in the same transaction' do
+          user, attr = pm.bulk_persist do
+            user = pm.create_user('alice')
+            attr = pm.create_user_attribute('caffeinated')
+            user.delete
+
+            [user, attr]
+          end
+
+          expect(pm.user_attributes).to eq [attr]
+          expect(pm.users).to be_empty
+        end
+      end
     end
 
     describe 'method_missing' do
