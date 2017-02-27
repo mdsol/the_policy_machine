@@ -89,7 +89,8 @@ module PolicyMachineStorageAdapter
       has_many :filial_ties, class_name: 'Assignment', foreign_key: :child_id
       #these don't actually destroy the relations, just the assignments
       has_many :children, through: :assignments, dependent: :destroy
-      has_many :parents, through: :filial_ties, dependent: :destroy
+      # TODO: change to 'parents' after protected resource types are moved into Policy Graph and they no longer user the 'parents' attribute.
+      has_many :immediate_ancestors, through: :filial_ties, source: :parent, dependent: :destroy
 
       attr_accessor :extra_attributes_hash
 
