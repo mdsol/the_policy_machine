@@ -26,7 +26,7 @@ addons:
     - libcurl3-gnutls
     - libcurl4-openssl-dev
   postgresql: 9.5
-bundler_args: --jobs=1 --retry=3 --deployment --without development
+bundler_args: --jobs=1 --retry=3
 before_script:
   - sudo cp /etc/postgresql/9.4/main/pg_hba.conf /etc/postgresql/9.5/main/pg_hba.conf
   - sudo /etc/init.d/postgresql restart
