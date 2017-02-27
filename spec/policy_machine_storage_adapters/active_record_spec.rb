@@ -96,7 +96,7 @@ describe 'ActiveRecord' do
       describe '#bulk_persist' do
         let(:pm) { PolicyMachine.new(name: 'AR PM', storage_adapter: PolicyMachineStorageAdapter::ActiveRecord) }
 
-        it 'deletes a policy element that has been created and then deleted in the same transaction' do
+        it 'deletes a policy element that has been created and then deleted in a persistence buffer' do
           user, attr = pm.bulk_persist do
             user = pm.create_user('alice')
             attr = pm.create_user_attribute('caffeinated')
@@ -121,7 +121,7 @@ describe 'ActiveRecord' do
           expect(pm.users).to be_empty
         end
 
-        it 'creates a record if the record is deleted and then created inside a performance buffer' do
+        it 'creates a record if the record is created, deleted and then recreated inside a persistence buffer' do
           user, attr = pm.bulk_persist do
             pm.create_user('alice').delete
             attr = pm.create_user_attribute('caffeinated')
@@ -131,7 +131,22 @@ describe 'ActiveRecord' do
           end
 
           expect(pm.user_attributes).to eq [attr]
-          expect(pm.users).to be_empty
+          expect(pm.users).to eq [user]
+        end
+
+        it 'creates a record if a preexisting record is deleted and then recreated inside a persistence buffer' do
+          user = pm.create_user('alice')
+
+          user, attr = pm.bulk_persist do
+            user.delete
+            attr = pm.create_user_attribute('caffeinated')
+            user = pm.create_user('alice')
+
+            [user,attr]
+          end
+
+          expect(pm.user_attributes).to eq [attr]
+          expect(pm.users).to eq [user]
         end
       end
     end
