@@ -120,6 +120,19 @@ describe 'ActiveRecord' do
           expect(pm.user_attributes).to eq [attr]
           expect(pm.users).to be_empty
         end
+
+        it 'creates a record if the record is deleted and then created inside a performance buffer' do
+          user, attr = pm.bulk_persist do
+            pm.create_user('alice').delete
+            attr = pm.create_user_attribute('caffeinated')
+            user = pm.create_user('alice')
+
+            [user,attr]
+          end
+
+          expect(pm.user_attributes).to eq [attr]
+          expect(pm.users).to be_empty
+        end
       end
     end
 
