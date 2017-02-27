@@ -138,6 +138,7 @@ module PolicyMachineStorageAdapter
       # TODO: support databases that dont support upserts(pg 9.4, etc)
       def self.create_later(attrs, storage_adapter)
         element = new(attrs)
+        storage_adapter.buffers[:delete].delete(element.unique_identifier)
         storage_adapter.buffers[:upsert][element.unique_identifier] = element
       end
 
