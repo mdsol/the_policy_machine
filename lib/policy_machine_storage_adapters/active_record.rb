@@ -386,6 +386,7 @@ module PolicyMachineStorageAdapter
     end
 
     def delete_later(element)
+      buffers[:upsert].delete(element.unique_identifier)
       buffers[:delete].merge!(element.unique_identifier => element)
     end
 
