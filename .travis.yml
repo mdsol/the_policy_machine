@@ -11,6 +11,8 @@ env:
     - PGHOST=localhost
   matrix:
     - CI_NODE_INDEX=0
+before_install:
+  - gem install bundler -v 1.11.2
 services:
   - postgresql
 addons:
