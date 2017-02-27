@@ -152,6 +152,7 @@ shared_examples "a policy machine" do
   describe 'CrossAssignments' do
     let(:pm1) { PolicyMachine.new(name: 'PM 1', storage_adapter: policy_machine.policy_machine_storage_adapter.class) }
     let(:pm2) { PolicyMachine.new(name: 'PM 2', storage_adapter: policy_machine.policy_machine_storage_adapter.class) }
+    let(:pm3) { PolicyMachine.new(name: 'PM 3', storage_adapter: policy_machine.policy_machine_storage_adapter.class) }
     let(:pe1) { pm1.create_user_attribute(SecureRandom.uuid) }
     let(:pe2) { pm2.create_user_attribute(SecureRandom.uuid) }
     let(:pe3) { pm1.create_user_attribute(SecureRandom.uuid) }
@@ -165,7 +166,14 @@ shared_examples "a policy machine" do
           policy_element1 = pm1.send("create_#{aca[0]}", SecureRandom.uuid)
           policy_element2 = pm2.send("create_#{aca[1]}", SecureRandom.uuid)
 
-          pm1.add_cross_assignment(policy_element1, policy_element2).should be_true
+          expect(pm1.add_cross_assignment(policy_element1, policy_element2)).to be_true
+        end
+
+        it "allows a #{aca[0]} to be assigned a #{aca[1]} using an unrelated policy machine" do
+          policy_element1 = pm1.send("create_#{aca[0]}", SecureRandom.uuid)
+          policy_element2 = pm2.send("create_#{aca[1]}", SecureRandom.uuid)
+
+          expect(pm3.add_cross_assignment(policy_element1, policy_element2)).to be_true
         end
       end
 
