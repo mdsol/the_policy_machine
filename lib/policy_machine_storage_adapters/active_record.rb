@@ -190,8 +190,9 @@ module PolicyMachineStorageAdapter
       end
 
       def self.bulk_cross_assign(parents_and_children)
-        id_pairs = parents_and_children.map { |parent, child| [parent.id, child.id]  }
-        CrossAssignment.import([:cross_parent_id, :cross_child_id], id_pairs, on_duplicate_key_ignore: true)
+        id_pairs = parents_and_children.map { |parent, child| [parent.id, child.id, parent.policy_machine_uuid, child.policy_machine_uuid] }
+        import_fields = [:cross_parent_id, :cross_child_id, :cross_parent_policy_machine_uuid, :cross_child_policy_machine_uuid]
+        CrossAssignment.import(import_fields, id_pairs, on_duplicate_key_ignore: true)
       end
 
       def self.bulk_associate(associations)
@@ -364,7 +365,6 @@ module PolicyMachineStorageAdapter
     ##
     # Assign src to dst in policy machine.
     # The two policy elements must be persisted policy elements
-    # Returns true if the assignment occurred, false otherwise.
     #
     def assign(src, dst)
       assert_persisted_policy_element(src, dst)
@@ -382,8 +382,7 @@ module PolicyMachineStorageAdapter
 
     ##
     # Assign src to dst. The two policy elements must be persisted policy
-    # elements in different policy machines. Returns true if the assignment
-    # occurred and false otherwise.
+    # elements in different policy machines.
     #
     def cross_assign(src, dst)
       assert_persisted_policy_element(src, dst)
@@ -420,7 +419,6 @@ module PolicyMachineStorageAdapter
     # Disconnect two policy elements in the machine
     # The two policy elements must be persisted policy elements; otherwise the method should raise
     # an ArgumentError.
-    # Returns true if unassignment occurred and false otherwise.
     # Generally, false will be returned if the assignment didn't exist in the PM in the
     # first place.
     #
@@ -433,7 +431,6 @@ module PolicyMachineStorageAdapter
 
     ##
     # Disconnects two policy elements in different machines.
-    # Returns true if the unassignment succeeds or false otherwise.
     #
     def cross_unassign(src, dst)
       assert_persisted_policy_element(src, dst)
