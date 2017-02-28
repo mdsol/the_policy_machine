@@ -196,13 +196,13 @@ shared_examples "a policy machine" do
     end
 
     describe 'Removing a link' do
-      it 'removes an existing assignment' do
+      it 'removes an existing link' do
         pm1.add_link(pe1, pe2)
         expect { pm1.remove_link(pe1, pe2) }
           .to change { pe1.linked?(pe2) }.from(true).to(false)
       end
 
-      it 'does not remove a non-existant assignment' do
+      it 'does not remove a non-existant link' do
         expect { pm1.remove_link(pe1, pe2) }
           .to_not change { pe1.linked?(pe2) }
         expect(pe1.linked?(pe2)).to eq false
@@ -221,6 +221,103 @@ shared_examples "a policy machine" do
       it 'raises when the first argument is in the same policy machine' do
         err_msg = "#{pe1.unique_identifier} and #{pe3.unique_identifier} are in the same policy machine"
         expect{ pm1.remove_link(pe1, pe3) }.to raise_error(ArgumentError, err_msg)
+      end
+    end
+
+    describe 'bulk_persist' do
+      describe 'Adding a link' do
+        allowed_links.each do |aca|
+          it "allows a #{aca[0]} to be assigned a #{aca[1]}" do
+            policy_element1 = pm1.send("create_#{aca[0]}", SecureRandom.uuid)
+            policy_element2 = pm2.send("create_#{aca[1]}", SecureRandom.uuid)
+
+            expect do
+              pm1.bulk_persist { pm1.add_link(policy_element1, policy_element2) }
+            end.to change { policy_element1.linked?(policy_element2) }.from(false).to(true)
+          end
+
+          it "allows a #{aca[0]} to be assigned a #{aca[1]} using an unrelated policy machine" do
+            policy_element1 = pm1.send("create_#{aca[0]}", SecureRandom.uuid)
+            policy_element2 = pm2.send("create_#{aca[1]}", SecureRandom.uuid)
+
+            expect do
+              pm1.bulk_persist { pm3.add_link(policy_element1, policy_element2) }
+            end.to change { policy_element1.linked?(policy_element2) }.from(false).to(true)
+          end
+        end
+
+        it 'adds multiple links at once' do
+          expect(pe1.linked?(pe2)).to eq false
+          expect(pe2.linked?(pe3)).to eq false
+
+          pm1.bulk_persist do
+            pm1.add_link(pe1, pe2)
+            pm1.add_link(pe2, pe3)
+          end
+
+          expect(pe1.linked?(pe2)).to eq true
+          expect(pe2.linked?(pe3)).to eq true
+        end
+
+        it 'raises when the first argument is not a policy element' do
+          err_msg = 'args must each be a kind of PolicyElement; got a Fixnum and PM::UserAttribute instead'
+          expect{ pm1.bulk_persist { pm1.add_link(1, pe1) } }.to raise_error(ArgumentError, err_msg)
+        end
+
+        it 'raises when the second argument is not a policy element' do
+          err_msg = 'args must each be a kind of PolicyElement; got a PM::UserAttribute and Fixnum instead'
+          expect{ pm1.bulk_persist { pm1.add_link(pe1, 1) } }.to raise_error(ArgumentError, err_msg)
+        end
+
+        it 'raises when the arguments are in the same policy machine' do
+          err_msg = "#{pe1.unique_identifier} and #{pe3.unique_identifier} are in the same policy machine"
+          expect{ pm1.bulk_persist { pm1.add_link(pe1, pe3) } }.to raise_error(ArgumentError, err_msg)
+        end
+      end
+
+      describe 'Removing a link' do
+        it 'removes an existing link' do
+          pm1.add_link(pe1, pe2)
+          expect { pm1.bulk_persist { pm1.remove_link(pe1, pe2) } }
+            .to change { pe1.linked?(pe2) }.from(true).to(false)
+        end
+
+        it 'removes multiple links at once' do
+          pm1.add_link(pe1, pe2)
+          pm1.add_link(pe2, pe3)
+
+          expect(pe1.linked?(pe2)).to eq true
+          expect(pe2.linked?(pe3)).to eq true
+
+          pm1.bulk_persist do
+            pm1.remove_link(pe1, pe2)
+            pm1.remove_link(pe2, pe3)
+          end
+
+          expect(pe1.linked?(pe2)).to eq false
+          expect(pe2.linked?(pe3)).to eq false
+        end
+
+        it 'does not remove a non-existant link' do
+          expect { pm1.bulk_persist { pm1.remove_link(pe1, pe2) } }
+            .to_not change { pe1.linked?(pe2) }
+          expect(pe1.linked?(pe2)).to eq false
+        end
+
+        it 'raises when first argument is not a policy element' do
+          err_msg = 'args must each be a kind of PolicyElement; got a Fixnum and PM::UserAttribute instead'
+          expect{ pm1.bulk_persist { pm1.add_link(1, pe1) } }.to raise_error(ArgumentError, err_msg)
+        end
+
+        it 'raises when the second argument is not a policy element' do
+          err_msg = 'args must each be a kind of PolicyElement; got a PM::UserAttribute and String instead'
+          expect{ pm1.bulk_persist { pm1.add_link(pe1, 'pe2') } }.to raise_error(ArgumentError, err_msg)
+        end
+
+        it 'raises when the first argument is in the same policy machine' do
+          err_msg = "#{pe1.unique_identifier} and #{pe3.unique_identifier} are in the same policy machine"
+          expect{ pm1.bulk_persist { pm1.remove_link(pe1, pe3) } }.to raise_error(ArgumentError, err_msg)
+        end
       end
     end
   end
