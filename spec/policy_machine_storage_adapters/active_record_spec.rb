@@ -85,7 +85,6 @@ describe 'ActiveRecord' do
         let(:object_attribute) { pm.create_object_attribute('object_attribute') }
         let(:object) { pm.create_object('object') }
 
-
         it 'deletes only those assignments that were on deleted elements' do
           pm.add_assignment(user, user_attribute)
           pm.add_association(user_attribute, Set.new([operation]), object_attribute)
@@ -104,9 +103,7 @@ describe 'ActiveRecord' do
           pm.add_link(pm2_user, operation)
 
           expect(user.linked?(operation)).to eq true
-
           pm.bulk_persist { operation.delete }
-
           expect(user.linked?(pm2_user)).to eq true
         end
       end
