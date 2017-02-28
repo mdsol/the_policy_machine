@@ -41,6 +41,8 @@ module PM
     end
 
     # Assigns self to destination policy element in a different policy machine
+    # This is used for logical relationships outside of the policy machine formalism, such as the
+    # relationship between a class of operable and a specific instance of it.
     def cross_assign_to(dst_policy_element)
       @pm_storage_adapter.cross_assign(self.stored_pe, dst_policy_element.stored_pe)
     end
@@ -48,6 +50,8 @@ module PM
     # Removes an assignment from self to destination policy element where the
     # destination policy element is in a different policy machine.
     # Returns boolean indicating whether assignment was successfully removed.
+    # This is used for logical relationships outside of the policy machine formalism, such as the
+    # relationship between a class of operable and a specific instance of it.
     def cross_unassign(dst_policy_element)
       @pm_storage_adapter.cross_unassign(self.stored_pe, dst_policy_element.stored_pe)
     end

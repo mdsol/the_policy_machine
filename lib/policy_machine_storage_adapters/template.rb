@@ -76,9 +76,9 @@ module PolicyMachineStorageAdapter
     end
 
     ##
-    # Assign src to dst. The two policy elements must be persisted policy
-    # elements in different policy machines. Returns true if the assignment
-    # occurred and false otherwise.
+    # Connects two policy elements across different policy machines.
+    # This is used for logical relationships outside of the policy machine formalism, such as the
+    # relationship between a class of operable and a specific instance of it.
     #
     def cross_assign(src, dst)
 
@@ -110,6 +110,8 @@ module PolicyMachineStorageAdapter
     ##
     # Disconnects two policy elements in different machines.
     # Returns true if the unassignment succeeds or false otherwise.
+    # This is used for logical relationships outside of the policy machine formalism, such as the
+    # relationship between a class of operable and a specific instance of it.
     #
     def cross_unassign(src, dst)
 

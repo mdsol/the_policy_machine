@@ -76,6 +76,8 @@ module PolicyMachineStorageAdapter
 
     ##
     # Assign src to dst for policy elements in different policy machines
+    # This is used for logical relationships outside of the policy machine formalism, such as the
+    # relationship between a class of operable and a specific instance of it.
     #
     def cross_assign(src, dst)
       assert_persisted_policy_element(src)
