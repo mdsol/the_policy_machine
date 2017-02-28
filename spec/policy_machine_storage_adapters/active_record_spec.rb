@@ -113,7 +113,6 @@ describe 'ActiveRecord' do
     end
 
     context 'when there is a lot of data' do
-
       before do
         n = 20
         @pm = PolicyMachine.new(:name => 'ActiveRecord PM', :storage_adapter => PolicyMachineStorageAdapter::ActiveRecord)
@@ -132,9 +131,7 @@ describe 'ActiveRecord' do
         PolicyMachineStorageAdapter::ActiveRecord::Assignment.should_receive(:transitive_closure?).at_most(10).times
         @pm.is_privilege?(@u1, @op, @objects.first).should be
       end
-
     end
-
   end
 
   describe 'relationships' do

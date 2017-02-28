@@ -99,6 +99,18 @@ module PolicyMachineStorageAdapter
     end
 
     ##
+    # Determine if there is a path from src to dst in different policy machines
+    #
+    def cross_connected?(src, dst)
+      assert_persisted_policy_element(src)
+      assert_persisted_policy_element(dst)
+
+      return false if src == dst
+
+      self_and_children(src).include?(dst) || self_and_children(dst).include?(src)
+    end
+
+    ##
     # Disconnect two policy elements in the machine
     #
     def unassign(src, dst)
@@ -121,7 +133,7 @@ module PolicyMachineStorageAdapter
       assert_persisted_policy_element(src)
       assert_persisted_policy_element(dst)
 
-      cross_assignment = cross_assignments.find{ |assgn| assgn[0] == src && assgn[1] == dst}
+      cross_assignment = cross_assignments.find{ |assgn| assgn[0] == src && assgn[1] == dst }
       if cross_assignment
         cross_assignments.delete(cross_assignment)
         true
@@ -247,7 +259,7 @@ module PolicyMachineStorageAdapter
 
       # The policy element cross assignments in the persisted policy machine.
       def cross_assignments
-        @crosss_assignments ||= []
+        @cross_assignments ||= []
       end
 
       # All persisted associations
@@ -302,6 +314,15 @@ module PolicyMachineStorageAdapter
         return neighbors.uniq
       end
 
+      # Returns an array of self and the cross children
+      def self_and_children(pe)
+        children = cross_assignments.reduce([]) do |memo, ca|
+          memo << self_and_children(ca[1]) if ca[0] == pe
+          memo
+        end
+        (children << pe).flatten
+      end
+
       # Class to represent policy elements
       class PersistedPolicyElement
         attr_accessor :persisted
@@ -326,6 +347,5 @@ module PolicyMachineStorageAdapter
             self.pe_type == other.pe_type
         end
       end
-
   end
 end

@@ -416,6 +416,20 @@ module PolicyMachineStorageAdapter
     end
 
     ##
+    # Determine if there is a path from src to dst in different policy machines.
+    # Returns true if there is a such a path and false otherwise.
+    # The two policy elements must be persisted policy elements.
+    # Should return false if src == dst
+    #
+    def cross_connected?(src, dst)
+      assert_persisted_policy_element(src, dst)
+
+      return false if src == dst
+
+      CrossAssignment.transitive_closure?(src, dst)
+    end
+
+    ##
     # Disconnect two policy elements in the machine
     # The two policy elements must be persisted policy elements; otherwise the method should raise
     # an ArgumentError.

@@ -166,14 +166,16 @@ shared_examples "a policy machine" do
           policy_element1 = pm1.send("create_#{aca[0]}", SecureRandom.uuid)
           policy_element2 = pm2.send("create_#{aca[1]}", SecureRandom.uuid)
 
-          expect(pm1.add_cross_assignment(policy_element1, policy_element2)).to be_true
+          expect { pm1.add_cross_assignment(policy_element1, policy_element2) }
+            .to change { policy_element1.cross_connected?(policy_element2) }.from(false).to(true)
         end
 
         it "allows a #{aca[0]} to be assigned a #{aca[1]} using an unrelated policy machine" do
           policy_element1 = pm1.send("create_#{aca[0]}", SecureRandom.uuid)
           policy_element2 = pm2.send("create_#{aca[1]}", SecureRandom.uuid)
 
-          expect(pm3.add_cross_assignment(policy_element1, policy_element2)).to be_true
+          expect { pm3.add_cross_assignment(policy_element1, policy_element2) }
+            .to change { policy_element1.cross_connected?(policy_element2) }.from(false).to(true)
         end
       end
 
@@ -196,11 +198,14 @@ shared_examples "a policy machine" do
     describe 'Removing' do
       it 'removes an existing assignment' do
         pm1.add_cross_assignment(pe1, pe2)
-        expect(pm1.remove_cross_assignment(pe1, pe2)).to be_true
+        expect { pm1.remove_cross_assignment(pe1, pe2) }
+          .to change { pe1.cross_connected?(pe2) }.from(true).to(false)
       end
 
       it 'does not remove a non-existant assignment' do
-        expect(pm1.remove_cross_assignment(pe1, pe2)).to be_false
+        expect { pm1.remove_cross_assignment(pe1, pe2) }
+          .to_not change { pe1.cross_connected?(pe2) }
+        expect(pe1.cross_connected?(pe2)).to eq false
       end
 
       it 'raises when first argument is not a policy element' do

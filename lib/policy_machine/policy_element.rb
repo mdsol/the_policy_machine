@@ -25,6 +25,11 @@ module PM
       @pm_storage_adapter.connected?(self.stored_pe, other_pe.stored_pe)
     end
 
+    # Determines if self is cross connected to other node
+    def cross_connected?(other_pe)
+      @pm_storage_adapter.cross_connected?(self.stored_pe, other_pe.stored_pe)
+    end
+
     # Assigns self to destination policy element
     # This method is sensitive to the type of self and dst_policy_element
     def assign_to(dst_policy_element)
