@@ -319,11 +319,10 @@ module PolicyMachineStorageAdapter
 
       # Returns an array of self and the linked children
       def self_and_children(pe)
-        children = links.reduce([]) do |memo, ca|
-          memo << self_and_children(ca[1]) if ca[0] == pe
+        links.reduce([]) do |memo, ca|
+          memo.concat self_and_children(ca[1]) if ca[0] == pe
           memo
-        end
-        (children << pe).flatten
+        end << pe
       end
 
       # Class to represent policy elements
