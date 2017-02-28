@@ -76,23 +76,40 @@ describe 'ActiveRecord' do
       end
 
       describe 'bulk_deletion' do
+        let(:pm) { PolicyMachine.new(name: 'AR PM 1', storage_adapter: PolicyMachineStorageAdapter::ActiveRecord) }
+        let(:pm2) { PolicyMachine.new(name: 'AR PM 2', storage_adapter: PolicyMachineStorageAdapter::ActiveRecord) }
+        let(:user) { pm.create_user('user') }
+        let(:pm2_user) { pm2.create_user('PM 2 user') }
+        let(:operation) { pm.create_operation('operation') }
+        let(:user_attribute) { pm.create_user_attribute('user_attribute') }
+        let(:object_attribute) { pm.create_object_attribute('object_attribute') }
+        let(:object) { pm.create_object('object') }
+
+
         it 'deletes only those assignments that were on deleted elements' do
-          @pm = PolicyMachine.new(:name => 'ActiveRecord PM', :storage_adapter => PolicyMachineStorageAdapter::ActiveRecord)
-          @u1 = @pm.create_user('u1')
-          @op = @pm.create_operation('own')
-          @user_attribute = @pm.create_user_attribute('ua1')
-          @object_attribute = @pm.create_object_attribute('oa1')
-          @object = @pm.create_object('o1')
-          @pm.add_assignment(@u1, @user_attribute)
-          @pm.add_association(@user_attribute, Set.new([@op]), @object_attribute)
-          @pm.add_assignment(@object, @object_attribute)
-          expect(@pm.is_privilege?(@u1,@op,@object)).to be
-          @elt = @pm.create_object(@u1.stored_pe.id.to_s)
-          @pm.bulk_persist { @elt.delete }
-          expect(@pm.is_privilege?(@u1,@op,@object)).to be
+          pm.add_assignment(user, user_attribute)
+          pm.add_association(user_attribute, Set.new([operation]), object_attribute)
+          pm.add_assignment(object, object_attribute)
+
+          expect(pm.is_privilege?(user, operation, object)).to be
+
+          elt = pm.create_object(user.stored_pe.id.to_s)
+          pm.bulk_persist { elt.delete }
+
+          expect(pm.is_privilege?(user, operation, object)).to be
+        end
+
+        it 'deletes only those links that were on deleted elements' do
+          pm.add_link(user, pm2_user)
+          pm.add_link(pm2_user, operation)
+
+          expect(user.linked?(operation)).to eq true
+
+          pm.bulk_persist { operation.delete }
+
+          expect(user.linked?(pm2_user)).to eq true
         end
       end
-
     end
 
     describe 'method_missing' do
