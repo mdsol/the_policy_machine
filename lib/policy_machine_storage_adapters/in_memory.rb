@@ -79,11 +79,11 @@ module PolicyMachineStorageAdapter
     # This is used for logical relationships outside of the policy machine formalism, such as the
     # relationship between a class of operable and a specific instance of it.
     #
-    def cross_assign(src, dst)
+    def link(src, dst)
       assert_persisted_policy_element(src)
       assert_persisted_policy_element(dst)
 
-      cross_assignments << [src, dst]
+      links << [src, dst]
       true
     end
 
@@ -103,7 +103,7 @@ module PolicyMachineStorageAdapter
     ##
     # Determine if there is a path from src to dst in different policy machines
     #
-    def cross_connected?(src, dst)
+    def linked?(src, dst)
       assert_persisted_policy_element(src)
       assert_persisted_policy_element(dst)
 
@@ -131,13 +131,14 @@ module PolicyMachineStorageAdapter
     ##
     # Disconnect two policy elements across different policy machines
     #
-    def cross_unassign(src, dst)
+    def unlink(src, dst)
       assert_persisted_policy_element(src)
       assert_persisted_policy_element(dst)
 
-      cross_assignment = cross_assignments.find{ |assgn| assgn[0] == src && assgn[1] == dst }
-      if cross_assignment
-        cross_assignments.delete(cross_assignment)
+      #link = links.find{ |l| l[0] == src && l[1] == dst }
+      link = links.find { |l| l == [src, dst] }
+      if link
+        links.delete(link)
         true
       else
         false
@@ -149,7 +150,7 @@ module PolicyMachineStorageAdapter
     #
     def delete(element)
       assignments.delete_if{ |assgn| assgn.include?(element) }
-      cross_assignments.delete_if{ |assgn| assgn.include?(element) }
+      links.delete_if{ |link| link.include?(element) }
       associations.delete_if { |_,assoc| assoc.include?(element) }
       policy_elements.delete(element)
     end
@@ -259,9 +260,9 @@ module PolicyMachineStorageAdapter
         @assignments ||= []
       end
 
-      # The policy element cross assignments in the persisted policy machine.
-      def cross_assignments
-        @cross_assignments ||= []
+      # The policy element links in the persisted policy machine.
+      def links
+        @links ||= []
       end
 
       # All persisted associations
@@ -316,9 +317,9 @@ module PolicyMachineStorageAdapter
         return neighbors.uniq
       end
 
-      # Returns an array of self and the cross children
+      # Returns an array of self and the linked children
       def self_and_children(pe)
-        children = cross_assignments.reduce([]) do |memo, ca|
+        children = links.reduce([]) do |memo, ca|
           memo << self_and_children(ca[1]) if ca[0] == pe
           memo
         end

@@ -157,9 +157,9 @@ describe 'ActiveRecord' do
       @object_attributes.zip(@objects) { |oa, o| @pm.add_assignment(o, oa) }
       @pm.add_assignment(@user_attributes.first, @user_attributes.second)
 
-      @pm.add_cross_assignment(@u1, @pm2_u1)
-      @pm.add_cross_assignment(@u1, @pm2_op)
-      @pm.add_cross_assignment(@pm2_op, @pm3_user_attribute)
+      @pm.add_link(@u1, @pm2_u1)
+      @pm.add_link(@u1, @pm2_op)
+      @pm.add_link(@pm2_op, @pm3_user_attribute)
     end
 
     describe '#descendants' do
@@ -169,10 +169,10 @@ describe 'ActiveRecord' do
       end
     end
 
-    describe '#cross_descendants' do
+    describe '#link_descendants' do
       it 'returns appropriate cross descendants' do
         desc = [@pm2_u1.stored_pe, @pm2_op.stored_pe, @pm3_user_attribute.stored_pe]
-        expect(@u1.cross_descendants).to match_array desc
+        expect(@u1.link_descendants).to match_array desc
       end
     end
 
@@ -182,13 +182,13 @@ describe 'ActiveRecord' do
       end
     end
 
-    describe '#cross_ancestors' do
+    describe '#link_ancestors' do
       it 'returns appropriate cross ancestors one level deep' do
-        expect(@pm2_u1.cross_ancestors).to match_array [@u1.stored_pe]
+        expect(@pm2_u1.link_ancestors).to match_array [@u1.stored_pe]
       end
 
       it 'returns appropriate cross ancestors multiple levels deep' do
-        expect(@pm3_user_attribute.cross_ancestors).to match_array [@pm2_op.stored_pe, @u1.stored_pe]
+        expect(@pm3_user_attribute.link_ancestors).to match_array [@pm2_op.stored_pe, @u1.stored_pe]
       end
     end
 
@@ -198,9 +198,9 @@ describe 'ActiveRecord' do
       end
     end
 
-    describe '#cross_parents' do
+    describe '#link_parents' do
       it 'returns appropriate parents' do
-        expect(@pm3_user_attribute.cross_parents).to match_array [@pm2_op.stored_pe]
+        expect(@pm3_user_attribute.link_parents).to match_array [@pm2_op.stored_pe]
       end
     end
 
@@ -210,9 +210,9 @@ describe 'ActiveRecord' do
       end
     end
 
-    describe '#cross_children' do
+    describe '#link_children' do
       it 'returns appropriate children' do
-        expect(@u1.cross_children).to match_array [@pm2_u1.stored_pe, @pm2_op.stored_pe]
+        expect(@u1.link_children).to match_array [@pm2_u1.stored_pe, @pm2_op.stored_pe]
       end
     end
   end

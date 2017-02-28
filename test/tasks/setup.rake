@@ -12,7 +12,7 @@ namespace :pm do
         `bundle install`
 
         `bundle exec rails generate the_policy_machine:add_initial_policy_machine_tables -f`
-        `bundle exec rails generate the_policy_machine:add_cross_assignments_table -f`
+        `bundle exec rails generate the_policy_machine:add_logical_links_table -f`
         FileUtils.cp('../add_test_columns_migration.rb', './db/migrate/99999999999999_add_test_columns.rb')
 
         `bundle exec rake db:drop:all db:create db:migrate db:test:prepare`

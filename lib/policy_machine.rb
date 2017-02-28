@@ -52,9 +52,9 @@ class PolicyMachine
   # This is used for logical relationships outside of the policy machine formalism, such as the
   # relationship between a class of operable and a specific instance of it.
   #
-  def add_cross_assignment(src_policy_element, dst_policy_element)
+  def add_link(src_policy_element, dst_policy_element)
     assert_different_machines(src_policy_element, dst_policy_element)
-    src_policy_element.cross_assign_to(dst_policy_element)
+    src_policy_element.link_to(dst_policy_element)
   end
 
   ##
@@ -62,9 +62,9 @@ class PolicyMachine
   # This is used for logical relationships outside of the policy machine formalism, such as the
   # relationship between a class of operable and a specific instance of it.
   #
-  def remove_cross_assignment(src_policy_element, dst_policy_element)
+  def remove_link(src_policy_element, dst_policy_element)
     assert_different_machines(src_policy_element, dst_policy_element)
-    src_policy_element.cross_unassign(dst_policy_element)
+    src_policy_element.unlink(dst_policy_element)
   end
 
   ##

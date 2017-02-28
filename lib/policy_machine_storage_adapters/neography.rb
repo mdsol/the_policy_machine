@@ -74,7 +74,7 @@ module PolicyMachineStorageAdapter
     ##
     # Assign src to dst in different policy machines
     #
-    def cross_assign(src, dst)
+    def link(src, dst)
       assign(src, dst)
     end
 
@@ -94,6 +94,10 @@ module PolicyMachineStorageAdapter
 
       neo_connection.execute_query("start n=node({id1}),m=node({id2}) return (n)-[*]->(m)",
         {:id1 => src.neo_id.to_i, :id2 => dst.neo_id.to_i})['data'] != [[[]]]
+    end
+
+    def linked?(src, dst)
+      connected?(src, dst)
     end
 
     ##
@@ -124,7 +128,7 @@ module PolicyMachineStorageAdapter
     # Disconnects two policy elements in different machines.
     # Returns true if the unassignment succeeds or false otherwise.
     #
-    def unassign(src, dst)
+    def unlink(src, dst)
       unassign(src, dst)
     end
 

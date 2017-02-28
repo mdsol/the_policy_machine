@@ -17,13 +17,13 @@ module PolicyMachineStorageAdapter
 
     require 'activerecord-import' # Gem for bulk inserts
 
-    # Load the CrossAssignment, Assignment, and Adapter classes at runtime because they're
+    # Load the LogicalLink, Assignment, and Adapter classes at runtime because they're
     # implemented differently by different adapters, and which database adapter is active is
-    # not always determinable at class definition time. Assignment and CrossAssignment must
+    # not always determinable at class definition time. Assignment and LogicalLink must
     # inherit from ActiveRecord::Base and have class methods ancestors_of, descendants_of,
     # and transitive_closure?. Adapter must implement apply_include_condition.
     def self.const_missing(name)
-      if %w[Assignment CrossAssignment Adapter].include?(name.to_s)
+      if %w[Assignment LogicalLink Adapter].include?(name.to_s)
         load_db_adapter!
         const_get(name)
       else
@@ -56,7 +56,7 @@ module PolicyMachineStorageAdapter
                      upsert: {},
                      delete: {},
                      assignments: [],
-                     cross_assignments: [],
+                     links: [],
                      associations: []
                    }
     end
@@ -82,7 +82,7 @@ module PolicyMachineStorageAdapter
       PolicyElement.import(buffers[:upsert].values, on_duplicate_key_update: column_keys.map(&:to_sym) - [:id])
       PolicyElement.bulk_destroy(buffers[:delete])
       PolicyElement.bulk_assign(buffers[:assignments])
-      PolicyElement.bulk_cross_assign(buffers[:cross_assignments])
+      PolicyElement.bulk_link(buffers[:links])
       PolicyElement.bulk_associate(buffers[:associations])
 
       true #TODO: More useful return value?
@@ -94,14 +94,14 @@ module PolicyMachineStorageAdapter
 
       # needs unique_identifier, policy_machine_uuid, type, extra_attributes columns
       has_many :assignments, foreign_key: :parent_id, dependent: :destroy
-      has_many :cross_assignments, foreign_key: :cross_parent_id, dependent: :destroy
+      has_many :logical_links, foreign_key: :link_parent_id, dependent: :destroy
       has_many :filial_ties, class_name: 'Assignment', foreign_key: :child_id
-      has_many :cross_filial_ties, class_name: 'CrossAssignment', foreign_key: :cross_child_id
+      has_many :link_filial_ties, class_name: 'LogicalLink', foreign_key: :link_child_id
       # these don't actually destroy the relations, just the assignments
       has_many :children, through: :assignments, dependent: :destroy
       has_many :parents, through: :filial_ties, dependent: :destroy
-      has_many :cross_children, through: :cross_assignments, dependent: :destroy
-      has_many :cross_parents, through: :cross_filial_ties, dependent: :destroy
+      has_many :link_children, through: :logical_links, dependent: :destroy
+      has_many :link_parents, through: :link_filial_ties, dependent: :destroy
 
       attr_accessor :extra_attributes_hash
 
@@ -133,16 +133,16 @@ module PolicyMachineStorageAdapter
         Assignment.descendants_of(self)
       end
 
-      def cross_descendants
-        CrossAssignment.descendants_of(self)
+      def link_descendants
+        LogicalLink.descendants_of(self)
       end
 
       def ancestors
         Assignment.ancestors_of(self)
       end
 
-      def cross_ancestors
-        CrossAssignment.ancestors_of(self)
+      def link_ancestors
+        LogicalLink.ancestors_of(self)
       end
 
       def self.serialize(store:, name:, serializer: nil)
@@ -177,8 +177,8 @@ module PolicyMachineStorageAdapter
         Assignment.where(parent_id: ids).delete_all
         Assignment.where(child_id: ids).delete_all
 
-        CrossAssignment.where(cross_parent_id: ids).delete_all
-        CrossAssignment.where(cross_child_id: ids).delete_all
+        LogicalLink.where(link_parent_id: ids).delete_all
+        LogicalLink.where(link_child_id: ids).delete_all
 
         PolicyElementAssociation.where(user_attribute_id: id_groups[UserAttribute]).delete_all
         PolicyElementAssociation.where(object_attribute_id: id_groups[ObjectAttribute]).delete_all
@@ -189,10 +189,10 @@ module PolicyMachineStorageAdapter
         Assignment.import([:parent_id, :child_id], id_pairs, on_duplicate_key_ignore: true)
       end
 
-      def self.bulk_cross_assign(parents_and_children)
+      def self.bulk_link(parents_and_children)
         id_pairs = parents_and_children.map { |parent, child| [parent.id, child.id, parent.policy_machine_uuid, child.policy_machine_uuid] }
-        import_fields = [:cross_parent_id, :cross_child_id, :cross_parent_policy_machine_uuid, :cross_child_policy_machine_uuid]
-        CrossAssignment.import(import_fields, id_pairs, on_duplicate_key_ignore: true)
+        import_fields = [:link_parent_id, :link_child_id, :link_parent_policy_machine_uuid, :link_child_policy_machine_uuid]
+        LogicalLink.import(import_fields, id_pairs, on_duplicate_key_ignore: true)
       end
 
       def self.bulk_associate(associations)
@@ -386,22 +386,22 @@ module PolicyMachineStorageAdapter
     # This is used for logical relationships outside of the policy machine formalism, such as the
     # relationship between a class of operable and a specific instance of it.
     #
-    def cross_assign(src, dst)
+    def link(src, dst)
       assert_persisted_policy_element(src, dst)
       if self.buffering?
-        cross_assign_later(cross_parent: src, cross_child: dst)
+        link_later(link_parent: src, link_child: dst)
       else
-        CrossAssignment.where(
-          cross_parent_id: src.id,
-          cross_child_id: dst.id,
-          cross_parent_policy_machine_uuid: src.policy_machine_uuid,
-          cross_child_policy_machine_uuid: dst.policy_machine_uuid
+        LogicalLink.where(
+          link_parent_id: src.id,
+          link_child_id: dst.id,
+          link_parent_policy_machine_uuid: src.policy_machine_uuid,
+          link_child_policy_machine_uuid: dst.policy_machine_uuid
         ).first_or_create
       end
     end
 
-    def cross_assign_later(cross_parent:, cross_child:)
-      buffers[:cross_assignments] << [cross_parent, cross_child]
+    def link_later(link_parent:, link_child:)
+      buffers[:links] << [link_parent, link_child]
       :buffered
     end
 
@@ -423,12 +423,12 @@ module PolicyMachineStorageAdapter
     # The two policy elements must be persisted policy elements.
     # Should return false if src == dst
     #
-    def cross_connected?(src, dst)
+    def linked?(src, dst)
       assert_persisted_policy_element(src, dst)
 
       return false if src == dst
 
-      CrossAssignment.transitive_closure?(src, dst)
+      LogicalLink.transitive_closure?(src, dst)
     end
 
     ##
@@ -448,9 +448,9 @@ module PolicyMachineStorageAdapter
     ##
     # Disconnects two policy elements in different machines.
     #
-    def cross_unassign(src, dst)
+    def unlink(src, dst)
       assert_persisted_policy_element(src, dst)
-      if assignment = src.cross_assignments.where(cross_child_id: dst.id).first
+      if assignment = src.logical_links.where(link_child_id: dst.id).first
         assignment.destroy
       end
     end

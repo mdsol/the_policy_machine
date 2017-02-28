@@ -43,10 +43,10 @@ module PolicyMachineStorageAdapter
 
     end
 
-    class CrossAssignment < ::ActiveRecord::Base
+    class LogicalLink < ::ActiveRecord::Base
 
-      belongs_to :cross_parent, class_name: 'PolicyElement', foreign_key: :cross_parent_id
-      belongs_to :cross_child, class_name: 'PolicyElement', foreign_key: :cross_child_id
+      belongs_to :link_parent, class_name: 'PolicyElement', foreign_key: :link_parent_id
+      belongs_to :link_child, class_name: 'PolicyElement', foreign_key: :link_child_id
 
       def self.transitive_closure?(ancestor, descendant)
         descendants_of(ancestor).include?(descendant)
@@ -61,9 +61,9 @@ module PolicyMachineStorageAdapter
         when 0
           PolicyElement.none
         when 1
-          PolicyElement.where('"policy_elements"."id" IN (SELECT cross_assignments__recursive.cross_child_id FROM (WITH RECURSIVE "cross_assignments__recursive" AS ( SELECT "cross_assignments"."id", "cross_assignments"."cross_child_id", "cross_assignments"."cross_parent_id" FROM "cross_assignments" WHERE "cross_assignments"."cross_parent_id" = ? UNION ALL SELECT "cross_assignments"."id", "cross_assignments"."cross_child_id", "cross_assignments"."cross_parent_id" FROM "cross_assignments" INNER JOIN "cross_assignments__recursive" ON "cross_assignments__recursive"."cross_child_id" = "cross_assignments"."cross_parent_id" ) SELECT "cross_assignments__recursive".* FROM "cross_assignments__recursive") AS "cross_assignments__recursive")', element_or_scope.first.id)
+          PolicyElement.where('"policy_elements"."id" IN (SELECT logical_links__recursive.link_child_id FROM (WITH RECURSIVE "logical_links__recursive" AS ( SELECT "logical_links"."id", "logical_links"."link_child_id", "logical_links"."link_parent_id" FROM "logical_links" WHERE "logical_links"."link_parent_id" = ? UNION ALL SELECT "logical_links"."id", "logical_links"."link_child_id", "logical_links"."link_parent_id" FROM "logical_links" INNER JOIN "logical_links__recursive" ON "logical_links__recursive"."link_child_id" = "logical_links"."link_parent_id" ) SELECT "logical_links__recursive".* FROM "logical_links__recursive") AS "logical_links__recursive")', element_or_scope.first.id)
         else
-          PolicyElement.where('"policy_elements"."id" IN (SELECT cross_assignments__recursive.cross_child_id FROM (WITH RECURSIVE "cross_assignments__recursive" AS ( SELECT "cross_assignments"."id", "cross_assignments"."cross_child_id", "cross_assignments"."cross_parent_id" FROM "cross_assignments" WHERE "cross_assignments"."cross_parent_id" in (?) UNION ALL SELECT "cross_assignments"."id", "cross_assignments"."cross_child_id", "cross_assignments"."cross_parent_id" FROM "cross_assignments" INNER JOIN "cross_assignments__recursive" ON "cross_assignments__recursive"."cross_child_id" = "cross_assignments"."cross_parent_id" ) SELECT "cross_assignments__recursive".* FROM "cross_assignments__recursive") AS "cross_assignments__recursive")', element_or_scope.map(&:id))
+          PolicyElement.where('"policy_elements"."id" IN (SELECT logical_links__recursive.link_child_id FROM (WITH RECURSIVE "logical_links__recursive" AS ( SELECT "logical_links"."id", "logical_links"."link_child_id", "logical_links"."link_parent_id" FROM "logical_links" WHERE "logical_links"."link_parent_id" in (?) UNION ALL SELECT "logical_links"."id", "logical_links"."link_child_id", "logical_links"."link_parent_id" FROM "logical_links" INNER JOIN "logical_links__recursive" ON "logical_links__recursive"."link_child_id" = "logical_links"."link_parent_id" ) SELECT "logical_links__recursive".* FROM "logical_links__recursive") AS "logical_links__recursive")', element_or_scope.map(&:id))
         end
       end
 
@@ -75,9 +75,9 @@ module PolicyMachineStorageAdapter
         when 0
           PolicyElement.none
         when 1
-          PolicyElement.where('"policy_elements"."id" IN (SELECT cross_assignments__recursive.cross_parent_id FROM (WITH RECURSIVE "cross_assignments__recursive" AS ( SELECT "cross_assignments"."id", "cross_assignments"."cross_parent_id", "cross_assignments"."cross_child_id" FROM "cross_assignments" WHERE "cross_assignments"."cross_child_id" = ? UNION ALL SELECT "cross_assignments"."id", "cross_assignments"."cross_parent_id", "cross_assignments"."cross_child_id" FROM "cross_assignments" INNER JOIN "cross_assignments__recursive" ON "cross_assignments__recursive"."cross_parent_id" = "cross_assignments"."cross_child_id" ) SELECT "cross_assignments__recursive".* FROM "cross_assignments__recursive") AS "cross_assignments__recursive")', element_or_scope.first.id)
+          PolicyElement.where('"policy_elements"."id" IN (SELECT logical_links__recursive.link_parent_id FROM (WITH RECURSIVE "logical_links__recursive" AS ( SELECT "logical_links"."id", "logical_links"."link_parent_id", "logical_links"."link_child_id" FROM "logical_links" WHERE "logical_links"."link_child_id" = ? UNION ALL SELECT "logical_links"."id", "logical_links"."link_parent_id", "logical_links"."link_child_id" FROM "logical_links" INNER JOIN "logical_links__recursive" ON "logical_links__recursive"."link_parent_id" = "logical_links"."link_child_id" ) SELECT "logical_links__recursive".* FROM "logical_links__recursive") AS "logical_links__recursive")', element_or_scope.first.id)
         else
-          PolicyElement.where('"policy_elements"."id" IN (SELECT cross_assignments__recursive.cross_parent_id FROM (WITH RECURSIVE "cross_assignments__recursive" AS ( SELECT "cross_assignments"."id", "cross_assignments"."cross_parent_id", "cross_assignments"."cross_child_id" FROM "cross_assignments" WHERE "cross_assignments"."cross_child_id" in (?) UNION ALL SELECT "cross_assignments"."id", "cross_assignments"."cross_parent_id", "cross_assignments"."cross_child_id" FROM "cross_assignments" INNER JOIN "cross_assignments__recursive" ON "cross_assignments__recursive"."cross_parent_id" = "cross_assignments"."cross_child_id" ) SELECT "cross_assignments__recursive".* FROM "cross_assignments__recursive") AS "cross_assignments__recursive")', element_or_scope.map(&:id))
+          PolicyElement.where('"policy_elements"."id" IN (SELECT logical_links__recursive.link_parent_id FROM (WITH RECURSIVE "logical_links__recursive" AS ( SELECT "logical_links"."id", "logical_links"."link_parent_id", "logical_links"."link_child_id" FROM "logical_links" WHERE "logical_links"."link_child_id" in (?) UNION ALL SELECT "logical_links"."id", "logical_links"."link_parent_id", "logical_links"."link_child_id" FROM "logical_links" INNER JOIN "logical_links__recursive" ON "logical_links__recursive"."link_parent_id" = "logical_links"."link_child_id" ) SELECT "logical_links__recursive".* FROM "logical_links__recursive") AS "logical_links__recursive")', element_or_scope.map(&:id))
         end
       end
 

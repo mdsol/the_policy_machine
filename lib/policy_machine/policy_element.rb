@@ -25,9 +25,9 @@ module PM
       @pm_storage_adapter.connected?(self.stored_pe, other_pe.stored_pe)
     end
 
-    # Determines if self is cross connected to other node
-    def cross_connected?(other_pe)
-      @pm_storage_adapter.cross_connected?(self.stored_pe, other_pe.stored_pe)
+    # Determines if self is a logical link to other node
+    def linked?(other_pe)
+      @pm_storage_adapter.linked?(self.stored_pe, other_pe.stored_pe)
     end
 
     # Assigns self to destination policy element
@@ -43,8 +43,8 @@ module PM
     # Assigns self to destination policy element in a different policy machine
     # This is used for logical relationships outside of the policy machine formalism, such as the
     # relationship between a class of operable and a specific instance of it.
-    def cross_assign_to(dst_policy_element)
-      @pm_storage_adapter.cross_assign(self.stored_pe, dst_policy_element.stored_pe)
+    def link_to(dst_policy_element)
+      @pm_storage_adapter.link(self.stored_pe, dst_policy_element.stored_pe)
     end
 
     # Removes an assignment from self to destination policy element where the
@@ -52,8 +52,8 @@ module PM
     # Returns boolean indicating whether assignment was successfully removed.
     # This is used for logical relationships outside of the policy machine formalism, such as the
     # relationship between a class of operable and a specific instance of it.
-    def cross_unassign(dst_policy_element)
-      @pm_storage_adapter.cross_unassign(self.stored_pe, dst_policy_element.stored_pe)
+    def unlink(dst_policy_element)
+      @pm_storage_adapter.unlink(self.stored_pe, dst_policy_element.stored_pe)
     end
 
     # Removes assignment from self to destination policy element

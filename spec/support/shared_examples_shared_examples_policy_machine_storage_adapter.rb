@@ -161,35 +161,35 @@ shared_examples "a policy machine storage adapter" do
     end
   end
 
-  describe '#cross_connected?' do
+  describe '#linked?' do
     let(:src) { policy_machine_storage_adapter.add_user(SecureRandom.uuid, SecureRandom.uuid) }
     let(:dst) { policy_machine_storage_adapter.add_user(SecureRandom.uuid, SecureRandom.uuid) }
     let(:foo) { policy_machine_storage_adapter.add_user(SecureRandom.uuid, SecureRandom.uuid) }
     let(:bar) { policy_machine_storage_adapter.add_user(SecureRandom.uuid, SecureRandom.uuid) }
 
     before do
-      policy_machine_storage_adapter.cross_assign(src, foo)
-      policy_machine_storage_adapter.cross_assign(foo, dst)
+      policy_machine_storage_adapter.link(src, foo)
+      policy_machine_storage_adapter.link(foo, dst)
     end
 
     it 'returns true if source and destination nodes are cross connected' do
-      expect(policy_machine_storage_adapter.cross_connected?(src, dst)).to eq true
+      expect(policy_machine_storage_adapter.linked?(src, dst)).to eq true
     end
 
     it 'returns false if source and destination nodes are not cross connected' do
-      expect(policy_machine_storage_adapter.cross_connected?(src, bar)).to eq false
+      expect(policy_machine_storage_adapter.linked?(src, bar)).to eq false
     end
 
     it 'returns false if source and destination nodes are the same' do
-      expect(policy_machine_storage_adapter.cross_connected?(src, src)).to eq false
+      expect(policy_machine_storage_adapter.linked?(src, src)).to eq false
     end
 
     it 'raises if the source is not a policy element' do
-      expect { policy_machine_storage_adapter.cross_connected?('', dst) }.to raise_error(ArgumentError)
+      expect { policy_machine_storage_adapter.linked?('', dst) }.to raise_error(ArgumentError)
     end
 
     it 'raises if the destination is not a policy element' do
-      expect { policy_machine_storage_adapter.cross_connected?(src, '') }.to raise_error(ArgumentError)
+      expect { policy_machine_storage_adapter.linked?(src, '') }.to raise_error(ArgumentError)
     end
   end
 
