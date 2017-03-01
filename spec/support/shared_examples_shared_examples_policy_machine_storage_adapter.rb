@@ -161,6 +161,38 @@ shared_examples "a policy machine storage adapter" do
     end
   end
 
+  describe '#linked?' do
+    let(:src) { policy_machine_storage_adapter.add_user(SecureRandom.uuid, SecureRandom.uuid) }
+    let(:dst) { policy_machine_storage_adapter.add_user(SecureRandom.uuid, SecureRandom.uuid) }
+    let(:foo) { policy_machine_storage_adapter.add_user(SecureRandom.uuid, SecureRandom.uuid) }
+    let(:bar) { policy_machine_storage_adapter.add_user(SecureRandom.uuid, SecureRandom.uuid) }
+
+    before do
+      policy_machine_storage_adapter.link(src, foo)
+      policy_machine_storage_adapter.link(foo, dst)
+    end
+
+    it 'returns true if source and destination nodes are cross connected' do
+      expect(policy_machine_storage_adapter.linked?(src, dst)).to eq true
+    end
+
+    it 'returns false if source and destination nodes are not cross connected' do
+      expect(policy_machine_storage_adapter.linked?(src, bar)).to eq false
+    end
+
+    it 'returns false if source and destination nodes are the same' do
+      expect(policy_machine_storage_adapter.linked?(src, src)).to eq false
+    end
+
+    it 'raises if the source is not a policy element' do
+      expect { policy_machine_storage_adapter.linked?('', dst) }.to raise_error(ArgumentError)
+    end
+
+    it 'raises if the destination is not a policy element' do
+      expect { policy_machine_storage_adapter.linked?(src, '') }.to raise_error(ArgumentError)
+    end
+  end
+
   describe '#unassign' do
     before do
       @src = policy_machine_storage_adapter.add_user('some_uuid1', 'some_policy_machine_uuid1')

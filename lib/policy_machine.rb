@@ -49,18 +49,22 @@ class PolicyMachine
 
   ##
   # Persist an assignment across different policy machines.
+  # This is used for logical relationships outside of the policy machine formalism, such as the
+  # relationship between a class of operable and a specific instance of it.
   #
-  def add_cross_assignment(src_policy_element, dst_policy_element)
+  def add_link(src_policy_element, dst_policy_element)
     assert_different_machines(src_policy_element, dst_policy_element)
-    src_policy_element.cross_assign_to(dst_policy_element)
+    src_policy_element.link_to(dst_policy_element)
   end
 
   ##
   # Remove an assignment across different policy machines.
+  # This is used for logical relationships outside of the policy machine formalism, such as the
+  # relationship between a class of operable and a specific instance of it.
   #
-  def remove_cross_assignment(src_policy_element, dst_policy_element)
+  def remove_link(src_policy_element, dst_policy_element)
     assert_different_machines(src_policy_element, dst_policy_element)
-    src_policy_element.cross_unassign(dst_policy_element)
+    src_policy_element.unlink(dst_policy_element)
   end
 
   ##
@@ -324,9 +328,7 @@ class PolicyMachine
 
   # Raise unless the policy elements are policy elements in different machines.
   def assert_different_machines(pe, another_pe)
-    if !pe.is_a?(PM::PolicyElement)
-      raise(ArgumentError, "args must each be a kind of PolicyElement; got a #{pe.class.name} and #{another_pe.class.name} instead")
-    elsif !another_pe.is_a?(PM::PolicyElement)
+    if !pe.is_a?(PM::PolicyElement) || !another_pe.is_a?(PM::PolicyElement)
       raise(ArgumentError, "args must each be a kind of PolicyElement; got a #{pe.class.name} and #{another_pe.class.name} instead")
     elsif pe.policy_machine_uuid == another_pe.policy_machine_uuid
       raise(ArgumentError, "#{pe.unique_identifier} and #{another_pe.unique_identifier} are in the same policy machine")

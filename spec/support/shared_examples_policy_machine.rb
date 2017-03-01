@@ -149,65 +149,175 @@ shared_examples "a policy machine" do
     end
   end
 
-  describe 'CrossAssignments' do
+  describe 'LogicalLinks' do
     let(:pm1) { PolicyMachine.new(name: 'PM 1', storage_adapter: policy_machine.policy_machine_storage_adapter.class) }
     let(:pm2) { PolicyMachine.new(name: 'PM 2', storage_adapter: policy_machine.policy_machine_storage_adapter.class) }
+    let(:pm3) { PolicyMachine.new(name: 'PM 3', storage_adapter: policy_machine.policy_machine_storage_adapter.class) }
     let(:pe1) { pm1.create_user_attribute(SecureRandom.uuid) }
     let(:pe2) { pm2.create_user_attribute(SecureRandom.uuid) }
     let(:pe3) { pm1.create_user_attribute(SecureRandom.uuid) }
 
-    # All possible combinations of two policy machine types are allowed to be cross assigned.
-    allowed_cross_assignments = policy_element_types.product(policy_element_types)
+    # All possible combinations of two policy machine types are allowed to be linked.
+    allowed_links = policy_element_types.product(policy_element_types)
 
-    describe 'Adding' do
-      allowed_cross_assignments.each do |aca|
+    describe 'Adding a link' do
+      allowed_links.each do |aca|
         it "allows a #{aca[0]} to be assigned a #{aca[1]}" do
           policy_element1 = pm1.send("create_#{aca[0]}", SecureRandom.uuid)
           policy_element2 = pm2.send("create_#{aca[1]}", SecureRandom.uuid)
 
-          pm1.add_cross_assignment(policy_element1, policy_element2).should be_true
+          expect { pm1.add_link(policy_element1, policy_element2) }
+            .to change { policy_element1.linked?(policy_element2) }.from(false).to(true)
+        end
+
+        it "allows a #{aca[0]} to be assigned a #{aca[1]} using an unrelated policy machine" do
+          policy_element1 = pm1.send("create_#{aca[0]}", SecureRandom.uuid)
+          policy_element2 = pm2.send("create_#{aca[1]}", SecureRandom.uuid)
+
+          expect { pm3.add_link(policy_element1, policy_element2) }
+            .to change { policy_element1.linked?(policy_element2) }.from(false).to(true)
         end
       end
 
       it 'raises when the first argument is not a policy element' do
         err_msg = 'args must each be a kind of PolicyElement; got a Fixnum and PM::UserAttribute instead'
-        expect{ pm1.add_cross_assignment(1, pe1) }.to raise_error(ArgumentError, err_msg)
+        expect{ pm1.add_link(1, pe1) }.to raise_error(ArgumentError, err_msg)
       end
 
       it 'raises when the second argument is not a policy element' do
         err_msg = 'args must each be a kind of PolicyElement; got a PM::UserAttribute and Fixnum instead'
-        expect{ pm1.add_cross_assignment(pe1, 1) }.to raise_error(ArgumentError, err_msg)
+        expect{ pm1.add_link(pe1, 1) }.to raise_error(ArgumentError, err_msg)
       end
 
       it 'raises when the arguments are in the same policy machine' do
         err_msg = "#{pe1.unique_identifier} and #{pe3.unique_identifier} are in the same policy machine"
-        expect{ pm1.add_cross_assignment(pe1, pe3) }.to raise_error(ArgumentError, err_msg)
+        expect{ pm1.add_link(pe1, pe3) }.to raise_error(ArgumentError, err_msg)
       end
     end
 
-    describe 'Removing' do
-      it 'removes an existing assignment' do
-        pm1.add_cross_assignment(pe1, pe2)
-        expect(pm1.remove_cross_assignment(pe1, pe2)).to be_true
+    describe 'Removing a link' do
+      it 'removes an existing link' do
+        pm1.add_link(pe1, pe2)
+        expect { pm1.remove_link(pe1, pe2) }
+          .to change { pe1.linked?(pe2) }.from(true).to(false)
       end
 
-      it 'does not remove a non-existant assignment' do
-        expect(pm1.remove_cross_assignment(pe1, pe2)).to be_false
+      it 'does not remove a non-existant link' do
+        expect { pm1.remove_link(pe1, pe2) }
+          .to_not change { pe1.linked?(pe2) }
+        expect(pe1.linked?(pe2)).to eq false
       end
 
       it 'raises when first argument is not a policy element' do
         err_msg = 'args must each be a kind of PolicyElement; got a Fixnum and PM::UserAttribute instead'
-        expect{ pm1.add_cross_assignment(1, pe1) }.to raise_error(ArgumentError, err_msg)
+        expect{ pm1.add_link(1, pe1) }.to raise_error(ArgumentError, err_msg)
       end
 
       it 'raises when the second argument is not a policy element' do
         err_msg = 'args must each be a kind of PolicyElement; got a PM::UserAttribute and String instead'
-        expect{ pm1.add_cross_assignment(pe1, 'pe2') }.to raise_error(ArgumentError, err_msg)
+        expect{ pm1.add_link(pe1, 'pe2') }.to raise_error(ArgumentError, err_msg)
       end
 
       it 'raises when the first argument is in the same policy machine' do
         err_msg = "#{pe1.unique_identifier} and #{pe3.unique_identifier} are in the same policy machine"
-        expect{ pm1.remove_cross_assignment(pe1, pe3) }.to raise_error(ArgumentError, err_msg)
+        expect{ pm1.remove_link(pe1, pe3) }.to raise_error(ArgumentError, err_msg)
+      end
+    end
+
+    describe 'bulk_persist' do
+      describe 'Adding a link' do
+        allowed_links.each do |aca|
+          it "allows a #{aca[0]} to be assigned a #{aca[1]}" do
+            policy_element1 = pm1.send("create_#{aca[0]}", SecureRandom.uuid)
+            policy_element2 = pm2.send("create_#{aca[1]}", SecureRandom.uuid)
+
+            expect do
+              pm1.bulk_persist { pm1.add_link(policy_element1, policy_element2) }
+            end.to change { policy_element1.linked?(policy_element2) }.from(false).to(true)
+          end
+
+          it "allows a #{aca[0]} to be assigned a #{aca[1]} using an unrelated policy machine" do
+            policy_element1 = pm1.send("create_#{aca[0]}", SecureRandom.uuid)
+            policy_element2 = pm2.send("create_#{aca[1]}", SecureRandom.uuid)
+
+            expect do
+              pm1.bulk_persist { pm3.add_link(policy_element1, policy_element2) }
+            end.to change { policy_element1.linked?(policy_element2) }.from(false).to(true)
+          end
+        end
+
+        it 'adds multiple links at once' do
+          expect(pe1.linked?(pe2)).to eq false
+          expect(pe2.linked?(pe3)).to eq false
+
+          pm1.bulk_persist do
+            pm1.add_link(pe1, pe2)
+            pm1.add_link(pe2, pe3)
+          end
+
+          expect(pe1.linked?(pe2)).to eq true
+          expect(pe2.linked?(pe3)).to eq true
+        end
+
+        it 'raises when the first argument is not a policy element' do
+          err_msg = 'args must each be a kind of PolicyElement; got a Fixnum and PM::UserAttribute instead'
+          expect{ pm1.bulk_persist { pm1.add_link(1, pe1) } }.to raise_error(ArgumentError, err_msg)
+        end
+
+        it 'raises when the second argument is not a policy element' do
+          err_msg = 'args must each be a kind of PolicyElement; got a PM::UserAttribute and Fixnum instead'
+          expect{ pm1.bulk_persist { pm1.add_link(pe1, 1) } }.to raise_error(ArgumentError, err_msg)
+        end
+
+        it 'raises when the arguments are in the same policy machine' do
+          err_msg = "#{pe1.unique_identifier} and #{pe3.unique_identifier} are in the same policy machine"
+          expect{ pm1.bulk_persist { pm1.add_link(pe1, pe3) } }.to raise_error(ArgumentError, err_msg)
+        end
+      end
+
+      describe 'Removing a link' do
+        it 'removes an existing link' do
+          pm1.add_link(pe1, pe2)
+          expect { pm1.bulk_persist { pm1.remove_link(pe1, pe2) } }
+            .to change { pe1.linked?(pe2) }.from(true).to(false)
+        end
+
+        it 'removes multiple links at once' do
+          pm1.add_link(pe1, pe2)
+          pm1.add_link(pe2, pe3)
+
+          expect(pe1.linked?(pe2)).to eq true
+          expect(pe2.linked?(pe3)).to eq true
+
+          pm1.bulk_persist do
+            pm1.remove_link(pe1, pe2)
+            pm1.remove_link(pe2, pe3)
+          end
+
+          expect(pe1.linked?(pe2)).to eq false
+          expect(pe2.linked?(pe3)).to eq false
+        end
+
+        it 'does not remove a non-existant link' do
+          expect { pm1.bulk_persist { pm1.remove_link(pe1, pe2) } }
+            .to_not change { pe1.linked?(pe2) }
+          expect(pe1.linked?(pe2)).to eq false
+        end
+
+        it 'raises when first argument is not a policy element' do
+          err_msg = 'args must each be a kind of PolicyElement; got a Fixnum and PM::UserAttribute instead'
+          expect{ pm1.bulk_persist { pm1.add_link(1, pe1) } }.to raise_error(ArgumentError, err_msg)
+        end
+
+        it 'raises when the second argument is not a policy element' do
+          err_msg = 'args must each be a kind of PolicyElement; got a PM::UserAttribute and String instead'
+          expect{ pm1.bulk_persist { pm1.add_link(pe1, 'pe2') } }.to raise_error(ArgumentError, err_msg)
+        end
+
+        it 'raises when the first argument is in the same policy machine' do
+          err_msg = "#{pe1.unique_identifier} and #{pe3.unique_identifier} are in the same policy machine"
+          expect{ pm1.bulk_persist { pm1.remove_link(pe1, pe3) } }.to raise_error(ArgumentError, err_msg)
+        end
       end
     end
   end
@@ -397,20 +507,20 @@ shared_examples "a policy machine" do
       @another_project1 = pm2.create_object_attribute('Another Project1')
       @another_w = pm2.create_operation('Another write')
 
-      pm2.add_cross_assignment(@u1, @another_u1)
-      pm2.add_cross_assignment(@o1, @another_o1)
-      pm2.add_cross_assignment(@o2, @another_o2)
-      pm2.add_cross_assignment(@group1, @another_group1)
-      pm2.add_cross_assignment(@project1, @another_project1)
-      pm2.add_cross_assignment(@w, @another_w)
+      pm2.add_link(@u1, @another_u1)
+      pm2.add_link(@o1, @another_o1)
+      pm2.add_link(@o2, @another_o2)
+      pm2.add_link(@group1, @another_group1)
+      pm2.add_link(@project1, @another_project1)
+      pm2.add_link(@w, @another_w)
 
-      pm2.add_cross_assignment(@u1, @another_group1)
-      pm2.add_cross_assignment(@o1, @another_project1)
-      pm2.add_cross_assignment(@project1, @another_w)
+      pm2.add_link(@u1, @another_group1)
+      pm2.add_link(@o1, @another_project1)
+      pm2.add_link(@project1, @another_w)
 
-      pm2.add_cross_assignment(@another_u1, @group1)
-      pm2.add_cross_assignment(@another_o1, @project1)
-      pm2.add_cross_assignment(@another_project1, @w)
+      pm2.add_link(@another_u1, @group1)
+      pm2.add_link(@another_o1, @project1)
+      pm2.add_link(@another_project1, @w)
     end
 
     it 'raises when the first argument is not a user or user_attribute' do

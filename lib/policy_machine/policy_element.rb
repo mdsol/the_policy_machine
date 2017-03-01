@@ -22,7 +22,12 @@ module PM
 
     # Determines if self is connected to other node
     def connected?(other_pe)
-      @pm_storage_adapter.connected?(self.stored_pe, other_pe.stored_pe)
+      pm_storage_adapter.connected?(self.stored_pe, other_pe.stored_pe)
+    end
+
+    # Determines if self is a logical link to other node
+    def linked?(other_pe)
+      pm_storage_adapter.linked?(self.stored_pe, other_pe.stored_pe)
     end
 
     # Assigns self to destination policy element
@@ -32,32 +37,36 @@ module PM
         raise(ArgumentError, "expected dst_policy_element to be one of #{allowed_assignee_classes.to_s}; got #{dst_policy_element.class} instead.")
       end
 
-      @pm_storage_adapter.assign(self.stored_pe, dst_policy_element.stored_pe)
+      pm_storage_adapter.assign(self.stored_pe, dst_policy_element.stored_pe)
     end
 
     # Assigns self to destination policy element in a different policy machine
-    def cross_assign_to(dst_policy_element)
-      @pm_storage_adapter.cross_assign(self.stored_pe, dst_policy_element.stored_pe)
+    # This is used for logical relationships outside of the policy machine formalism, such as the
+    # relationship between a class of operable and a specific instance of it.
+    def link_to(dst_policy_element)
+      pm_storage_adapter.link(self.stored_pe, dst_policy_element.stored_pe)
     end
 
     # Removes an assignment from self to destination policy element where the
     # destination policy element is in a different policy machine.
     # Returns boolean indicating whether assignment was successfully removed.
-    def cross_unassign(dst_policy_element)
-      @pm_storage_adapter.cross_unassign(self.stored_pe, dst_policy_element.stored_pe)
+    # This is used for logical relationships outside of the policy machine formalism, such as the
+    # relationship between a class of operable and a specific instance of it.
+    def unlink(dst_policy_element)
+      pm_storage_adapter.unlink(self.stored_pe, dst_policy_element.stored_pe)
     end
 
     # Removes assignment from self to destination policy element
     # Returns boolean indicating whether assignment was successfully removed.
     def unassign(dst_policy_element)
-      @pm_storage_adapter.unassign(self.stored_pe, dst_policy_element.stored_pe)
+      pm_storage_adapter.unassign(self.stored_pe, dst_policy_element.stored_pe)
     end
 
     # Removes self and any assignments to or from self. Does not remove any other elements.
     # Returns true if persisted object was successfully removed.
     def delete
       if self.stored_pe && self.stored_pe.persisted
-        @pm_storage_adapter.delete(stored_pe)
+        pm_storage_adapter.delete(stored_pe)
         self.stored_pe = nil
         true
       end
@@ -69,7 +78,7 @@ module PM
       @extra_attributes.merge!(attr_hash)
       #TODO: consider removing the persisted check to allow for buffered writes
       if self.stored_pe && self.stored_pe.persisted
-        @pm_storage_adapter.update(self.stored_pe, attr_hash)
+        pm_storage_adapter.update(self.stored_pe, attr_hash)
         true
       end
     end
@@ -163,9 +172,9 @@ module PM
     # Returns an array of policy classes in which this ObjectAttribute is included.
     # Returns empty array if this ObjectAttribute is associated with no policy classes.
     def policy_classes
-      pcs_for_object = @pm_storage_adapter.policy_classes_for_object_attribute(stored_pe)
+      pcs_for_object = pm_storage_adapter.policy_classes_for_object_attribute(stored_pe)
       pcs_for_object.map do |stored_pc|
-        self.class.convert_stored_pe_to_pe(stored_pc, @pm_storage_adapter, PM::PolicyClass)
+        self.class.convert_stored_pe_to_pe(stored_pc, pm_storage_adapter, PM::PolicyClass)
       end
     end
 
@@ -223,8 +232,8 @@ module PM
     # Return all associations in which this Operation is included
     # Associations are arrays of PM::Attributes.
     def associations
-      @pm_storage_adapter.associations_with(self.stored_pe).map do |assoc|
-        PM::Association.new(assoc[0], assoc[1], assoc[2], @pm_storage_adapter)
+      pm_storage_adapter.associations_with(self.stored_pe).map do |assoc|
+        PM::Association.new(assoc[0], assoc[1], assoc[2], pm_storage_adapter)
       end
     end
 
