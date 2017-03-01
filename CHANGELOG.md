@@ -2,10 +2,10 @@
 
 ## 1.3.7
 
-* Add the ability to assign policy elements in different policy machines.
-* Add a migration for the `cross_assignments` table.
+* Add the ability to link policy elements in different policy machines.
+* Add a migration for the `logical_links` table.
 
-– Execute `bundle exec rails generate the_policy_machine:add_cross_assignments_table` and rerun `db:migrate` to use these changes.
+– Execute `bundle exec rails generate the_policy_machine:add_logical_links_table` and rerun `db:migrate` to use these changes.
 
 _~ Many skipped updates to the Changelog. Sorry! ~_
 
