@@ -95,6 +95,12 @@ another_policy_machine = PolicyMachine.new('another_policy_machine', ::PolicyMac
 u4 = another_policy_machine.create_user('u4')
 policy_machine.add_link(u1, u4)
 
+u4_descendant_links = u4.link_descendants
+u4_children_links = u4.link_children
+
+u1_ancestor_links = u1.link_ancestors
+u1_parent_links = u1.link_parents
+
 # Storage Adapters
 
 Note that the Policy Machine in the above example stores policy elements in memory.  Other persistent
