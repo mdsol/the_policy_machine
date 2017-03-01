@@ -71,6 +71,13 @@ module PolicyMachineStorageAdapter
       end
     end
 
+    ##
+    # Assign src to dst in different policy machines
+    #
+    def link(src, dst)
+      assign(src, dst)
+    end
+
     # Allow ignore_case to be a boolean, string, symbol, or array of symbols or strings
     def ignore_case_applies?(ignore_case, key)
       ignore_case == true || ignore_case.to_s == key || ( ignore_case.respond_to?(:any?) && ignore_case.any?{ |k| k.to_s == key.to_s} )
@@ -87,6 +94,10 @@ module PolicyMachineStorageAdapter
 
       neo_connection.execute_query("start n=node({id1}),m=node({id2}) return (n)-[*]->(m)",
         {:id1 => src.neo_id.to_i, :id2 => dst.neo_id.to_i})['data'] != [[[]]]
+    end
+
+    def linked?(src, dst)
+      connected?(src, dst)
     end
 
     ##
@@ -111,6 +122,14 @@ module PolicyMachineStorageAdapter
       else
         false
       end
+    end
+
+    ##
+    # Disconnects two policy elements in different machines.
+    # Returns true if the unassignment succeeds or false otherwise.
+    #
+    def unlink(src, dst)
+      unassign(src, dst)
     end
 
     ##
