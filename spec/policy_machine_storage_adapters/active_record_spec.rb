@@ -96,57 +96,82 @@ describe 'ActiveRecord' do
       describe '#bulk_persist' do
         let(:pm) { PolicyMachine.new(name: 'AR PM', storage_adapter: PolicyMachineStorageAdapter::ActiveRecord) }
 
-        it 'deletes a policy element that has been created and then deleted in a persistence buffer' do
-          user, attr = pm.bulk_persist do
+        describe 'policy element behavior' do
+          it 'deletes a policy element that has been created and then deleted in a persistence buffer' do
+            user, attr = pm.bulk_persist do
+              user = pm.create_user('alice')
+              attr = pm.create_user_attribute('caffeinated')
+              user.delete
+
+              [user, attr]
+            end
+
+            expect(pm.user_attributes).to eq [attr]
+            expect(pm.users).to be_empty
+          end
+
+          it 'deletes preexisting policy elements that have been updated in the persistence buffer' do
             user = pm.create_user('alice')
-            attr = pm.create_user_attribute('caffeinated')
-            user.delete
+            attr = pm.bulk_persist do
+              user.update(color: 'blue')
+              user.delete
+              pm.create_user_attribute('caffeinated')
+            end
 
-            [user, attr]
+            expect(pm.user_attributes).to eq [attr]
+            expect(pm.users).to be_empty
           end
 
-          expect(pm.user_attributes).to eq [attr]
-          expect(pm.users).to be_empty
-        end
+          it 'creates a record if the record is created, deleted and then recreated inside a persistence buffer' do
+            user, attr = pm.bulk_persist do
+              pm.create_user('alice').delete
+              attr = pm.create_user_attribute('caffeinated')
+              user = pm.create_user('alice')
 
-        it 'deletes preexisting policy elements that have been updated in the persistence buffer' do
-          user = pm.create_user('alice')
-          attr = pm.bulk_persist do
-            user.update(color: 'blue')
-            user.delete
-            pm.create_user_attribute('caffeinated')
+              [user,attr]
+            end
+
+            expect(pm.user_attributes).to eq [attr]
+            expect(pm.users).to eq [user]
           end
 
-          expect(pm.user_attributes).to eq [attr]
-          expect(pm.users).to be_empty
-        end
-
-        it 'creates a record if the record is created, deleted and then recreated inside a persistence buffer' do
-          user, attr = pm.bulk_persist do
-            pm.create_user('alice').delete
-            attr = pm.create_user_attribute('caffeinated')
-            user = pm.create_user('alice')
-
-            [user,attr]
-          end
-
-          expect(pm.user_attributes).to eq [attr]
-          expect(pm.users).to eq [user]
-        end
-
-        it 'creates a record if a preexisting record is deleted and then recreated inside a persistence buffer' do
-          user = pm.create_user('alice')
-
-          user, attr = pm.bulk_persist do
-            user.delete
-            attr = pm.create_user_attribute('caffeinated')
+          it 'creates a record if a preexisting record is deleted and then recreated inside a persistence buffer' do
             user = pm.create_user('alice')
 
-            [user,attr]
+            user, attr = pm.bulk_persist do
+              user.delete
+              attr = pm.create_user_attribute('caffeinated')
+              user = pm.create_user('alice')
+
+              [user,attr]
+            end
+
+            expect(pm.user_attributes).to eq [attr]
+            expect(pm.users).to eq [user]
+          end
+        end
+
+        describe 'assignment behavior' do
+          let(:user) { pm.create_user('alice') }
+          let(:caffeinated) { pm.create_user_attribute('caffeinated') }
+          let(:decaffeinated) { pm.create_user_attribute('decaffeinated') }
+
+          it 'deletes assignments that have been created and then deleted in a persistence buffer' do
+            pm.bulk_persist do
+              user.assign_to(caffeinated)
+              user.assign_to(decaffeinated)
+              caffeinated.assign_to(decaffeinated)
+              caffeinated.unassign(decaffeinated)
+
+              binding.pry
+            end
+
           end
 
-          expect(pm.user_attributes).to eq [attr]
-          expect(pm.users).to eq [user]
+        end
+
+        describe 'describe policy element association behavior' do
+
         end
       end
     end
