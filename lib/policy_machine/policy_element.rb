@@ -67,7 +67,7 @@ module PM
     def delete
       # If the stored ppe is not persisted, no need to delete it, but if buffering
       # all bets are off, and the storage adapter needs to handle the situation
-      if (self.stored_pe && self.stored_pe.persisted) || @pm_storage_adapter.buffering?
+      if (self.stored_pe && self.stored_pe.persisted) || pm_storage_adapter.buffering?
         pm_storage_adapter.delete(stored_pe)
         self.stored_pe = nil
         true
