@@ -195,6 +195,32 @@ describe 'ActiveRecord' do
             expect(caffeinated.connected?(decaffeinated)).to be false
           end
 
+          it 'creates an assignment if the assignment is created, deleted and then recreated inside a persistence buffer' do
+            pm.bulk_persist do
+              user.assign_to(caffeinated)
+              user.assign_to(decaffeinated)
+              user.unassign(caffeinated)
+              user.unassign(decaffeinated)
+              user.assign_to(caffeinated)
+            end
+
+            expect(user.connected?(caffeinated)).to be true
+            expect(user.connected?(decaffeinated)).to be false
+          end
+
+          it 'creates an assigment if a preexisting assignment is deleted and then recreated inside a persistence buffer' do
+            user.assign_to(caffeinated)
+            pm.bulk_persist do
+              user.assign_to(decaffeinated)
+              user.unassign(caffeinated)
+              user.unassign(decaffeinated)
+              user.assign_to(caffeinated)
+            end
+
+            expect(user.connected?(caffeinated)).to be true
+            expect(user.connected?(decaffeinated)).to be false
+          end
+
         end
 
         describe 'describe policy element association behavior' do
