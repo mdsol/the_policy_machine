@@ -51,7 +51,7 @@ module PolicyMachineStorageAdapter
     end
 
     def self.buffers
-      @buffers ||= {upsert: {}, delete:{}, assignments: [], associations: [] }
+      @buffers ||= {upsert: {}, delete:{}, assignments: {}, unassignments: {},  associations: [] }
     end
 
     def self.clear_buffers!
@@ -73,6 +73,7 @@ module PolicyMachineStorageAdapter
       buffers[:upsert].values.each { |el| el.attributes = el.attributes.slice(*column_keys) }
 
       PolicyElement.bulk_destroy(buffers[:delete])
+      PolicyElement.bulk_unassign(buffers[:unassignments])
       PolicyElement.import(buffers[:upsert].values, on_duplicate_key_update: column_keys.map(&:to_sym) - [:id])
       PolicyElement.bulk_assign(buffers[:assignments])
       PolicyElement.bulk_associate(buffers[:associations])
@@ -159,9 +160,15 @@ module PolicyMachineStorageAdapter
         PolicyElementAssociation.where(object_attribute_id: id_groups[ObjectAttribute]).delete_all
       end
 
-      def self.bulk_assign(parents_and_children)
-        id_pairs = parents_and_children.map { |parent, child| [parent.id, child.id]  }
+      def self.bulk_assign(pairs_hash)
+        id_pairs = pairs_hash.values.map { |parent, child| [parent.id, child.id]  }
         Assignment.import([:parent_id, :child_id], id_pairs, on_duplicate_key_ignore: true)
+      end
+
+      def self.bulk_unassign(pairs_hash)
+        pairs_hash.values.reduce(Assignment.none) do |scope,(parent, child)|
+          scope.or.where(parent: parent, child: child)
+        end.delete_all
       end
 
       def self.bulk_associate(associations)
@@ -346,7 +353,8 @@ module PolicyMachineStorageAdapter
     end
 
     def assign_later(parent:, child:)
-      buffers[:assignments] << [parent, child]
+      # buffers[:assignments] << [parent, child]
+      buffers[:assignments].merge!([parent.unique_identifier, child.unique_identifier] => [parent, child])
       :buffered
     end
 
@@ -371,11 +379,21 @@ module PolicyMachineStorageAdapter
     # first place.
     #
     def unassign(src, dst)
+      self.buffering? ? unassign_later(src, dst) : unassign_now(src, dst)
+    end
+
+    def unassign_now(src, dst)
       assert_persisted_policy_element(src, dst)
       if assignment = src.assignments.where(child_id: dst.id).first
         assignment.destroy
       end
     end
+
+    def unassign_later(src, dst)
+      buffers[:assignments].delete([src.unique_identifier, dst.unique_identifier])
+      buffers[:unassignments].delete([src.unique_identifier, dst.unique_identifier] => [src, dst])
+    end
+
 
     ##
     # Remove a persisted policy element. This should remove its assignments and
