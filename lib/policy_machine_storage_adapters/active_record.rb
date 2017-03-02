@@ -193,8 +193,8 @@ module PolicyMachineStorageAdapter
       end
 
       def self.bulk_unassign(pairs_hash)
-        pairs_str = pairs_hash.values.reduce([]) do |memo,(parent,child)|
-          parent.persisted && child.persisted? ? memo + ["(#{parent.id},#{child.id})"] : memo
+        pairs_str = pairs_hash.values.reduce([]) do |memo, (parent, child)|
+          parent.persisted? && child.persisted? ? memo + ["(#{parent.id},#{child.id})"] : memo
         end.join(',')
         Assignment.where("(parent_id,child_id) IN (#{pairs_str})").delete_all unless pairs_str.empty?
       end
@@ -386,7 +386,6 @@ module PolicyMachineStorageAdapter
     end
 
     def assign_later(parent:, child:)
-      # buffers[:assignments] << [parent, child]
       buffers[:assignments].merge!([parent.unique_identifier, child.unique_identifier] => [parent, child])
       :buffered
     end
