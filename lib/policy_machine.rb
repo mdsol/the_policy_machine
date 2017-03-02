@@ -48,6 +48,26 @@ class PolicyMachine
   end
 
   ##
+  # Persist an assignment across different policy machines.
+  # This is used for logical relationships outside of the policy machine formalism, such as the
+  # relationship between a class of operable and a specific instance of it.
+  #
+  def add_link(src_policy_element, dst_policy_element)
+    assert_different_machines(src_policy_element, dst_policy_element)
+    src_policy_element.link_to(dst_policy_element)
+  end
+
+  ##
+  # Remove an assignment across different policy machines.
+  # This is used for logical relationships outside of the policy machine formalism, such as the
+  # relationship between a class of operable and a specific instance of it.
+  #
+  def remove_link(src_policy_element, dst_policy_element)
+    assert_different_machines(src_policy_element, dst_policy_element)
+    src_policy_element.unlink(dst_policy_element)
+  end
+
+  ##
   # Add an association between a user_attribute, an operation_set and an object_attribute
   # in this policy machine.
   #
@@ -296,40 +316,49 @@ class PolicyMachine
 
   private
 
-    # Raise unless the argument is a policy element.
-    def assert_policy_element_in_machine(arg_pe)
-      unless arg_pe.is_a?(PM::PolicyElement)
-        raise(ArgumentError, "arg must each be a kind of PolicyElement; got #{arg_pe.class.name} instead")
-      end
-      unless arg_pe.policy_machine_uuid == self.uuid
-        raise(ArgumentError, "#{arg_pe.unique_identifier} is not in policy machine with uuid #{self.uuid}")
-      end
+  # Raise unless the argument is a policy element.
+  def assert_policy_element_in_machine(arg_pe)
+    unless arg_pe.is_a?(PM::PolicyElement)
+      raise(ArgumentError, "arg must each be a kind of PolicyElement; got #{arg_pe.class.name} instead")
     end
+    unless arg_pe.policy_machine_uuid == self.uuid
+      raise(ArgumentError, "#{arg_pe.unique_identifier} is not in policy machine with uuid #{self.uuid}")
+    end
+  end
 
-    # According to the NIST spec:  "the triple (u, op, o) is a privilege, iff there
-    # exists an association (ua, ops, oa), such that user u→+ua, op ∈ ops, and o→*oa."
-    # Note:  this method assumes that the caller has already checked that the given operation is in the operation_set
-    # for all associations provided.
-    def is_privilege_single_policy_class(user_or_attribute, object_or_attribute, associations)
-      # does there exist an association (ua, ops, oa), such that user u→+ua, op ∈ ops, and o→*oa?
+  # Raise unless the policy elements are policy elements in different machines.
+  def assert_different_machines(pe, another_pe)
+    if !pe.is_a?(PM::PolicyElement) || !another_pe.is_a?(PM::PolicyElement)
+      raise(ArgumentError, "args must each be a kind of PolicyElement; got a #{pe.class.name} and #{another_pe.class.name} instead")
+    elsif pe.policy_machine_uuid == another_pe.policy_machine_uuid
+      raise(ArgumentError, "#{pe.unique_identifier} and #{another_pe.unique_identifier} are in the same policy machine")
+    end
+  end
+
+  # According to the NIST spec:  "the triple (u, op, o) is a privilege, iff there
+  # exists an association (ua, ops, oa), such that user u→+ua, op ∈ ops, and o→*oa."
+  # Note:  this method assumes that the caller has already checked that the given operation is in the operation_set
+  # for all associations provided.
+  def is_privilege_single_policy_class(user_or_attribute, object_or_attribute, associations)
+    # does there exist an association (ua, ops, oa), such that user u→+ua, op ∈ ops, and o→*oa?
+    associations.any? do |assoc|
+      user_or_attribute.connected?(assoc.user_attribute) && object_or_attribute.connected?(assoc.object_attribute)
+    end
+  end
+
+  # According to the NIST spec:  "In multiple policy class situations, the triple (u, op, o) is a PM privilege, iff for
+  # each policy class pcl that contains o, there exists an association (uai, opsj, oak),
+  # such that user u→+uai, op ∈ opsj, o→*oak, and oak→+pcl."
+  # Note:  this method assumes that the caller has already checked that the given operation is in the operation_set
+  # for all associations provided.
+  def is_privilege_multiple_policy_classes(user_or_attribute, object_or_attribute, associations, policy_classes_containing_object)
+    policy_classes_containing_object.all? do |pc|
       associations.any? do |assoc|
-        user_or_attribute.connected?(assoc.user_attribute) && object_or_attribute.connected?(assoc.object_attribute)
+        user_or_attribute.connected?(assoc.user_attribute) &&
+        object_or_attribute.connected?(assoc.object_attribute) &&
+        assoc.object_attribute.connected?(pc)
       end
     end
-
-    # According to the NIST spec:  "In multiple policy class situations, the triple (u, op, o) is a PM privilege, iff for
-    # each policy class pcl that contains o, there exists an association (uai, opsj, oak),
-    # such that user u→+uai, op ∈ opsj, o→*oak, and oak→+pcl."
-    # Note:  this method assumes that the caller has already checked that the given operation is in the operation_set
-    # for all associations provided.
-    def is_privilege_multiple_policy_classes(user_or_attribute, object_or_attribute, associations, policy_classes_containing_object)
-      policy_classes_containing_object.all? do |pc|
-        associations.any? do |assoc|
-          user_or_attribute.connected?(assoc.user_attribute) &&
-          object_or_attribute.connected?(assoc.object_attribute) &&
-          assoc.object_attribute.connected?(pc)
-        end
-      end
-    end
+  end
 
 end

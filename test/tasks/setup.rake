@@ -10,9 +10,11 @@ namespace :pm do
 
       Dir.chdir('./test/testapp') do
         `bundle install`
-        `bundle exec rails g policy_machine -f`
-        #TODO  replace with another generator or equivalent
-        FileUtils.cp('../migration.rb', './db/migrate/99999999999999_add_test_columns.rb')
+
+        `bundle exec rails generate the_policy_machine:add_initial_policy_machine_tables -f`
+        `bundle exec rails generate the_policy_machine:add_logical_links_table -f`
+        FileUtils.cp('../add_test_columns_migration.rb', './db/migrate/99999999999999_add_test_columns.rb')
+
         `bundle exec rake db:drop:all db:create db:migrate db:test:prepare`
       end
     end

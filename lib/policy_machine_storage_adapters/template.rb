@@ -76,6 +76,15 @@ module PolicyMachineStorageAdapter
     end
 
     ##
+    # Connects two policy elements across different policy machines.
+    # This is used for logical relationships outside of the policy machine formalism, such as the
+    # relationship between a class of operable and a specific instance of it.
+    #
+    def link(src, dst)
+
+    end
+
+    ##
     # Determine if there is a path from src to dst in the policy machine.
     # The two policy elements must be persisted policy elements; otherwise the method should raise
     # an ArgumentError.
@@ -87,14 +96,35 @@ module PolicyMachineStorageAdapter
     end
 
     ##
+    # Determine if there is a path from src to dst in different policy machines.
+    # The two policy elements must be persisted policy elements; otherwise the method should raise
+    # an ArgumentError.
+    # Returns true if there is a such a path and false otherwise.
+    # Should return false if src == dst
+    #
+    def linked?(src, dst)
+
+    end
+
+    ##
     # Disconnect two policy elements in the machine
     # The two policy elements must be persisted policy elements; otherwise the method should raise
     # an ArgumentError.
-    # Returns true if unassignment occurred and false otherwise.
+    # Returns true if unlink occurred and false otherwise.
     # Generally, false will be returned if the assignment didn't exist in the PM in the
     # first place.
     #
     def unassign(src, dst)
+
+    end
+
+    ##
+    # Disconnects two policy elements in different machines.
+    # Returns true if the unlink succeeds or false otherwise.
+    # This is used for logical relationships outside of the policy machine formalism, such as the
+    # relationship between a class of operable and a specific instance of it.
+    #
+    def unlink(src, dst)
 
     end
 
