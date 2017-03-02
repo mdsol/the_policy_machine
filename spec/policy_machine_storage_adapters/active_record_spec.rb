@@ -162,10 +162,10 @@ describe 'ActiveRecord' do
               user.assign_to(decaffeinated)
               caffeinated.assign_to(decaffeinated)
               caffeinated.unassign(decaffeinated)
-
-              binding.pry
             end
 
+            expect(user.connected?(caffeinated)).to be true
+            expect(caffeinated.connected?(decaffeinated)).to be false
           end
 
         end
