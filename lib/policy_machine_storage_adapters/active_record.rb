@@ -193,9 +193,8 @@ module PolicyMachineStorageAdapter
       end
 
       def self.bulk_unassign(pairs_hash)
-        pairs_hash.values.reduce(Assignment.none) do |scope,(parent, child)|
-          scope.or.where(parent: parent, child: child)
-        end.delete_all
+        pairs_str = pairs_hash.values.map { |parent,child| "(#{parent.id},#{child.id})" }.join(",")
+        Assignment.where("(parent_id,child_id) IN (#{pairs_str})").delete_all
       end
 
       def self.bulk_link(parents_and_children)
@@ -461,7 +460,7 @@ module PolicyMachineStorageAdapter
 
     def unassign_later(src, dst)
       buffers[:assignments].delete([src.unique_identifier, dst.unique_identifier])
-      buffers[:deassignments].delete([src.unique_identifier, dst.unique_identifier] => [src, dst])
+      buffers[:deassignments].merge!([src.unique_identifier, dst.unique_identifier] => [src, dst])
     end
 
 
