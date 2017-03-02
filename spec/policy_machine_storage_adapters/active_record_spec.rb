@@ -27,15 +27,17 @@ describe 'ActiveRecord' do
 
     describe 'find_all_of_type' do
 
-      it 'warns when filtering on an extra attribute' do
-        policy_machine_storage_adapter.should_receive(:warn).once
-        policy_machine_storage_adapter.find_all_of_type_user(foo: 'bar').should be_empty
+      it 'warns once when filtering on an extra attribute' do
+        Warn.should_receive(:warn).once
+        2.times do
+          policy_machine_storage_adapter.find_all_of_type_user(foo: 'bar').should be_empty
+        end
       end
 
       context 'an extra attribute column has been added to the database' do
 
         it 'does not warn' do
-          policy_machine_storage_adapter.should_not_receive(:warn)
+          Warn.should_not_receive(:warn)
           policy_machine_storage_adapter.find_all_of_type_user(color: 'red').should be_empty
         end
 
