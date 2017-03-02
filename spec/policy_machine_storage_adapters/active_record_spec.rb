@@ -183,10 +183,21 @@ describe 'ActiveRecord' do
             expect(caffeinated.connected?(decaffeinated)).to be false
           end
 
+          it 'deletes preexisting assignments removed in the persistence buffer' do
+            caffeinated.assign_to(decaffeinated)
+            pm.bulk_persist do
+              user.assign_to(caffeinated)
+              user.assign_to(decaffeinated)
+              caffeinated.unassign(decaffeinated)
+            end
+
+            expect(user.connected?(caffeinated)).to be true
+            expect(caffeinated.connected?(decaffeinated)).to be false
+          end
+
         end
 
         describe 'describe policy element association behavior' do
-
         end
 
         describe 'link behavior' do
