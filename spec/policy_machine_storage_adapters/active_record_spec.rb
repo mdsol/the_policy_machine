@@ -110,6 +110,9 @@ describe 'ActiveRecord' do
 
       describe '#bulk_persist' do
         let(:pm) { PolicyMachine.new(name: 'AR PM', storage_adapter: PolicyMachineStorageAdapter::ActiveRecord) }
+        let(:user) { pm.create_user('alice') }
+        let(:caffeinated) { pm.create_user_attribute('caffeinated') }
+        let(:decaffeinated) { pm.create_user_attribute('decaffeinated') }
 
         describe 'policy element behavior' do
           it 'deletes a policy element that has been created and then deleted in a persistence buffer' do
@@ -167,10 +170,6 @@ describe 'ActiveRecord' do
         end
 
         describe 'assignment behavior' do
-          let(:user) { pm.create_user('alice') }
-          let(:caffeinated) { pm.create_user_attribute('caffeinated') }
-          let(:decaffeinated) { pm.create_user_attribute('decaffeinated') }
-
           it 'deletes assignments that have been created and then deleted in a persistence buffer' do
             pm.bulk_persist do
               user.assign_to(caffeinated)
@@ -227,6 +226,86 @@ describe 'ActiveRecord' do
         end
 
         describe 'link behavior' do
+          let(:mirror_pm) { PolicyMachine.new(name: 'Mirror PM', storage_adapter: PolicyMachineStorageAdapter::ActiveRecord) }
+          let(:mirror_user) { mirror_pm.create_user('bob') }
+          let(:has_a_goatee) { mirror_pm.create_user_attribute('evil_goatee') }
+          let(:is_evil) { mirror_pm.create_user_attribute('is_evil') }
+
+          it 'deletes links that have been created and the deleted in a persistence buffer' do
+            pm.bulk_persist do
+              user.link_to(has_a_goatee)
+              user.link_to(is_evil)
+              mirror_user.link_to(caffeinated)
+              mirror_user.link_to(decaffeinated)
+
+              user.unlink(has_a_goatee)
+              mirror_user.unlink(decaffeinated)
+            end
+
+            expect(user.linked?(is_evil)).to be true
+            expect(user.linked?(has_a_goatee)).to be false
+            expect(mirror_user.linked?(caffeinated)).to be true
+            expect(mirror_user.linked?(decaffeinated)).to be false
+          end
+
+          it 'deletes preexisting links removed in the persistence buffer' do
+            user.link_to(has_a_goatee)
+            mirror_user.link_to(caffeinated)
+
+            pm.bulk_persist do
+              user.link_to(is_evil)
+              mirror_user.link_to(decaffeinated)
+
+              user.unlink(has_a_goatee)
+              mirror_user.unlink(decaffeinated)
+            end
+
+            expect(user.linked?(is_evil)).to be true
+            expect(user.linked?(has_a_goatee)).to be false
+            expect(mirror_user.linked?(caffeinated)).to be true
+            expect(mirror_user.linked?(decaffeinated)).to be false
+          end
+
+          it 'creates a link if the link is created, deleted, and then recreated inside a persistence buffer' do
+            pm.bulk_persist do
+              user.link_to(has_a_goatee)
+              user.link_to(is_evil)
+              mirror_user.link_to(caffeinated)
+              mirror_user.link_to(decaffeinated)
+
+              user.unlink(has_a_goatee)
+              mirror_user.unlink(decaffeinated)
+
+              user.link_to(has_a_goatee)
+              mirror_user.link_to(decaffeinated)
+            end
+
+            expect(user.linked?(has_a_goatee)).to be true
+            expect(user.linked?(is_evil)).to be true
+            expect(mirror_user.linked?(caffeinated)).to be true
+            expect(mirror_user.linked?(decaffeinated)).to be true
+          end
+
+          it 'creates a link if a preexisting assignment is deleted and then recreated inside a persistence buffer' do
+            user.link_to(has_a_goatee)
+            mirror_user.link_to(caffeinated)
+
+            pm.bulk_persist do
+              user.link_to(is_evil)
+              mirror_user.link_to(decaffeinated)
+
+              user.unlink(has_a_goatee)
+              mirror_user.unlink(decaffeinated)
+
+              user.link_to(has_a_goatee)
+              mirror_user.link_to(decaffeinated)
+            end
+
+            expect(user.linked?(has_a_goatee)).to be true
+            expect(user.linked?(is_evil)).to be true
+            expect(mirror_user.linked?(caffeinated)).to be true
+            expect(mirror_user.linked?(decaffeinated)).to be true
+          end
         end
       end
     end
