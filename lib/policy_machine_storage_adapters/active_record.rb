@@ -57,7 +57,8 @@ module PolicyMachineStorageAdapter
                      delete: {},
                      assignments: {},
                      deassignments: {},
-                     links: [],
+                     links: {},
+                     delinks: {},
                      associations: []
                    }
     end
@@ -82,6 +83,7 @@ module PolicyMachineStorageAdapter
 
       PolicyElement.bulk_destroy(buffers[:delete])
       PolicyElement.bulk_unassign(buffers[:deassignments])
+      PolicyElement.bulk_unlink(buffers[:delinks])
       PolicyElement.import(buffers[:upsert].values, on_duplicate_key_update: column_keys.map(&:to_sym) - [:id])
       PolicyElement.bulk_assign(buffers[:assignments])
       PolicyElement.bulk_link(buffers[:links])
@@ -199,8 +201,15 @@ module PolicyMachineStorageAdapter
         Assignment.where("(parent_id,child_id) IN (#{pairs_str})").delete_all unless pairs_str.empty?
       end
 
-      def self.bulk_link(parents_and_children)
-        id_pairs = parents_and_children.map { |parent, child| [parent.id, child.id, parent.policy_machine_uuid, child.policy_machine_uuid] }
+      def self.bulk_unlink(pairs_hash)
+        pairs_str = pairs_hash.values.reduce([]) do |memo, (parent, child)|
+          parent.persisted? && child.persisted? ? memo + ["(#{parent.id},#{child.id})"] : memo
+        end.join(',')
+        LogicalLink.where("(link_parent_id,link_child_id) IN (#{pairs_str})").delete_all unless pairs_str.empty?
+      end
+
+      def self.bulk_link(pairs_hash)
+        id_pairs = pairs_hash.values.map { |parent, child| [parent.id, child.id, parent.policy_machine_uuid, child.policy_machine_uuid]  }
         import_fields = [:link_parent_id, :link_child_id, :link_parent_policy_machine_uuid, :link_child_policy_machine_uuid]
         LogicalLink.import(import_fields, id_pairs, on_duplicate_key_ignore: true)
       end
@@ -399,7 +408,7 @@ module PolicyMachineStorageAdapter
     def link(src, dst)
       assert_persisted_policy_element(src, dst)
       if self.buffering?
-        link_later(link_parent: src, link_child: dst)
+        link_later(parent: src, child: dst)
       else
         LogicalLink.where(
           link_parent_id: src.id,
@@ -410,8 +419,8 @@ module PolicyMachineStorageAdapter
       end
     end
 
-    def link_later(link_parent:, link_child:)
-      buffers[:links] << [link_parent, link_child]
+    def link_later(parent:, child:)
+      buffers[:links].merge!([parent.unique_identifier, child.unique_identifier] => [parent, child])
       :buffered
     end
 
@@ -469,10 +478,19 @@ module PolicyMachineStorageAdapter
     # Disconnects two policy elements in different machines.
     #
     def unlink(src, dst)
+      self.buffering? ? unlink_later(src, dst) : unlink_now(src, dst)
+    end
+
+    def unlink_now(src, dst)
       assert_persisted_policy_element(src, dst)
       if assignment = src.logical_links.where(link_child_id: dst.id).first
         assignment.destroy
       end
+    end
+
+    def unlink_later(src, dst)
+      buffers[:links].delete([src.unique_identifier, dst.unique_identifier])
+      buffers[:delinks].merge!([src.unique_identifier, dst.unique_identifier] => [src, dst])
     end
 
     ##
