@@ -56,9 +56,9 @@ module PolicyMachineStorageAdapter
                      upsert: {},
                      delete: {},
                      assignments: {},
-                     deassignments: {},
+                     assignments_to_remove: {},
                      links: {},
-                     delinks: {},
+                     links_to_remove: {},
                      associations: []
                    }
     end
@@ -82,8 +82,8 @@ module PolicyMachineStorageAdapter
       buffers[:upsert].values.each { |el| el.attributes = el.attributes.slice(*column_keys) }
 
       PolicyElement.bulk_destroy(buffers[:delete])
-      PolicyElement.bulk_unassign(buffers[:deassignments])
-      PolicyElement.bulk_unlink(buffers[:delinks])
+      PolicyElement.bulk_unassign(buffers[:assignments_to_remove])
+      PolicyElement.bulk_unlink(buffers[:links_to_remove])
       PolicyElement.import(buffers[:upsert].values, on_duplicate_key_update: column_keys.map(&:to_sym) - [:id])
       PolicyElement.bulk_assign(buffers[:assignments])
       PolicyElement.bulk_link(buffers[:links])
@@ -470,7 +470,7 @@ module PolicyMachineStorageAdapter
 
     def unassign_later(src, dst)
       buffers[:assignments].delete([src.unique_identifier, dst.unique_identifier])
-      buffers[:deassignments].merge!([src.unique_identifier, dst.unique_identifier] => [src, dst])
+      buffers[:assignments_to_remove].merge!([src.unique_identifier, dst.unique_identifier] => [src, dst])
     end
 
 
@@ -490,7 +490,7 @@ module PolicyMachineStorageAdapter
 
     def unlink_later(src, dst)
       buffers[:links].delete([src.unique_identifier, dst.unique_identifier])
-      buffers[:delinks].merge!([src.unique_identifier, dst.unique_identifier] => [src, dst])
+      buffers[:links_to_remove].merge!([src.unique_identifier, dst.unique_identifier] => [src, dst])
     end
 
     ##
