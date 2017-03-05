@@ -115,62 +115,62 @@ describe 'ActiveRecord' do
         let(:decaffeinated) { pm.create_user_attribute('decaffeinated') }
 
         describe 'policy element behavior' do
-          it 'deletes a policy element that has been created and then deleted in a persistence buffer' do
-            user, attr = pm.bulk_persist do
+          it 'deletes a policy element that has been created and then deleted ' do
+            user, attribute = pm.bulk_persist do
               user = pm.create_user('alice')
-              attr = pm.create_user_attribute('caffeinated')
+              attribute = pm.create_user_attribute('caffeinated')
               user.delete
 
-              [user, attr]
+              [user, attribute]
             end
 
-            expect(pm.user_attributes).to eq [attr]
+            expect(pm.user_attributes).to eq [attribute]
             expect(pm.users).to be_empty
           end
 
-          it 'deletes preexisting policy elements that have been updated in the persistence buffer' do
+          it 'deletes preexisting policy elements that have been updated' do
             user = pm.create_user('alice')
-            attr = pm.bulk_persist do
+            attribute = pm.bulk_persist do
               user.update(color: 'blue')
               user.delete
               pm.create_user_attribute('caffeinated')
             end
 
-            expect(pm.user_attributes).to eq [attr]
+            expect(pm.user_attributes).to eq [attribute]
             expect(pm.users).to be_empty
           end
 
-          it 'creates a record if the record is created, deleted and then recreated inside a persistence buffer' do
-            user, attr = pm.bulk_persist do
+          it 'creates a record if the record is created, deleted and then recreated' do
+            user, attribute = pm.bulk_persist do
               pm.create_user('alice').delete
-              attr = pm.create_user_attribute('caffeinated')
+              attribute = pm.create_user_attribute('caffeinated')
               user = pm.create_user('alice')
 
-              [user,attr]
+              [user, attribute]
             end
 
-            expect(pm.user_attributes).to eq [attr]
+            expect(pm.user_attributes).to eq [attribute]
             expect(pm.users).to eq [user]
           end
 
-          it 'creates a record if a preexisting record is deleted and then recreated inside a persistence buffer' do
+          it 'creates a record if a preexisting record is deleted and then recreated' do
             user = pm.create_user('alice')
 
-            user, attr = pm.bulk_persist do
+            user, attribute = pm.bulk_persist do
               user.delete
-              attr = pm.create_user_attribute('caffeinated')
+              attribute = pm.create_user_attribute('caffeinated')
               user = pm.create_user('alice')
 
-              [user,attr]
+              [user, attribute]
             end
 
-            expect(pm.user_attributes).to eq [attr]
+            expect(pm.user_attributes).to eq [attribute]
             expect(pm.users).to eq [user]
           end
         end
 
         describe 'assignment behavior' do
-          it 'deletes assignments that have been created and then deleted in a persistence buffer' do
+          it 'deletes assignments that have been created and then deleted' do
             pm.bulk_persist do
               user.assign_to(caffeinated)
               user.assign_to(decaffeinated)
@@ -178,11 +178,12 @@ describe 'ActiveRecord' do
               caffeinated.unassign(decaffeinated)
             end
 
+            expect(user.connected?(decaffeinated)).to be true
             expect(user.connected?(caffeinated)).to be true
             expect(caffeinated.connected?(decaffeinated)).to be false
           end
 
-          it 'deletes preexisting assignments removed in the persistence buffer' do
+          it 'deletes preexisting assignments removed' do
             caffeinated.assign_to(decaffeinated)
             pm.bulk_persist do
               user.assign_to(caffeinated)
@@ -194,7 +195,7 @@ describe 'ActiveRecord' do
             expect(caffeinated.connected?(decaffeinated)).to be false
           end
 
-          it 'creates an assignment if the assignment is created, deleted and then recreated inside a persistence buffer' do
+          it 'creates an assignment if the assignment is created, deleted and then recreated' do
             pm.bulk_persist do
               user.assign_to(caffeinated)
               user.assign_to(decaffeinated)
@@ -207,7 +208,7 @@ describe 'ActiveRecord' do
             expect(user.connected?(decaffeinated)).to be false
           end
 
-          it 'creates an assigment if a preexisting assignment is deleted and then recreated inside a persistence buffer' do
+          it 'creates an assigment if a preexisting assignment is deleted and then recreated' do
             user.assign_to(caffeinated)
             pm.bulk_persist do
               user.assign_to(decaffeinated)
@@ -231,7 +232,7 @@ describe 'ActiveRecord' do
           let(:has_a_goatee) { mirror_pm.create_user_attribute('evil_goatee') }
           let(:is_evil) { mirror_pm.create_user_attribute('is_evil') }
 
-          it 'deletes links that have been created and the deleted in a persistence buffer' do
+          it 'deletes links that have been created and the deleted' do
             pm.bulk_persist do
               user.link_to(has_a_goatee)
               user.link_to(is_evil)
@@ -248,7 +249,7 @@ describe 'ActiveRecord' do
             expect(mirror_user.linked?(decaffeinated)).to be false
           end
 
-          it 'deletes preexisting links removed in the persistence buffer' do
+          it 'deletes preexisting links removed' do
             user.link_to(has_a_goatee)
             mirror_user.link_to(caffeinated)
 
@@ -266,7 +267,7 @@ describe 'ActiveRecord' do
             expect(mirror_user.linked?(decaffeinated)).to be false
           end
 
-          it 'creates a link if the link is created, deleted, and then recreated inside a persistence buffer' do
+          it 'creates a link if the link is created, deleted, and then recreated' do
             pm.bulk_persist do
               user.link_to(has_a_goatee)
               user.link_to(is_evil)
@@ -286,7 +287,7 @@ describe 'ActiveRecord' do
             expect(mirror_user.linked?(decaffeinated)).to be true
           end
 
-          it 'creates a link if a preexisting assignment is deleted and then recreated inside a persistence buffer' do
+          it 'creates a link if a preexisting assignment is deleted and then recreated' do
             user.link_to(has_a_goatee)
             mirror_user.link_to(caffeinated)
 
