@@ -1,5 +1,6 @@
 require 'policy_machine'
 require 'set'
+require 'policy_machine/warn_once'
 
 # This class stores policy elements in a SQL database using whatever
 # database configuration and adapters are provided by active_record.
@@ -341,9 +342,9 @@ module PolicyMachineStorageAdapter
         end
 
         extra_attribute_conditions.each do |key, value|
-          warn "WARNING: #{self.class} is filtering #{pe_type} on #{key} in memory, which won't scale well. " <<
+          Warn.once("WARNING: #{self.class} is filtering #{pe_type} on #{key} in memory, which won't scale well. " <<
             "To move this query to the database, add a '#{key}' column to the policy_elements table " <<
-            "and re-save existing records"
+            "and re-save existing records")
             all.to_a.select!{ |pe| pe.store_attributes and
                         ((attr_value = pe.extra_attributes_hash[key]).is_a?(String) and
                         value.is_a?(String) and ignore_case_applies?(options[:ignore_case],key)) ? attr_value.downcase == value.downcase : attr_value == value}
