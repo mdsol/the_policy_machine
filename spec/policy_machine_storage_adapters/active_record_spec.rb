@@ -107,6 +107,208 @@ describe 'ActiveRecord' do
           expect(user.linked?(pm2_user)).to eq true
         end
       end
+
+      describe '#bulk_persist' do
+        let(:pm) { PolicyMachine.new(name: 'AR PM', storage_adapter: PolicyMachineStorageAdapter::ActiveRecord) }
+        let(:user) { pm.create_user('alice') }
+        let(:caffeinated) { pm.create_user_attribute('caffeinated') }
+        let(:decaffeinated) { pm.create_user_attribute('decaffeinated') }
+
+        describe 'policy element behavior' do
+          it 'deletes a policy element that has been created and then deleted ' do
+            user, attribute = pm.bulk_persist do
+              user = pm.create_user('alice')
+              attribute = pm.create_user_attribute('caffeinated')
+              user.delete
+
+              [user, attribute]
+            end
+
+            expect(pm.user_attributes).to eq [attribute]
+            expect(pm.users).to be_empty
+          end
+
+          it 'deletes preexisting policy elements that have been updated' do
+            user = pm.create_user('alice')
+            attribute = pm.bulk_persist do
+              user.update(color: 'blue')
+              user.delete
+              pm.create_user_attribute('caffeinated')
+            end
+
+            expect(pm.user_attributes).to eq [attribute]
+            expect(pm.users).to be_empty
+          end
+
+          it 'creates a record if the record is created, deleted and then recreated' do
+            user, attribute = pm.bulk_persist do
+              pm.create_user('alice').delete
+              attribute = pm.create_user_attribute('caffeinated')
+              user = pm.create_user('alice')
+
+              [user, attribute]
+            end
+
+            expect(pm.user_attributes).to eq [attribute]
+            expect(pm.users).to eq [user]
+          end
+
+          it 'creates a record if a preexisting record is deleted and then recreated' do
+            user = pm.create_user('alice')
+
+            user, attribute = pm.bulk_persist do
+              user.delete
+              attribute = pm.create_user_attribute('caffeinated')
+              user = pm.create_user('alice')
+
+              [user, attribute]
+            end
+
+            expect(pm.user_attributes).to eq [attribute]
+            expect(pm.users).to eq [user]
+          end
+        end
+
+        describe 'assignment behavior' do
+          it 'deletes assignments that have been created and then deleted' do
+            pm.bulk_persist do
+              user.assign_to(caffeinated)
+              user.assign_to(decaffeinated)
+              caffeinated.assign_to(decaffeinated)
+              caffeinated.unassign(decaffeinated)
+            end
+
+            expect(user.connected?(decaffeinated)).to be true
+            expect(user.connected?(caffeinated)).to be true
+            expect(caffeinated.connected?(decaffeinated)).to be false
+          end
+
+          it 'deletes preexisting assignments removed' do
+            caffeinated.assign_to(decaffeinated)
+            pm.bulk_persist do
+              user.assign_to(caffeinated)
+              user.assign_to(decaffeinated)
+              caffeinated.unassign(decaffeinated)
+            end
+
+            expect(user.connected?(caffeinated)).to be true
+            expect(caffeinated.connected?(decaffeinated)).to be false
+          end
+
+          it 'creates an assignment if the assignment is created, deleted and then recreated' do
+            pm.bulk_persist do
+              user.assign_to(caffeinated)
+              user.assign_to(decaffeinated)
+              user.unassign(caffeinated)
+              user.unassign(decaffeinated)
+              user.assign_to(caffeinated)
+            end
+
+            expect(user.connected?(caffeinated)).to be true
+            expect(user.connected?(decaffeinated)).to be false
+          end
+
+          it 'creates an assigment if a preexisting assignment is deleted and then recreated' do
+            user.assign_to(caffeinated)
+            pm.bulk_persist do
+              user.assign_to(decaffeinated)
+              user.unassign(caffeinated)
+              user.unassign(decaffeinated)
+              user.assign_to(caffeinated)
+            end
+
+            expect(user.connected?(caffeinated)).to be true
+            expect(user.connected?(decaffeinated)).to be false
+          end
+
+        end
+
+        describe 'describe policy element association behavior' do
+        end
+
+        describe 'link behavior' do
+          let(:mirror_pm) { PolicyMachine.new(name: 'Mirror PM', storage_adapter: PolicyMachineStorageAdapter::ActiveRecord) }
+          let(:mirror_user) { mirror_pm.create_user('bob') }
+          let(:has_a_goatee) { mirror_pm.create_user_attribute('evil_goatee') }
+          let(:is_evil) { mirror_pm.create_user_attribute('is_evil') }
+
+          it 'deletes links that have been created and the deleted' do
+            pm.bulk_persist do
+              user.link_to(has_a_goatee)
+              user.link_to(is_evil)
+              mirror_user.link_to(caffeinated)
+              mirror_user.link_to(decaffeinated)
+
+              user.unlink(has_a_goatee)
+              mirror_user.unlink(decaffeinated)
+            end
+
+            expect(user.linked?(is_evil)).to be true
+            expect(user.linked?(has_a_goatee)).to be false
+            expect(mirror_user.linked?(caffeinated)).to be true
+            expect(mirror_user.linked?(decaffeinated)).to be false
+          end
+
+          it 'deletes preexisting links removed' do
+            user.link_to(has_a_goatee)
+            mirror_user.link_to(caffeinated)
+
+            pm.bulk_persist do
+              user.link_to(is_evil)
+              mirror_user.link_to(decaffeinated)
+
+              user.unlink(has_a_goatee)
+              mirror_user.unlink(decaffeinated)
+            end
+
+            expect(user.linked?(is_evil)).to be true
+            expect(user.linked?(has_a_goatee)).to be false
+            expect(mirror_user.linked?(caffeinated)).to be true
+            expect(mirror_user.linked?(decaffeinated)).to be false
+          end
+
+          it 'creates a link if the link is created, deleted, and then recreated' do
+            pm.bulk_persist do
+              user.link_to(has_a_goatee)
+              user.link_to(is_evil)
+              mirror_user.link_to(caffeinated)
+              mirror_user.link_to(decaffeinated)
+
+              user.unlink(has_a_goatee)
+              mirror_user.unlink(decaffeinated)
+
+              user.link_to(has_a_goatee)
+              mirror_user.link_to(decaffeinated)
+            end
+
+            expect(user.linked?(has_a_goatee)).to be true
+            expect(user.linked?(is_evil)).to be true
+            expect(mirror_user.linked?(caffeinated)).to be true
+            expect(mirror_user.linked?(decaffeinated)).to be true
+          end
+
+          it 'creates a link if a preexisting assignment is deleted and then recreated' do
+            user.link_to(has_a_goatee)
+            mirror_user.link_to(caffeinated)
+
+            pm.bulk_persist do
+              user.link_to(is_evil)
+              mirror_user.link_to(decaffeinated)
+
+              user.unlink(has_a_goatee)
+              mirror_user.unlink(decaffeinated)
+
+              user.link_to(has_a_goatee)
+              mirror_user.link_to(decaffeinated)
+            end
+
+            expect(user.linked?(has_a_goatee)).to be true
+            expect(user.linked?(is_evil)).to be true
+            expect(mirror_user.linked?(caffeinated)).to be true
+            expect(mirror_user.linked?(decaffeinated)).to be true
+          end
+        end
+      end
     end
 
     describe 'method_missing' do
