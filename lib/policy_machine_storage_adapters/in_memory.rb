@@ -8,6 +8,10 @@ module PolicyMachineStorageAdapter
 
     POLICY_ELEMENT_TYPES = %w(user user_attribute object object_attribute operation policy_class)
 
+    def buffering?
+      false
+    end
+
     POLICY_ELEMENT_TYPES.each do |pe_type|
       ##
       # Store a policy element of type pe_type.
@@ -67,10 +71,23 @@ module PolicyMachineStorageAdapter
     # Assign src to dst in policy machine
     #
     def assign(src, dst)
+      assert_valid_policy_element(src)
+      assert_valid_policy_element(dst)
+
+      assignments << [src, dst]
+      true
+    end
+
+    ##
+    # Assign src to dst for policy elements in different policy machines
+    # This is used for logical relationships outside of the policy machine formalism, such as the
+    # relationship between a class of operable and a specific instance of it.
+    #
+    def link(src, dst)
       assert_persisted_policy_element(src)
       assert_persisted_policy_element(dst)
 
-      assignments << [src, dst]
+      links << [src, dst]
       true
     end
 
@@ -78,8 +95,8 @@ module PolicyMachineStorageAdapter
     # Determine if there is a path from src to dst in the policy machine
     #
     def connected?(src, dst)
-      assert_persisted_policy_element(src)
-      assert_persisted_policy_element(dst)
+      assert_valid_policy_element(src)
+      assert_valid_policy_element(dst)
 
       return true if src == dst
 
@@ -88,11 +105,23 @@ module PolicyMachineStorageAdapter
     end
 
     ##
+    # Determine if there is a path from src to dst in different policy machines
+    #
+    def linked?(src, dst)
+      assert_persisted_policy_element(src)
+      assert_persisted_policy_element(dst)
+
+      return false if src == dst
+
+      self_and_children(src).include?(dst) || self_and_children(dst).include?(src)
+    end
+
+    ##
     # Disconnect two policy elements in the machine
     #
     def unassign(src, dst)
-      assert_persisted_policy_element(src)
-      assert_persisted_policy_element(dst)
+      assert_valid_policy_element(src)
+      assert_valid_policy_element(dst)
 
       assignment = assignments.find{|assgn| assgn[0] == src && assgn[1] == dst}
       if assignment
@@ -104,10 +133,28 @@ module PolicyMachineStorageAdapter
     end
 
     ##
+    # Disconnect two policy elements across different policy machines
+    #
+    def unlink(src, dst)
+      assert_persisted_policy_element(src)
+      assert_persisted_policy_element(dst)
+
+      #link = links.find{ |l| l[0] == src && l[1] == dst }
+      link = links.find { |l| l == [src, dst] }
+      if link
+        links.delete(link)
+        true
+      else
+        false
+      end
+    end
+
+    ##
     # Remove a persisted policy element
     #
     def delete(element)
       assignments.delete_if{ |assgn| assgn.include?(element) }
+      links.delete_if{ |link| link.include?(element) }
       associations.delete_if { |_,assoc| assoc.include?(element) }
       policy_elements.delete(element)
     end
@@ -194,8 +241,16 @@ module PolicyMachineStorageAdapter
 
       # Raise argument error if argument is not suitable for consumption in
       # public methods.
+      def assert_valid_policy_element(arg)
+        assert_persisted_policy_element(arg)
+        assert_in_machine(arg)
+      end
+
       def assert_persisted_policy_element(arg)
         raise(ArgumentError, "arg must be a PersistedPolicyElement; got #{arg.class.name}") unless arg.is_a?(PersistedPolicyElement)
+      end
+
+      def assert_in_machine(arg)
         raise(ArgumentError, "arg must be persisted") unless element_in_machine?(arg)
       end
 
@@ -207,6 +262,11 @@ module PolicyMachineStorageAdapter
       # The policy element assignments in the persisted policy machine.
       def assignments
         @assignments ||= []
+      end
+
+      # The policy element links in the persisted policy machine.
+      def links
+        @links ||= []
       end
 
       # All persisted associations
@@ -261,6 +321,14 @@ module PolicyMachineStorageAdapter
         return neighbors.uniq
       end
 
+      # Returns an array of self and the linked children
+      def self_and_children(pe)
+        links.reduce([]) do |memo, ca|
+          memo.concat self_and_children(ca[1]) if ca[0] == pe
+          memo
+        end << pe
+      end
+
       # Class to represent policy elements
       class PersistedPolicyElement
         attr_accessor :persisted
@@ -284,7 +352,6 @@ module PolicyMachineStorageAdapter
             self.policy_machine_uuid == other.policy_machine_uuid &&
             self.pe_type == other.pe_type
         end
-
-    end
+      end
   end
 end

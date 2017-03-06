@@ -14,6 +14,16 @@ Add the following to your Gemfile:
 gem 'policy_machine'
 ```
 
+# Configuration
+
+The policy machine requires a specific set of tables. Generate the migrations for these tables by running:
+```
+bundle exec rails generate the_policy_machine:add_initial_policy_machine_tables
+bundle exec rails generate the_policy_machine:add_logical_links_table
+
+```
+Then just make sure to run `bundle exec rake db:migrate`.
+
 # Usage
 ```
 require 'policy_machine'
@@ -79,6 +89,17 @@ prohibit_w = w.prohibition
 policy_machine.add_association(division, Set.new([r,prohibit_w]),project1)
 # is_privilege?(division,w,project1) will always be false, regardless of other associations.
 ```
+
+# Logical Links
+another_policy_machine = PolicyMachine.new('another_policy_machine', ::PolicyMachineStorageAdapter::InMemory)
+u4 = another_policy_machine.create_user('u4')
+policy_machine.add_link(u1, u4)
+
+u4_descendant_links = u4.link_descendants
+u4_children_links = u4.link_children
+
+u1_ancestor_links = u1.link_ancestors
+u1_parent_links = u1.link_parents
 
 # Storage Adapters
 

@@ -1,5 +1,6 @@
 require 'policy_machine'
 require 'set'
+require 'policy_machine/warn_once'
 
 # This class stores policy elements in a SQL database using whatever
 # database configuration and adapters are provided by active_record.
@@ -17,12 +18,13 @@ module PolicyMachineStorageAdapter
 
     require 'activerecord-import' # Gem for bulk inserts
 
-    # Load the Assignment and Adapter classes at runtime because it's implemented differently by different adapters
-    # And which database adapter is active is not always determinable at class definition time
-    # Assignment must inherit from ActiveRecord::Base and have class methods ancestors_of, descendants_of, and transitive_closure?
-    # Adapter must implement apply_include_condition
+    # Load the LogicalLink, Assignment, and Adapter classes at runtime because they're
+    # implemented differently by different adapters, and which database adapter is active is
+    # not always determinable at class definition time. Assignment and LogicalLink must
+    # inherit from ActiveRecord::Base and have class methods ancestors_of, descendants_of,
+    # and transitive_closure?. Adapter must implement apply_include_condition.
     def self.const_missing(name)
-      if %w[Assignment Adapter].include?(name.to_s)
+      if %w[Assignment LogicalLink Adapter].include?(name.to_s)
         load_db_adapter!
         const_get(name)
       else
@@ -51,7 +53,15 @@ module PolicyMachineStorageAdapter
     end
 
     def self.buffers
-      @buffers ||= {upsert: {}, delete:{}, assignments: [], associations: [] }
+      @buffers ||= {
+                     upsert: {},
+                     delete: {},
+                     assignments: {},
+                     assignments_to_remove: {},
+                     links: {},
+                     links_to_remove: {},
+                     associations: []
+                   }
     end
 
     def self.clear_buffers!
@@ -72,9 +82,12 @@ module PolicyMachineStorageAdapter
       # being relied on for assignments and associations will break, otherwise
       buffers[:upsert].values.each { |el| el.attributes = el.attributes.slice(*column_keys) }
 
-      PolicyElement.import(buffers[:upsert].values, on_duplicate_key_update: column_keys.map(&:to_sym) - [:id])
       PolicyElement.bulk_destroy(buffers[:delete])
+      PolicyElement.bulk_unassign(buffers[:assignments_to_remove])
+      PolicyElement.bulk_unlink(buffers[:links_to_remove])
+      PolicyElement.import(buffers[:upsert].values, on_duplicate_key_update: column_keys.map(&:to_sym) - [:id])
       PolicyElement.bulk_assign(buffers[:assignments])
+      PolicyElement.bulk_link(buffers[:links])
       PolicyElement.bulk_associate(buffers[:associations])
 
       true #TODO: More useful return value?
@@ -86,10 +99,14 @@ module PolicyMachineStorageAdapter
 
       # needs unique_identifier, policy_machine_uuid, type, extra_attributes columns
       has_many :assignments, foreign_key: :parent_id, dependent: :destroy
+      has_many :logical_links, foreign_key: :link_parent_id, dependent: :destroy
       has_many :filial_ties, class_name: 'Assignment', foreign_key: :child_id
-      #these don't actually destroy the relations, just the assignments
+      has_many :link_filial_ties, class_name: 'LogicalLink', foreign_key: :link_child_id
+      # these don't actually destroy the relations, just the assignments
       has_many :children, through: :assignments, dependent: :destroy
       has_many :parents, through: :filial_ties, dependent: :destroy
+      has_many :link_children, through: :logical_links, dependent: :destroy
+      has_many :link_parents, through: :link_filial_ties, dependent: :destroy
 
       attr_accessor :extra_attributes_hash
 
@@ -121,8 +138,16 @@ module PolicyMachineStorageAdapter
         Assignment.descendants_of(self)
       end
 
+      def link_descendants
+        LogicalLink.descendants_of(self)
+      end
+
       def ancestors
         Assignment.ancestors_of(self)
+      end
+
+      def link_ancestors
+        LogicalLink.ancestors_of(self)
       end
 
       def self.serialize(store:, name:, serializer: nil)
@@ -138,6 +163,7 @@ module PolicyMachineStorageAdapter
       # TODO: support databases that dont support upserts(pg 9.4, etc)
       def self.create_later(attrs, storage_adapter)
         element = new(attrs)
+
         storage_adapter.buffers[:upsert][element.unique_identifier] = element
       end
 
@@ -152,15 +178,41 @@ module PolicyMachineStorageAdapter
         end
 
         PolicyElement.where(unique_identifier: elements.keys).delete_all
-        Assignment.where(parent_id: elements.values.flat_map(&:id)).delete_all
-        Assignment.where(child_id: elements.values.flat_map(&:id)).delete_all
+
+        ids = elements.values.flat_map(&:id)
+        Assignment.where(parent_id: ids).delete_all
+        Assignment.where(child_id: ids).delete_all
+
+        LogicalLink.where(link_parent_id: ids).delete_all
+        LogicalLink.where(link_child_id: ids).delete_all
+
         PolicyElementAssociation.where(user_attribute_id: id_groups[UserAttribute]).delete_all
         PolicyElementAssociation.where(object_attribute_id: id_groups[ObjectAttribute]).delete_all
       end
 
-      def self.bulk_assign(parents_and_children)
-        id_pairs = parents_and_children.map { |parent, child| [parent.id, child.id]  }
+      def self.bulk_assign(pairs_hash)
+        id_pairs = pairs_hash.values.map { |parent, child| [parent.id, child.id]  }
         Assignment.import([:parent_id, :child_id], id_pairs, on_duplicate_key_ignore: true)
+      end
+
+      def self.bulk_unassign(pairs_hash)
+        pairs_str = pairs_hash.values.reduce([]) do |memo, (parent, child)|
+          parent.persisted? && child.persisted? ? memo + ["(#{parent.id},#{child.id})"] : memo
+        end.join(',')
+        Assignment.where("(parent_id,child_id) IN (#{pairs_str})").delete_all unless pairs_str.empty?
+      end
+
+      def self.bulk_unlink(pairs_hash)
+        pairs_str = pairs_hash.values.reduce([]) do |memo, (parent, child)|
+          parent.persisted? && child.persisted? ? memo + ["(#{parent.id},#{child.id})"] : memo
+        end.join(',')
+        LogicalLink.where("(link_parent_id,link_child_id) IN (#{pairs_str})").delete_all unless pairs_str.empty?
+      end
+
+      def self.bulk_link(pairs_hash)
+        id_pairs = pairs_hash.values.map { |parent, child| [parent.id, child.id, parent.policy_machine_uuid, child.policy_machine_uuid]  }
+        import_fields = [:link_parent_id, :link_child_id, :link_parent_policy_machine_uuid, :link_child_policy_machine_uuid]
+        LogicalLink.import(import_fields, id_pairs, on_duplicate_key_ignore: true)
       end
 
       def self.bulk_associate(associations)
@@ -290,9 +342,9 @@ module PolicyMachineStorageAdapter
         end
 
         extra_attribute_conditions.each do |key, value|
-          warn "WARNING: #{self.class} is filtering #{pe_type} on #{key} in memory, which won't scale well. " <<
+          Warn.once("WARNING: #{self.class} is filtering #{pe_type} on #{key} in memory, which won't scale well. " <<
             "To move this query to the database, add a '#{key}' column to the policy_elements table " <<
-            "and re-save existing records"
+            "and re-save existing records")
             all.to_a.select!{ |pe| pe.store_attributes and
                         ((attr_value = pe.extra_attributes_hash[key]).is_a?(String) and
                         value.is_a?(String) and ignore_case_applies?(options[:ignore_case],key)) ? attr_value.downcase == value.downcase : attr_value == value}
@@ -333,7 +385,6 @@ module PolicyMachineStorageAdapter
     ##
     # Assign src to dst in policy machine.
     # The two policy elements must be persisted policy elements
-    # Returns true if the assignment occurred, false otherwise.
     #
     def assign(src, dst)
       assert_persisted_policy_element(src, dst)
@@ -345,7 +396,32 @@ module PolicyMachineStorageAdapter
     end
 
     def assign_later(parent:, child:)
-      buffers[:assignments] << [parent, child]
+      buffers[:assignments].merge!([parent.unique_identifier, child.unique_identifier] => [parent, child])
+      :buffered
+    end
+
+    ##
+    # Assign src to dst. The two policy elements must be persisted policy
+    # elements in different policy machines.
+    # This is used for logical relationships outside of the policy machine formalism, such as the
+    # relationship between a class of operable and a specific instance of it.
+    #
+    def link(src, dst)
+      assert_persisted_policy_element(src, dst)
+      if self.buffering?
+        link_later(parent: src, child: dst)
+      else
+        LogicalLink.where(
+          link_parent_id: src.id,
+          link_child_id: dst.id,
+          link_parent_policy_machine_uuid: src.policy_machine_uuid,
+          link_child_policy_machine_uuid: dst.policy_machine_uuid
+        ).first_or_create
+      end
+    end
+
+    def link_later(parent:, child:)
+      buffers[:links].merge!([parent.unique_identifier, child.unique_identifier] => [parent, child])
       :buffered
     end
 
@@ -362,18 +438,60 @@ module PolicyMachineStorageAdapter
     end
 
     ##
+    # Determine if there is a path from src to dst in different policy machines.
+    # Returns true if there is a such a path and false otherwise.
+    # The two policy elements must be persisted policy elements.
+    # Should return false if src == dst
+    #
+    def linked?(src, dst)
+      assert_persisted_policy_element(src, dst)
+
+      return false if src == dst
+
+      LogicalLink.transitive_closure?(src, dst)
+    end
+
+    ##
     # Disconnect two policy elements in the machine
     # The two policy elements must be persisted policy elements; otherwise the method should raise
     # an ArgumentError.
-    # Returns true if unassignment occurred and false otherwise.
     # Generally, false will be returned if the assignment didn't exist in the PM in the
     # first place.
     #
     def unassign(src, dst)
+      self.buffering? ? unassign_later(src, dst) : unassign_now(src, dst)
+    end
+
+    def unassign_now(src, dst)
       assert_persisted_policy_element(src, dst)
       if assignment = src.assignments.where(child_id: dst.id).first
         assignment.destroy
       end
+    end
+
+    def unassign_later(src, dst)
+      buffers[:assignments].delete([src.unique_identifier, dst.unique_identifier])
+      buffers[:assignments_to_remove].merge!([src.unique_identifier, dst.unique_identifier] => [src, dst])
+    end
+
+
+    ##
+    # Disconnects two policy elements in different machines.
+    #
+    def unlink(src, dst)
+      self.buffering? ? unlink_later(src, dst) : unlink_now(src, dst)
+    end
+
+    def unlink_now(src, dst)
+      assert_persisted_policy_element(src, dst)
+      if assignment = src.logical_links.where(link_child_id: dst.id).first
+        assignment.destroy
+      end
+    end
+
+    def unlink_later(src, dst)
+      buffers[:links].delete([src.unique_identifier, dst.unique_identifier])
+      buffers[:links_to_remove].merge!([src.unique_identifier, dst.unique_identifier] => [src, dst])
     end
 
     ##
@@ -386,6 +504,7 @@ module PolicyMachineStorageAdapter
     end
 
     def delete_later(element)
+      buffers[:upsert].delete(element.unique_identifier)
       buffers[:delete].merge!(element.unique_identifier => element)
     end
 
