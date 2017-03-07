@@ -1,4 +1,7 @@
 # Changelog
+## 1.3.8
+* Improve the bulk_persistence method to include logical links, assignments
+* Remove repetitive warnings about missing columns that trigger in memory filtering
 
 ## 1.3.7
 
