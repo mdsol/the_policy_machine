@@ -8,6 +8,10 @@ module PolicyMachineStorageAdapter
 
     POLICY_ELEMENT_TYPES = %w(user user_attribute object object_attribute operation policy_class)
 
+    def buffering?
+      false
+    end
+
     POLICY_ELEMENT_TYPES.each do |pe_type|
       ##
       # Store a policy element of type pe_type.
