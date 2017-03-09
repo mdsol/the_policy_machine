@@ -82,13 +82,15 @@ module PolicyMachineStorageAdapter
       # being relied on for assignments and associations will break, otherwise
       buffers[:upsert].values.each { |el| el.attributes = el.attributes.slice(*column_keys) }
 
-      PolicyElement.bulk_destroy(buffers[:delete])
-      PolicyElement.bulk_unassign(buffers[:assignments_to_remove])
-      PolicyElement.bulk_unlink(buffers[:links_to_remove])
-      PolicyElement.import(buffers[:upsert].values, on_duplicate_key_update: column_keys.map(&:to_sym) - [:id])
-      PolicyElement.bulk_assign(buffers[:assignments])
-      PolicyElement.bulk_link(buffers[:links])
-      PolicyElement.bulk_associate(buffers[:associations])
+      PolicyElement.bulk_destroy(buffers[:delete]) if buffers[:delete].present?
+      PolicyElement.bulk_unassign(buffers[:assignments_to_remove]) if buffers[:assignments_to_remove].present?
+      PolicyElement.bulk_unlink(buffers[:links_to_remove]) if buffers[:links_to_remove].present?
+      if buffers[:upsert].present?
+        PolicyElement.import(buffers[:upsert].values, on_duplicate_key_update: column_keys.map(&:to_sym) - [:id])
+      end
+      PolicyElement.bulk_assign(buffers[:assignments]) if buffers[:assignments].present?
+      PolicyElement.bulk_link(buffers[:links]) if buffers[:links].present?
+      PolicyElement.bulk_associate(buffers[:associations]) if buffers[:associations].present?
 
       true #TODO: More useful return value?
     end
