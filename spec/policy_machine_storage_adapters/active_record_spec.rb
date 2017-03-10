@@ -226,6 +226,20 @@ describe 'ActiveRecord' do
         end
 
         describe 'describe policy element association behavior' do
+          let(:cup) { pm.create_object('cup') }
+
+          context 'with duplicate prohibitions on new operations' do
+            it 'creates the appropriate associations' do
+              pm.bulk_persist do
+                operation = pm.create_operation('drink')
+                operations = [operation, PM::Prohibition.on(operation), PM::Prohibition.on(operation)]
+                pm.add_association(caffeinated, Set.new(operations), cup)
+              end
+
+              associated_operation_strings = pm.policy_machine_storage_adapter.associations_with(caffeinated.stored_pe).first.second.to_a.map(&:unique_identifier)
+              expect(associated_operation_strings).to match_array ['drink', '~drink']
+            end
+          end
         end
 
         describe 'link behavior' do
