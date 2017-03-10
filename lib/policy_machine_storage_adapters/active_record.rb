@@ -82,13 +82,15 @@ module PolicyMachineStorageAdapter
       # being relied on for assignments and associations will break, otherwise
       buffers[:upsert].values.each { |el| el.attributes = el.attributes.slice(*column_keys) }
 
-      PolicyElement.bulk_destroy(buffers[:delete])
-      PolicyElement.bulk_unassign(buffers[:assignments_to_remove])
-      PolicyElement.bulk_unlink(buffers[:links_to_remove])
-      PolicyElement.import(buffers[:upsert].values, on_duplicate_key_update: column_keys.map(&:to_sym) - [:id])
-      PolicyElement.bulk_assign(buffers[:assignments])
-      PolicyElement.bulk_link(buffers[:links])
-      PolicyElement.bulk_associate(buffers[:associations])
+      PolicyElement.bulk_destroy(buffers[:delete]) if buffers[:delete].present?
+      PolicyElement.bulk_unassign(buffers[:assignments_to_remove]) if buffers[:assignments_to_remove].present?
+      PolicyElement.bulk_unlink(buffers[:links_to_remove]) if buffers[:links_to_remove].present?
+      if buffers[:upsert].present?
+        PolicyElement.import(buffers[:upsert].values, on_duplicate_key_update: column_keys.map(&:to_sym) - [:id])
+      end
+      PolicyElement.bulk_assign(buffers[:assignments]) if buffers[:assignments].present?
+      PolicyElement.bulk_link(buffers[:links]) if buffers[:links].present?
+      PolicyElement.bulk_associate(buffers[:associations], buffers[:upsert]) if buffers[:associations].present?
 
       true #TODO: More useful return value?
     end
@@ -215,7 +217,7 @@ module PolicyMachineStorageAdapter
         LogicalLink.import(import_fields, id_pairs, on_duplicate_key_ignore: true)
       end
 
-      def self.bulk_associate(associations)
+      def self.bulk_associate(associations, upsert_buffer)
         associations.map! do |user_attribute, operation_set, object_attribute, policy_machine_uuid|
           [PolicyElementAssociation.new(user_attribute_id: user_attribute.id, object_attribute_id: object_attribute.id),
            operation_set]
@@ -226,6 +228,10 @@ module PolicyMachineStorageAdapter
         # isn't in a list of tuples seems to require raw SQL
         # NB: operations= is a persistence method
         associations.each do |model, operation_set|
+          operation_set.map! do |operation|
+            operation.id ? operation : upsert_buffer[operation.unique_identifier]
+          end
+
           model.operations = operation_set
         end
       end
