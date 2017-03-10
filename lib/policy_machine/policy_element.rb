@@ -198,11 +198,9 @@ module PM
   # An operation in a policy machine.
   class Operation < PolicyElement
     def self.create(unique_identifier, policy_machine_uuid, pm_storage_adapter, extra_attributes = {}, prohibition = false)
-      puts "C"
       if unique_identifier =~ /^~/ && !prohibition
         raise ArgumentError, "A non-prohibition operation cannot start with '~'"
       end
-      puts "D"
       new_pe = new(unique_identifier, policy_machine_uuid, pm_storage_adapter, nil, extra_attributes)
       new_pe.stored_pe = pm_storage_adapter.add_operation(unique_identifier, policy_machine_uuid, extra_attributes)
       new_pe
@@ -213,7 +211,7 @@ module PM
       if op
         convert_stored_pe_to_pe(op, pm_storage_adapter, self)
       else
-        create(unique_identifier, policy_machine_uuid, pm_storage_adapter, extra_attributes = {}, prohibition)
+        create(unique_identifier, policy_machine_uuid, pm_storage_adapter, extra_attributes, prohibition)
       end
     end
 
@@ -250,11 +248,9 @@ module PM
   # A prohibition in a policy machine.
   class Prohibition < PolicyElement
     def self.on(operation, extra_attributes = {})
-      puts "A"
       negation = "~#{operation}"
       case operation
       when PM::Operation
-        puts "B"
         PM::Operation.find_or_create(
           negation,
           operation.policy_machine_uuid,

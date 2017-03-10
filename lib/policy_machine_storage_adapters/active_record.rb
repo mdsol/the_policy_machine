@@ -305,21 +305,19 @@ module PolicyMachineStorageAdapter
       #TODO: use the new stored attributes approach and a jsonb column for extra_attributes for the postgres adapter
       define_method("add_#{pe_type}") do |unique_identifier, policy_machine_uuid, extra_attributes = {}|
         klass = class_for_type(pe_type)
-        puts "E"
-puts "KKKK #{extra_attributes.inspect}"
+
         stored_attribute_keys = klass.stored_attributes.except(:extra_attributes).values.flatten.map(&:to_s)
         column_keys = klass.attribute_names + stored_attribute_keys
-puts "F"
+
         active_record_attributes = extra_attributes.stringify_keys
         extra_attributes = active_record_attributes.slice!(*column_keys)
-puts "G: #{active_record_attributes.inspect}"
-puts "H: #{extra_attributes}"
+
         element_attrs = {
           unique_identifier: unique_identifier,
           policy_machine_uuid: policy_machine_uuid,
           extra_attributes: extra_attributes
         }.merge(active_record_attributes)
-puts "I: #{element_attrs.inspect}"
+
         self.buffering? ? klass.create_later(element_attrs, self) : klass.create(element_attrs)
       end
 
