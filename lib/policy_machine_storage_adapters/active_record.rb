@@ -368,6 +368,10 @@ module PolicyMachineStorageAdapter
 
         all
       end
+
+      define_method("pluck_all_of_type_#{pe_type}") do |fields:, options: {}|
+        "find_all_of_type_#{pe_type}".call(options).select(*fields)
+      end
     end # End of POLICY_ELEMENT_TYPES iteration
 
     # A value hash where the only key is :include is special.
@@ -397,7 +401,7 @@ module PolicyMachineStorageAdapter
     # Allow ignore_case to be a boolean, string, symbol, or array of symbols or strings
     def ignore_case_applies?(ignore_case, key)
       return false if key == 'policy_machine_uuid'
-      ignore_case == true || ignore_case.to_s == key || ( ignore_case.respond_to?(:any?) && ignore_case.any?{ |k| k.to_s == key} )
+      ignore_case == true || ignore_case.to_s == key || ( ignore_case.respond_to?(:any?) && ignore_case.any? { |k| k.to_s == key } )
     end
 
     ##
@@ -628,6 +632,10 @@ module PolicyMachineStorageAdapter
 
     def batch_find(policy_object, query = {}, config = {}, &blk)
       method("find_all_of_type_#{policy_object}").call(query).find_in_batches(config, &blk)
+    end
+
+    def batch_pluck(policy_object, query: {}, fields:, config: {}, &blk)
+      method("pluck_all_of_type_#{policy_object}").call(query, fields).find_in_batches(config, &blk)
     end
 
     ## Optimized version of PolicyMachine#accessible_objects
