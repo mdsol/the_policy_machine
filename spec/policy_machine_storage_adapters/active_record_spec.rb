@@ -75,6 +75,22 @@ describe 'ActiveRecord' do
             results.last.unique_identifier.should == "uuid_2"
           end
         end
+
+        context 'ignore case' do
+          before do
+            @pm_obj = policy_machine_storage_adapter.add_object(SecureRandom.uuid, 'some_policy_machine_uuid1', color: 'red')
+          end
+
+          it 'does not find elements with the wrong case' do
+            results = policy_machine_storage_adapter.find_all_of_type_object(color: 'RED', ignore_case: false)
+            expect(results).to be_empty
+          end
+
+          it 'does find elements when ignore case is enabled' do
+            results = policy_machine_storage_adapter.find_all_of_type_object(color: 'RED', ignore_case: true)
+            expect(results.first.unique_identifier).to eq(@pm_obj.unique_identifier)
+          end
+        end
       end
 
       describe 'bulk_deletion' do
