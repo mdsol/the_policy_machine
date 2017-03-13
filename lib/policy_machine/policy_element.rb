@@ -211,7 +211,7 @@ module PM
       if op
         convert_stored_pe_to_pe(op, pm_storage_adapter, self)
       else
-        create(unique_identifier, policy_machine_uuid, pm_storage_adapter, extra_attributes = {}, prohibition)
+        create(unique_identifier, policy_machine_uuid, pm_storage_adapter, extra_attributes, prohibition)
       end
     end
 
@@ -247,11 +247,17 @@ module PM
 
   # A prohibition in a policy machine.
   class Prohibition < PolicyElement
-    def self.on(operation)
+    def self.on(operation, extra_attributes = {})
       negation = "~#{operation}"
       case operation
       when PM::Operation
-        PM::Operation.find_or_create(negation,operation.policy_machine_uuid, operation.pm_storage_adapter, {}, true)
+        PM::Operation.find_or_create(
+          negation,
+          operation.policy_machine_uuid,
+          operation.pm_storage_adapter,
+          extra_attributes,
+          true
+        )
       when Symbol
         negation.to_sym
       when String
