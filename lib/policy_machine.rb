@@ -230,6 +230,24 @@ class PolicyMachine
   end
 
   ##
+  # Search for and iterate over a collection of specified attributes in batches
+  def batch_pluck(type:, query: {}, fields:, config: {}, &blk)
+    # Fields must include a primary key to avoid ActiveRecord errors
+    fields << :id
+
+    return to_enum(__callee__, type: type, query: query, fields: fields, config: config) unless block_given?
+    pm_class = "PM::#{type.to_s.camelize}".constantize
+    if policy_machine_storage_adapter.respond_to?(:batch_pluck)
+      policy_machine_storage_adapter.batch_pluck(type, query: query, fields: fields, config: config) do |batch|
+        yield batch
+      end
+    else
+      batch_size = config.fetch(:batch_size, 1)
+      method(type.to_s.pluralize).call(query: query, fields: fields).each_slice(batch_size, &blk)
+    end
+  end
+
+  ##
   # Returns an array of all objects the given user (attribute)
   # has the given operation on.
   def accessible_objects(user_or_attribute, operation, options = {})

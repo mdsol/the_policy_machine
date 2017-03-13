@@ -370,7 +370,7 @@ module PolicyMachineStorageAdapter
       end
 
       define_method("pluck_all_of_type_#{pe_type}") do |fields:, options: {}|
-        "find_all_of_type_#{pe_type}".call(options).select(*fields)
+        method("find_all_of_type_#{pe_type}").call(options).select(*fields)
       end
     end # End of POLICY_ELEMENT_TYPES iteration
 
@@ -635,7 +635,8 @@ module PolicyMachineStorageAdapter
     end
 
     def batch_pluck(policy_object, query: {}, fields:, config: {}, &blk)
-      method("pluck_all_of_type_#{policy_object}").call(query, fields).find_in_batches(config, &blk)
+      raise(ArgumentError, "must provide fields to pluck") unless fields.present?
+      method("pluck_all_of_type_#{policy_object}").call(fields: fields, options: query).find_in_batches(config, &blk)
     end
 
     ## Optimized version of PolicyMachine#accessible_objects
