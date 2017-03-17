@@ -232,18 +232,26 @@ class PolicyMachine
   ##
   # Search for and iterate over a collection of specified attributes in batches
   def batch_pluck(type:, query: {}, fields:, config: {}, &blk)
-    # Fields must include a primary key to avoid ActiveRecord errors
-    fields << :id
-
     return to_enum(__callee__, type: type, query: query, fields: fields, config: config) unless block_given?
-    pm_class = "PM::#{type.to_s.camelize}".constantize
+
+    # If the storage adapter implements batch_pluck, delegate
     if policy_machine_storage_adapter.respond_to?(:batch_pluck)
+      # Fields must include a primary key to avoid ActiveRecord errors
+      fields << :id
       policy_machine_storage_adapter.batch_pluck(type, query: query, fields: fields, config: config) do |batch|
-        yield batch
+        yield batch.to_a
       end
     else
       batch_size = config.fetch(:batch_size, 1)
-      method(type.to_s.pluralize).call(query: query, fields: fields).each_slice(batch_size, &blk)
+
+      method(type.to_s.pluralize).call(query).reduce([]) do |results, pe|
+        symbol_hash = fields.reduce({}) do |plucked, field|
+          field = field.to_sym
+          plucked[field] = pe.method(field).call if pe.respond_to?(field)
+          plucked
+        end
+        results << OpenStruct.new(symbol_hash)
+      end.each_slice(batch_size, &blk)
     end
   end
 

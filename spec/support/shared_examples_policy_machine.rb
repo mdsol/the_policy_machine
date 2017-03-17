@@ -1206,7 +1206,6 @@ shared_examples "a policy machine" do
           policy_machine.batch_pluck(type: :object, query: { unique_identifier: 'one:fish' }, fields: [:unique_identifier]) do |batch|
             expect(batch.size).to eq 1
             expect(batch.first.unique_identifier).to eq 'one:fish'
-            expect(batch.first).to be_a Array
           end
         end
       end
@@ -1252,7 +1251,7 @@ shared_examples "a policy machine" do
       end
 
       context 'but given config options' do
-        it 'resepects batch size configs while return all results' do
+        it 'respects batch size configs while returning all results' do
           enum = policy_machine.batch_pluck(type: :object, fields: [:unique_identifier], config: { batch_size: 3})
           results = enum.flat_map do |batch|
             expect(batch.size).to eq 3

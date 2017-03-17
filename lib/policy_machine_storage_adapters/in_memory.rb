@@ -60,6 +60,10 @@ module PolicyMachineStorageAdapter
         end
         paginated_elements
       end
+
+      define_method("pluck_all_of_type_#{pe_type}") do |fields:, options: {}|
+        method("find_all_of_type_#{pe_type}").call(options).select(*fields)
+      end
     end
 
     # Allow ignore_case to be a boolean, string, symbol, or array of symbols or strings
