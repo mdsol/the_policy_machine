@@ -1173,4 +1173,104 @@ shared_examples "a policy machine" do
 
     end
   end
+
+  describe 'batch_pluck' do
+
+    before do
+      @one_fish = policy_machine.create_object('one:fish')
+      @two_fish = policy_machine.create_object('two:fish')
+      @red_one = policy_machine.create_object('red:one')
+      @blue_one = policy_machine.create_object('blue:one', { color: 'blue' })
+      @read = policy_machine.create_operation('read')
+      @write = policy_machine.create_operation('write')
+      @u1 = policy_machine.create_user('u1')
+      @ua = policy_machine.create_user_attribute('ua')
+      [@one_fish, @two_fish, @red_one].each do |object|
+        policy_machine.add_association(@ua, Set.new([@read]), object)
+      end
+      @oa = policy_machine.create_object_attribute('oa')
+      policy_machine.add_association(@ua, Set.new([@write]), @oa)
+      policy_machine.add_assignment(@u1, @ua)
+      policy_machine.add_assignment(@red_one, @oa)
+    end
+
+    context 'when given a block' do
+
+      it 'calls the block' do
+        expect do |spy|
+          policy_machine.batch_pluck(type: :object, query: { unique_identifier: 'one:fish' }, fields: [:unique_identifier], &spy)
+        end.to yield_control
+      end
+
+      context 'and search terms' do
+        it 'returns the matching attributes' do
+          policy_machine.batch_pluck(type: :object, query: { unique_identifier: 'one:fish' }, fields: [:unique_identifier]) do |batch|
+            expect(batch.size).to eq 1
+            expect(batch.first.unique_identifier).to eq 'one:fish'
+          end
+        end
+
+        it 'does not return non-specified attributes' do
+          policy_machine.batch_pluck(type: :object, query: { unique_identifier: 'blue:one' }, fields: [:color]) do |batch|
+            expect(batch.size).to eq 1
+            expect(batch.first.color).to eq 'blue'
+            expect(batch.first.respond_to?(:unique_identifier)).to be false
+          end
+        end
+      end
+
+      context 'and config options' do
+        it 'returns the correct batch size' do
+          policy_machine.batch_pluck(type: :object, fields: [:unique_identifier], config: { batch_size: 1 }) do |batch|
+            expect(batch.size).to eq 1
+          end
+
+          policy_machine.batch_pluck(type: :object, fields: [:unique_identifier], config: { batch_size: 4 }) do |batch|
+            expect(batch.size).to eq 4
+          end
+        end
+      end
+    end
+
+    context 'when not given a block' do
+
+      it 'returns an enumerator' do
+        result = policy_machine.batch_pluck(type: :object, fields: [:unique_identifier])
+        expect(result).to be_a Enumerator
+      end
+
+      it 'the results are chainable and returns the relevant results' do
+        enum = policy_machine.batch_pluck(type: :object, fields: [:unique_identifier])
+        results = enum.flat_map do |batch|
+          batch.map { |pe| pe.unique_identifier }
+        end
+        expected = %w(one:fish two:fish red:one)
+        expect(results).to include(*expected)
+      end
+
+      context 'but given search terms' do
+        it 'the results are chainable and returns the relevant results' do
+          enum = policy_machine.batch_pluck(type: :object, query: { unique_identifier: 'one:fish' }, fields: [:unique_identifier])
+        results = enum.flat_map do |batch|
+          batch.map { |pe| pe.unique_identifier }
+        end
+          expected = 'one:fish'
+          expect(results.first).to eq(expected)
+        end
+      end
+
+      context 'but given config options' do
+        it 'respects batch size configs while returning all results' do
+          enum = policy_machine.batch_pluck(type: :object, fields: [:unique_identifier], config: { batch_size: 4 })
+          results = enum.flat_map do |batch|
+            expect(batch.size).to eq 4
+            batch.map { |pe| pe.unique_identifier }
+          end
+          expected = %w(one:fish two:fish red:one)
+          expect(results).to include(*expected)
+        end
+      end
+
+    end
+  end
 end

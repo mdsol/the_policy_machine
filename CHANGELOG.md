@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.0
+* Add batch_pluck method to ActiveRecord storage adapter.
+
 ## 1.3.10
 * Fix a bug preventing Prohibitions from accepting extra attributes.
 
