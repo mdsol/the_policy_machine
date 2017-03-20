@@ -249,13 +249,9 @@ class PolicyMachine
   end
 
   def convert_pe_to_fields(pe, fields)
+    extras = pe.stored_pe.extra_attributes
     attrs = fields.reduce({}) do |attributes, field|
-      stored = pe.stored_pe
-      if stored.extra_attributes.include?(field)
-        attributes[field] = stored.extra_attributes[field]
-      else
-        attributes[field] = stored.method(field.to_sym).call
-      end
+      attributes[field] = extras.include?(field) ? extras[field] : pe.method(field.to_sym).call
       attributes
     end
     # Pluck methods return an object with accessor methods for each plucked attribute
