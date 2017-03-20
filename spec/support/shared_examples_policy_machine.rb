@@ -1180,10 +1180,16 @@ shared_examples "a policy machine" do
       @one_fish = policy_machine.create_object('one:fish')
       @two_fish = policy_machine.create_object('two:fish')
       @red_one = policy_machine.create_object('red:one')
+
+      default_args = { color: 'blue' }
+      @blue_one = policy_machine.create_object('blue:one', default_args)
+
       @read = policy_machine.create_operation('read')
       @write = policy_machine.create_operation('write')
+
       @u1 = policy_machine.create_user('u1')
       @ua = policy_machine.create_user_attribute('ua')
+
       [@one_fish, @two_fish, @red_one].each do |object|
         policy_machine.add_association(@ua, Set.new([@read]), object)
       end
@@ -1206,6 +1212,14 @@ shared_examples "a policy machine" do
           policy_machine.batch_pluck(type: :object, query: { unique_identifier: 'one:fish' }, fields: [:unique_identifier]) do |batch|
             expect(batch.size).to eq 1
             expect(batch.first.unique_identifier).to eq 'one:fish'
+          end
+        end
+
+        it 'does not return non-specified attributes' do
+          policy_machine.batch_pluck(type: :object, query: { unique_identifier: 'blue:one' }, fields: [:color]) do |batch|
+            expect(batch.size).to eq 1
+            expect(batch.first.color).to eq 'blue'
+            expect(batch.first.unique_identifier).to eq nil
           end
         end
       end

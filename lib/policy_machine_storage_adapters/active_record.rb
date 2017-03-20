@@ -339,7 +339,7 @@ module PolicyMachineStorageAdapter
                   else
                     pe_class.arel_table[k].eq(v)
                   end
-                end.inject(pe_class.where(nil)) { |rel, e| rel.where(e) }
+                end.reduce(pe_class.where(nil)) { |rel, e| rel.where(e) }
               else
                 pe_class.where(conditions.to_h)
               end
@@ -370,6 +370,8 @@ module PolicyMachineStorageAdapter
       end
 
       define_method("pluck_all_of_type_#{pe_type}") do |fields:, options: {}|
+        # Fields must include a primary key to avoid ActiveRecord errors
+        fields << :id
         method("find_all_of_type_#{pe_type}").call(options).select(*fields)
       end
     end # End of POLICY_ELEMENT_TYPES iteration
@@ -385,12 +387,12 @@ module PolicyMachineStorageAdapter
       @pe_type_class_hash[pe_type]
     end
 
-    # Do the pe's stored attributes match the extra_attributes provided in the query 
+    # Do the pe's stored attributes match the extra_attributes provided in the query
     def pe_matches_extra_attributes?(policy_element, key, value, ignore_case)
       if policy_element.store_attributes
         attr_value = policy_element.extra_attributes_hash[key]
 
-        if ignore_case_applies?(ignore_case, key) && attr_value.is_a?(String) && value.is_a?(String) 
+        if ignore_case_applies?(ignore_case, key) && attr_value.is_a?(String) && value.is_a?(String)
           attr_value.downcase == value.downcase
         else
           attr_value == value
@@ -713,7 +715,7 @@ module PolicyMachineStorageAdapter
             assoc.operations
           end.uniq
         end
-        operations_for_policy_classes.inject(:&) || []
+        operations_for_policy_classes.reduce(:&) || []
       end
     end
 

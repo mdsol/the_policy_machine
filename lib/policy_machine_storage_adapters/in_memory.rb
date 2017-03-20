@@ -290,7 +290,7 @@ module PolicyMachineStorageAdapter
         distances[src] = 0
         vertices = nodes.clone
         until vertices.empty?
-          nearest_vertex = vertices.inject do |a, b|
+          nearest_vertex = vertices.reduce do |a, b|
             next b unless distances[a]
             next a unless distances[b]
             next a if distances[a] < distances[b]

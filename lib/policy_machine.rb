@@ -1,5 +1,6 @@
 require 'policy_machine/policy_element'
 require 'policy_machine/association'
+require 'policy_machine/warn_once'
 require 'securerandom'
 require 'active_support/inflector'
 require 'set'
@@ -236,12 +237,12 @@ class PolicyMachine
 
     # If the storage adapter implements batch_pluck, delegate
     if policy_machine_storage_adapter.respond_to?(:batch_pluck)
-      # Fields must include a primary key to avoid ActiveRecord errors
-      fields << :id
       policy_machine_storage_adapter.batch_pluck(type, query: query, fields: fields, config: config) do |batch|
         yield batch.to_a
       end
     else
+      Warn.once("WARNING: batch_pluck is not implemented for storage adapter #{policy_machine_storage_adapter}")
+
       batch_size = config.fetch(:batch_size, 1)
 
       method(type.to_s.pluralize).call(query).reduce([]) do |results, pe|
