@@ -375,10 +375,10 @@ module PolicyMachineStorageAdapter
 
         # Fields must include a primary key to avoid ActiveRecord errors
         fields << :id
-        if extras = extra_attribute_fields(all.first, fields)
-          fields = fields - extras
-          fields << :extra_attributes
+        if extras = extra_attributes_to_pluck(all.first, fields)
+          fields = fields - extras + [:extra_attributes]
         end
+
         all.select(*fields)
       end
     end # End of POLICY_ELEMENT_TYPES iteration
@@ -407,7 +407,7 @@ module PolicyMachineStorageAdapter
       end
     end
 
-    def extra_attribute_fields(policy_element, fields)
+    def extra_attributes_to_pluck(policy_element, fields)
       extras = policy_element.extra_attributes_hash.symbolize_keys
       fields.select { |field| extras.include?(field) }
     end
