@@ -1213,9 +1213,10 @@ shared_examples "a policy machine" do
         it 'returns matching extra_attributes' do
           @extra_one = policy_machine.create_user('sam_i_am', status: 'extraneous')
 
-          policy_machine.batch_pluck(type: :user, query: { unique_identifier: 'sam_i_am' }, fields: [:status]) do |batch|
+          policy_machine.batch_pluck(type: :user, query: { unique_identifier: 'sam_i_am' }, fields: [:unique_identifier, :status]) do |batch|
             expect(batch.size).to eq 1
             expect(batch.first.status).to eq 'extraneous'
+            expect(batch.first.unique_identifier).to eq 'sam_i_am'
           end
         end
 

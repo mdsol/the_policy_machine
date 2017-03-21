@@ -408,7 +408,7 @@ module PolicyMachineStorageAdapter
     end
 
     def extra_attributes_to_pluck(policy_element, fields)
-      extras = policy_element.extra_attributes_hash.symbolize_keys
+      extras = policy_element.extra_attributes.symbolize_keys
       fields.select { |field| extras.include?(field) }
     end
 
