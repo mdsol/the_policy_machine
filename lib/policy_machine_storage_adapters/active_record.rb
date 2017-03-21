@@ -408,7 +408,7 @@ module PolicyMachineStorageAdapter
     end
 
     def extra_attribute_fields(policy_element, fields)
-      extras = policy_element.extra_attributes.symbolize_keys
+      extras = policy_element.extra_attributes_hash.symbolize_keys
       fields.select { |field| extras.include?(field) }
     end
 
