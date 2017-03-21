@@ -370,9 +370,16 @@ module PolicyMachineStorageAdapter
       end
 
       define_method("pluck_all_of_type_#{pe_type}") do |fields:, options: {}|
+        all = method("find_all_of_type_#{pe_type}").call(options)
+        return unless all.present?
+
         # Fields must include a primary key to avoid ActiveRecord errors
         fields << :id
-        method("find_all_of_type_#{pe_type}").call(options).select(*fields)
+        if extras = extra_attributes_to_pluck(all.first, fields)
+          fields = fields - extras + [:extra_attributes]
+        end
+
+        all.select(*fields)
       end
     end # End of POLICY_ELEMENT_TYPES iteration
 
@@ -398,6 +405,11 @@ module PolicyMachineStorageAdapter
           attr_value == value
         end
       end
+    end
+
+    def extra_attributes_to_pluck(policy_element, fields)
+      extras = policy_element.extra_attributes.symbolize_keys
+      fields.select { |field| extras.include?(field) }
     end
 
     # Allow ignore_case to be a boolean, string, symbol, or array of symbols or strings

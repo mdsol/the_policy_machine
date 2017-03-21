@@ -1180,7 +1180,7 @@ shared_examples "a policy machine" do
       @one_fish = policy_machine.create_object('one:fish')
       @two_fish = policy_machine.create_object('two:fish')
       @red_one = policy_machine.create_object('red:one')
-      @blue_one = policy_machine.create_object('blue:one', { color: 'blue' })
+      @blue_one = policy_machine.create_object('blue:one', color: 'blue')
       @read = policy_machine.create_operation('read')
       @write = policy_machine.create_operation('write')
       @u1 = policy_machine.create_user('u1')
@@ -1207,6 +1207,16 @@ shared_examples "a policy machine" do
           policy_machine.batch_pluck(type: :object, query: { unique_identifier: 'one:fish' }, fields: [:unique_identifier]) do |batch|
             expect(batch.size).to eq 1
             expect(batch.first.unique_identifier).to eq 'one:fish'
+          end
+        end
+
+        it 'returns matching extra_attributes' do
+          @extra_one = policy_machine.create_user('sam_i_am', status: 'extraneous')
+
+          policy_machine.batch_pluck(type: :user, query: { unique_identifier: 'sam_i_am' }, fields: [:unique_identifier, :status]) do |batch|
+            expect(batch.size).to eq 1
+            expect(batch.first.status).to eq 'extraneous'
+            expect(batch.first.unique_identifier).to eq 'sam_i_am'
           end
         end
 
