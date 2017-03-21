@@ -1206,15 +1206,15 @@ shared_examples "a policy machine" do
         it 'returns the matching attributes' do
           policy_machine.batch_pluck(type: :object, query: { unique_identifier: 'one:fish' }, fields: [:unique_identifier]) do |batch|
             expect(batch.size).to eq 1
-            expect(batch.first.unique_identifier).to eq 'one:fish'
+            expect(batch.first[:unique_identifier]).to eq 'one:fish'
           end
         end
 
         it 'does not return non-specified attributes' do
           policy_machine.batch_pluck(type: :object, query: { unique_identifier: 'blue:one' }, fields: [:color]) do |batch|
             expect(batch.size).to eq 1
-            expect(batch.first.color).to eq 'blue'
-            expect(batch.first.respond_to?(:unique_identifier)).to be false
+            expect(batch.first[:color]).to eq 'blue'
+            expect(batch.first[:unique_identifier]).to be nil
           end
         end
       end
@@ -1242,7 +1242,7 @@ shared_examples "a policy machine" do
       it 'the results are chainable and returns the relevant results' do
         enum = policy_machine.batch_pluck(type: :object, fields: [:unique_identifier])
         results = enum.flat_map do |batch|
-          batch.map { |pe| pe.unique_identifier }
+          batch.map { |pe| pe[:unique_identifier] }
         end
         expected = %w(one:fish two:fish red:one)
         expect(results).to include(*expected)
@@ -1252,7 +1252,7 @@ shared_examples "a policy machine" do
         it 'the results are chainable and returns the relevant results' do
           enum = policy_machine.batch_pluck(type: :object, query: { unique_identifier: 'one:fish' }, fields: [:unique_identifier])
         results = enum.flat_map do |batch|
-          batch.map { |pe| pe.unique_identifier }
+          batch.map { |pe| pe[:unique_identifier] }
         end
           expected = 'one:fish'
           expect(results.first).to eq(expected)
@@ -1264,7 +1264,7 @@ shared_examples "a policy machine" do
           enum = policy_machine.batch_pluck(type: :object, fields: [:unique_identifier], config: { batch_size: 4 })
           results = enum.flat_map do |batch|
             expect(batch.size).to eq 4
-            batch.map { |pe| pe.unique_identifier }
+            batch.map { |pe| pe[:unique_identifier] }
           end
           expected = %w(one:fish two:fish red:one)
           expect(results).to include(*expected)

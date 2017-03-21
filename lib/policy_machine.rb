@@ -237,9 +237,7 @@ class PolicyMachine
 
     # If the storage adapter implements batch_pluck, delegate
     if policy_machine_storage_adapter.respond_to?(:batch_pluck)
-      policy_machine_storage_adapter.batch_pluck(type, query: query, fields: fields, config: config) do |batch|
-        yield batch.to_a
-      end
+      policy_machine_storage_adapter.batch_pluck(type, query: query, fields: fields, config: config, &blk)
     else
       Warn.once("WARNING: batch_pluck is not implemented for storage adapter #{policy_machine_storage_adapter}")
       results = batch_find(type: type, query: query, config: config) do |batch|
@@ -249,13 +247,11 @@ class PolicyMachine
   end
 
   def convert_pe_to_fields(pe, fields)
-    extras = pe.stored_pe.extra_attributes
+    extras = pe.extra_attributes
     attrs = fields.reduce({}) do |attributes, field|
-      attributes[field] = extras.include?(field) ? extras[field] : pe.method(field.to_sym).call
+      attributes[field] = extras.include?(field) ? extras[field] : pe.public_send(field.to_sym)
       attributes
     end
-    # Pluck methods return an object with accessor methods for each plucked attribute
-    OpenStruct.new(attrs)
   end
 
   ##
