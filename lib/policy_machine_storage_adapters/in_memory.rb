@@ -60,6 +60,10 @@ module PolicyMachineStorageAdapter
         end
         paginated_elements
       end
+
+      define_method("pluck_all_of_type_#{pe_type}") do |fields:, options: {}|
+        method("find_all_of_type_#{pe_type}").call(options).select(*fields)
+      end
     end
 
     # Allow ignore_case to be a boolean, string, symbol, or array of symbols or strings
@@ -286,7 +290,7 @@ module PolicyMachineStorageAdapter
         distances[src] = 0
         vertices = nodes.clone
         until vertices.empty?
-          nearest_vertex = vertices.inject do |a, b|
+          nearest_vertex = vertices.reduce do |a, b|
             next b unless distances[a]
             next a unless distances[b]
             next a if distances[a] < distances[b]

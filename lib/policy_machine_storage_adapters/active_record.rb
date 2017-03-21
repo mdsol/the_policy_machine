@@ -325,7 +325,6 @@ module PolicyMachineStorageAdapter
         self.buffering? ? klass.create_later(element_attrs, self) : klass.create(element_attrs)
       end
 
-
       define_method("find_all_of_type_#{pe_type}") do |options = {}|
         conditions = options.slice!(:per_page, :page, :ignore_case).stringify_keys
         extra_attribute_conditions = conditions.slice!(*PolicyElement.column_names)
@@ -333,28 +332,29 @@ module PolicyMachineStorageAdapter
         pe_class = class_for_type(pe_type)
 
         # Arel matches provides agnostic case insensitive sql for mysql and postgres
-        all = begin
-          if options[:ignore_case]
-            match_expressions = conditions.map {|k,v| ignore_case_applies?(options[:ignore_case],k) ?
-              pe_class.arel_table[k].matches(v) : pe_class.arel_table[k].eq(v) }
-            match_expressions.inject(pe_class.where(nil)) {|rel, e| rel.where(e)}
-          else
-            pe_class.where(conditions.to_h)
-          end
-        end
+        all = if options[:ignore_case]
+                conditions.map do |k,v|
+                  if ignore_case_applies?(options[:ignore_case], k)
+                    pe_class.arel_table[k].matches(v)
+                  else
+                    pe_class.arel_table[k].eq(v)
+                  end
+                end.reduce(pe_class.where(nil)) { |rel, e| rel.where(e) }
+              else
+                pe_class.where(conditions.to_h)
+              end
 
         include_conditions.each do |key, value|
           all = Adapter.apply_include_condition(scope: all, key: key, value: value[:include], klass: class_for_type(pe_type))
         end
 
         extra_attribute_conditions.each do |key, value|
-          Warn.once("WARNING: #{self.class} is filtering #{pe_type} on #{key} in memory, which won't scale well. " <<
-            "To move this query to the database, add a '#{key}' column to the policy_elements table " <<
-            "and re-save existing records")
-            all.to_a.select!{ |pe| pe.store_attributes and
-                        ((attr_value = pe.extra_attributes_hash[key]).is_a?(String) and
-                        value.is_a?(String) and ignore_case_applies?(options[:ignore_case],key)) ? attr_value.downcase == value.downcase : attr_value == value}
+          Warn.once("WARNING: #{self.class} is filtering #{pe_type} on #{key} in memory, which won't scale well. " \
+                    "To move this query to the database, add a '#{key}' column to the policy_elements table " \
+                    "and re-save existing records")
+          all.to_a.select! { |pe| pe_matches_extra_attributes?(pe, key, value, options[:ignore_case]) }
         end
+
         # Default to first page if not specified
         if options[:per_page]
           page = options[:page] ? options[:page] : 1
@@ -363,22 +363,21 @@ module PolicyMachineStorageAdapter
 
         # TODO: Look into moving this block into previous pagination conditional and test in consuming app
         unless all.respond_to? :total_entries
-          all.define_singleton_method(:total_entries) do
-            all.count
-          end
+          all.define_singleton_method(:total_entries) { all.count }
         end
+
         all
       end
-    end
 
-    # Allow ignore_case to be a boolean, string, symbol, or array of symbols or strings
-    def ignore_case_applies?(ignore_case, key)
-      return false if key == 'policy_machine_uuid'
-      ignore_case == true || ignore_case.to_s == key || ( ignore_case.respond_to?(:any?) && ignore_case.any?{ |k| k.to_s == key} )
-    end
+      define_method("pluck_all_of_type_#{pe_type}") do |fields:, options: {}|
+        # Fields must include a primary key to avoid ActiveRecord errors
+        fields << :id
+        method("find_all_of_type_#{pe_type}").call(options).select(*fields)
+      end
+    end # End of POLICY_ELEMENT_TYPES iteration
 
     # A value hash where the only key is :include is special.
-    #Note: If we start accepting literal hash values this may need to start checking the key's column type
+    # Note: If we start accepting literal hash values this may need to start checking the key's column type
     def include_condition?(key, value)
       value.respond_to?(:keys) && value.keys.map(&:to_sym) == [:include]
     end
@@ -386,6 +385,25 @@ module PolicyMachineStorageAdapter
     def class_for_type(pe_type)
       @pe_type_class_hash ||= Hash.new { |h,k| h[k] = "PolicyMachineStorageAdapter::ActiveRecord::#{k.camelize}".constantize }
       @pe_type_class_hash[pe_type]
+    end
+
+    # Do the pe's stored attributes match the extra_attributes provided in the query
+    def pe_matches_extra_attributes?(policy_element, key, value, ignore_case)
+      if policy_element.store_attributes
+        attr_value = policy_element.extra_attributes_hash[key]
+
+        if ignore_case_applies?(ignore_case, key) && attr_value.is_a?(String) && value.is_a?(String)
+          attr_value.downcase == value.downcase
+        else
+          attr_value == value
+        end
+      end
+    end
+
+    # Allow ignore_case to be a boolean, string, symbol, or array of symbols or strings
+    def ignore_case_applies?(ignore_case, key)
+      return false if key == 'policy_machine_uuid'
+      ignore_case == true || ignore_case.to_s == key || ( ignore_case.respond_to?(:any?) && ignore_case.any? { |k| k.to_s == key } )
     end
 
     ##
@@ -618,6 +636,11 @@ module PolicyMachineStorageAdapter
       method("find_all_of_type_#{policy_object}").call(query).find_in_batches(config, &blk)
     end
 
+    def batch_pluck(policy_object, query: {}, fields:, config: {}, &blk)
+      raise(ArgumentError, "must provide fields to pluck") unless fields.present?
+      method("pluck_all_of_type_#{policy_object}").call(fields: fields, options: query).find_in_batches(config, &blk)
+    end
+
     ## Optimized version of PolicyMachine#accessible_objects
     # Returns all objects the user has the given operation on
     # TODO: Support multiple policy classes here
@@ -692,7 +715,7 @@ module PolicyMachineStorageAdapter
             assoc.operations
           end.uniq
         end
-        operations_for_policy_classes.inject(:&) || []
+        operations_for_policy_classes.reduce(:&) || []
       end
     end
 
