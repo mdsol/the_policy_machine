@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.1
+* Standardized the return value of batch_pluck.
+
 ## 1.4.0
 * Add batch_pluck method to ActiveRecord storage adapter.
 

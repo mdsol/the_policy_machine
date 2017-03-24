@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = "policy_machine"
-  s.version     = "1.4.0"
+  s.version     = "1.4.1"
   s.summary     = "Policy Machine!"
   s.description = "A ruby implementation of the Policy Machine authorization formalism."
   s.authors     = ['Matthew Szenher', 'Aaron Weiner']

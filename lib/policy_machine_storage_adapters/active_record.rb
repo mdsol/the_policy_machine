@@ -638,7 +638,9 @@ module PolicyMachineStorageAdapter
 
     def batch_pluck(policy_object, query: {}, fields:, config: {}, &blk)
       raise(ArgumentError, "must provide fields to pluck") unless fields.present?
-      method("pluck_all_of_type_#{policy_object}").call(fields: fields, options: query).find_in_batches(config, &blk)
+      method("pluck_all_of_type_#{policy_object}").call(fields: fields, options: query).find_in_batches(config) do |batch|
+        yield batch.map { |elt| elt.attributes.symbolize_keys }
+      end
     end
 
     ## Optimized version of PolicyMachine#accessible_objects
