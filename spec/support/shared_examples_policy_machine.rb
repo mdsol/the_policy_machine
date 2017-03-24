@@ -1214,7 +1214,7 @@ shared_examples "a policy machine" do
           policy_machine.batch_pluck(type: :object, query: { unique_identifier: 'blue:one' }, fields: [:color]) do |batch|
             expect(batch.size).to eq 1
             expect(batch.first[:color]).to eq 'blue'
-            expect(batch.first[:unique_identifier]).to be nil
+            expect(batch.first).not_to have_key(:unique_identifier)
           end
         end
       end
