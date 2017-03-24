@@ -1181,17 +1181,6 @@ shared_examples "a policy machine" do
       @two_fish = policy_machine.create_object('two:fish')
       @red_one = policy_machine.create_object('red:one')
       @blue_one = policy_machine.create_object('blue:one', { color: 'blue' })
-      @read = policy_machine.create_operation('read')
-      @write = policy_machine.create_operation('write')
-      @u1 = policy_machine.create_user('u1')
-      @ua = policy_machine.create_user_attribute('ua')
-      [@one_fish, @two_fish, @red_one].each do |object|
-        policy_machine.add_association(@ua, Set.new([@read]), object)
-      end
-      @oa = policy_machine.create_object_attribute('oa')
-      policy_machine.add_association(@ua, Set.new([@write]), @oa)
-      policy_machine.add_assignment(@u1, @ua)
-      policy_machine.add_assignment(@red_one, @oa)
     end
 
     context 'when given a block' do
@@ -1206,15 +1195,15 @@ shared_examples "a policy machine" do
         it 'returns the matching attributes' do
           policy_machine.batch_pluck(type: :object, query: { unique_identifier: 'one:fish' }, fields: [:unique_identifier]) do |batch|
             expect(batch.size).to eq 1
-            expect(batch.first.unique_identifier).to eq 'one:fish'
+            expect(batch.first[:unique_identifier]).to eq 'one:fish'
           end
         end
 
         it 'does not return non-specified attributes' do
           policy_machine.batch_pluck(type: :object, query: { unique_identifier: 'blue:one' }, fields: [:color]) do |batch|
             expect(batch.size).to eq 1
-            expect(batch.first.color).to eq 'blue'
-            expect(batch.first.respond_to?(:unique_identifier)).to be false
+            expect(batch.first[:color]).to eq 'blue'
+            expect(batch.first).not_to have_key(:unique_identifier)
           end
         end
       end
@@ -1242,7 +1231,7 @@ shared_examples "a policy machine" do
       it 'the results are chainable and returns the relevant results' do
         enum = policy_machine.batch_pluck(type: :object, fields: [:unique_identifier])
         results = enum.flat_map do |batch|
-          batch.map { |pe| pe.unique_identifier }
+          batch.map { |pe| pe[:unique_identifier] }
         end
         expected = %w(one:fish two:fish red:one)
         expect(results).to include(*expected)
@@ -1252,7 +1241,7 @@ shared_examples "a policy machine" do
         it 'the results are chainable and returns the relevant results' do
           enum = policy_machine.batch_pluck(type: :object, query: { unique_identifier: 'one:fish' }, fields: [:unique_identifier])
         results = enum.flat_map do |batch|
-          batch.map { |pe| pe.unique_identifier }
+          batch.map { |pe| pe[:unique_identifier] }
         end
           expected = 'one:fish'
           expect(results.first).to eq(expected)
@@ -1264,7 +1253,7 @@ shared_examples "a policy machine" do
           enum = policy_machine.batch_pluck(type: :object, fields: [:unique_identifier], config: { batch_size: 4 })
           results = enum.flat_map do |batch|
             expect(batch.size).to eq 4
-            batch.map { |pe| pe.unique_identifier }
+            batch.map { |pe| pe[:unique_identifier] }
           end
           expected = %w(one:fish two:fish red:one)
           expect(results).to include(*expected)
