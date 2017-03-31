@@ -290,6 +290,8 @@ module PolicyMachineStorageAdapter
           user_attribute_id: user_attribute.id,
           object_attribute_id: object_attribute.id
         ).first_or_create.operations = operation_set.to_a
+      rescue ActiveRecord::RecordNotUnique, PG::UniqueViolation
+        retry
       end
 
     end
@@ -415,7 +417,11 @@ module PolicyMachineStorageAdapter
       if self.buffering?
         assign_later(parent: src, child: dst)
       else
-        Assignment.where(parent_id: src.id, child_id: dst.id).first_or_create
+        begin
+          Assignment.where(parent_id: src.id, child_id: dst.id).first_or_create
+        rescue ActiveRecord::RecordNotUnique, PG::UniqueViolation
+          retry
+        end
       end
     end
 
@@ -435,12 +441,16 @@ module PolicyMachineStorageAdapter
       if self.buffering?
         link_later(parent: src, child: dst)
       else
-        LogicalLink.where(
-          link_parent_id: src.id,
-          link_child_id: dst.id,
-          link_parent_policy_machine_uuid: src.policy_machine_uuid,
-          link_child_policy_machine_uuid: dst.policy_machine_uuid
-        ).first_or_create
+        begin
+          LogicalLink.where(
+            link_parent_id: src.id,
+            link_child_id: dst.id,
+            link_parent_policy_machine_uuid: src.policy_machine_uuid,
+            link_child_policy_machine_uuid: dst.policy_machine_uuid
+          ).first_or_create
+        rescue ActiveRecord::RecordNotUnique, PG::UniqueViolation
+          retry
+        end
       end
     end
 

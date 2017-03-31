@@ -28,6 +28,12 @@ By default, the above command will configure the test database to be postgresql,
 bundle exec rake pm:test:prepare[mysql]
 ```
 
+If this command fails with:
+```
+PG::ConnectionBad: could not connect to server: No such file or directory
+```
+Or a similar error, then try adding `localhost` to the test app's database.yml. Namely, navigate to `test/testapp/config/database.yml`, and in the `default` section add a `host` key with the value `localhost` and rerun the above command.
+
 If nokogiri fails to install for the test app, then try installing it specifying your local system libraries like:
 ```
 gem install nokogiri --use-system-libraries
