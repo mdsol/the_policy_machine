@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.2
+* Fix the ActiveRecord Adapter to retry on `find_or_create` uniqueness violations.
+
 ## 1.4.1
 * Standardized the return value of batch_pluck.
 
