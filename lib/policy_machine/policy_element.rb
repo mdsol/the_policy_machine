@@ -207,12 +207,16 @@ module PM
     end
 
     def self.find_or_create(unique_identifier, policy_machine_uuid, pm_storage_adapter, extra_attributes = {}, prohibition = false)
+      tries ||= 1
       op = pm_storage_adapter.find_all_of_type_operation(unique_identifier: unique_identifier, policy_machine_uuid: policy_machine_uuid).first
       if op
         convert_stored_pe_to_pe(op, pm_storage_adapter, self)
       else
         create(unique_identifier, policy_machine_uuid, pm_storage_adapter, extra_attributes, prohibition)
       end
+    rescue ActiveRecord::RecordNotUnique, PG::UniqueViolation
+      tries += 1
+      tries < 3 ? retry : raise
     end
 
     def to_s
@@ -251,13 +255,12 @@ module PM
       negation = "~#{operation}"
       case operation
       when PM::Operation
-        PM::Operation.find_or_create(
-          negation,
-          operation.policy_machine_uuid,
-          operation.pm_storage_adapter,
-          extra_attributes,
-          true
-        )
+        params = [negation, operation.policy_machine_uuid, operation.pm_storage_adapter, extra_attributes, true]
+        begin
+          PM::Operation.find_or_create(*params)
+        rescue ActiveRecord::RecordNotUnique, PG::UniqueViolation => e
+          find(params) || raise("Could not find record for #{params}, but creating it raised #{e.inspect}")
+        end
       when Symbol
         negation.to_sym
       when String

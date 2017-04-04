@@ -286,14 +286,14 @@ module PolicyMachineStorageAdapter
       end
 
       def self.add_association(user_attribute, operation_set, object_attribute, policy_machine_uuid)
-        where(
-          user_attribute_id: user_attribute.id,
-          object_attribute_id: object_attribute.id
-        ).first_or_create.operations = operation_set.to_a
-      rescue ActiveRecord::RecordNotUnique, PG::UniqueViolation
-        retry
+        params = { user_attribute_id: user_attribute.id, object_attribute_id: object_attribute.id }
+        assoc = begin
+                  where(params).first_or_create
+                rescue ActiveRecord::RecordNotUnique, PG::UniqueViolation => e
+                  find(params) || raise("Could not find record for #{params}, but creating it raised #{e.inspect}")
+                end
+        assoc.operations = operation_set.to_a
       end
-
     end
 
     class OperationsPolicyElementAssociation < ::ActiveRecord::Base
@@ -417,10 +417,11 @@ module PolicyMachineStorageAdapter
       if self.buffering?
         assign_later(parent: src, child: dst)
       else
+        params = { parent_id: src.id, child_id: dst.id }
         begin
-          Assignment.where(parent_id: src.id, child_id: dst.id).first_or_create
-        rescue ActiveRecord::RecordNotUnique, PG::UniqueViolation
-          retry
+          Assignment.where(params).first_or_create
+        rescue ActiveRecord::RecordNotUnique, PG::UniqueViolation => e
+          find(params) || raise("Could not find record for #{params}, but creating it raised #{e.inspect}")
         end
       end
     end
@@ -441,15 +442,16 @@ module PolicyMachineStorageAdapter
       if self.buffering?
         link_later(parent: src, child: dst)
       else
+        params = {
+                   link_parent_id: src.id,
+                   link_child_id: dst.id,
+                   link_parent_policy_machine_uuid: src.policy_machine_uuid,
+                   link_child_policy_machine_uuid: dst.policy_machine_uuid
+                 }
         begin
-          LogicalLink.where(
-            link_parent_id: src.id,
-            link_child_id: dst.id,
-            link_parent_policy_machine_uuid: src.policy_machine_uuid,
-            link_child_policy_machine_uuid: dst.policy_machine_uuid
-          ).first_or_create
-        rescue ActiveRecord::RecordNotUnique, PG::UniqueViolation
-          retry
+          LogicalLink.where(params).first_or_create
+        rescue ActiveRecord::RecordNotUnique, PG::UniqueViolation => e
+          find(params) || raise("Could not find record for #{params}, but creating it raised #{e.inspect}")
         end
       end
     end
