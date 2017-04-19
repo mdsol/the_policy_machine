@@ -286,10 +286,9 @@ module PolicyMachineStorageAdapter
       end
 
       def self.add_association(user_attribute, operation_set, object_attribute, policy_machine_uuid)
-        import([:user_attribute_id, :object_attribute_id], [[user_attribute.id, object_attribute.id]], on_duplicate_key_ignore: true)
-        assoc = find_by_user_attribute_id_and_object_attribute_id(user_attribute.id, object_attribute.id)
-        assoc.operations = operation_set.to_a if assoc
+        where(user_attribute_id: user_attribute.id, object_attribute_id: object_attribute.id).first_or_create.operations = operation_set.to_a
       end
+
     end
 
     class OperationsPolicyElementAssociation < ::ActiveRecord::Base
@@ -433,9 +432,11 @@ module PolicyMachineStorageAdapter
       if self.buffering?
         link_later(parent: src, child: dst)
       else
-        fields = [:link_parent_id, :link_child_id, :link_parent_policy_machine_uuid, :link_child_policy_machine_uuid]
-        values = [[src.id, dst.id, src.policy_machine_uuid, dst.policy_machine_uuid]]
-        LogicalLink.import(fields, values, on_duplicate_key_ignore: true)
+        LogicalLink.import(
+          [:link_parent_id, :link_child_id, :link_parent_policy_machine_uuid, :link_child_policy_machine_uuid],
+          [[src.id, dst.id, src.policy_machine_uuid, dst.policy_machine_uuid]],
+          on_duplicate_key_ignore: true
+        )
       end
     end
 
