@@ -1,7 +1,7 @@
 # Changelog
 
 ## 1.4.2
-* Fix the ActiveRecord Adapter to retry on `find_or_create` uniqueness violations.
+* Fix the ActiveRecord Adapter to use upserts instead of find or creates.
 
 ## 1.4.1
 * Standardized the return value of batch_pluck.

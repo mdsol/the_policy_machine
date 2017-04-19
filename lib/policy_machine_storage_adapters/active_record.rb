@@ -286,13 +286,9 @@ module PolicyMachineStorageAdapter
       end
 
       def self.add_association(user_attribute, operation_set, object_attribute, policy_machine_uuid)
-        params = { user_attribute_id: user_attribute.id, object_attribute_id: object_attribute.id }
-        assoc = begin
-                  where(params).first_or_create
-                rescue ActiveRecord::RecordNotUnique, PG::UniqueViolation => e
-                  find(params) || raise("Could not find record for #{params}, but creating it raised #{e.inspect}")
-                end
-        assoc.operations = operation_set.to_a
+        import([:user_attribute_id, :object_attribute_id], [[user_attribute.id, object_attribute.id]], on_duplicate_key_ignore: true)
+        assoc = find_by_user_attribute_id_and_object_attribute_id(user_attribute.id, object_attribute.id)
+        assoc.operations = operation_set.to_a if assoc
       end
     end
 
@@ -417,12 +413,7 @@ module PolicyMachineStorageAdapter
       if self.buffering?
         assign_later(parent: src, child: dst)
       else
-        params = { parent_id: src.id, child_id: dst.id }
-        begin
-          Assignment.where(params).first_or_create
-        rescue ActiveRecord::RecordNotUnique, PG::UniqueViolation => e
-          find(params) || raise("Could not find record for #{params}, but creating it raised #{e.inspect}")
-        end
+        Assignment.import([:parent_id, :child_id], [[src.id, dst.id]], on_duplicate_key_ignore: true)
       end
     end
 
@@ -442,17 +433,9 @@ module PolicyMachineStorageAdapter
       if self.buffering?
         link_later(parent: src, child: dst)
       else
-        params = {
-                   link_parent_id: src.id,
-                   link_child_id: dst.id,
-                   link_parent_policy_machine_uuid: src.policy_machine_uuid,
-                   link_child_policy_machine_uuid: dst.policy_machine_uuid
-                 }
-        begin
-          LogicalLink.where(params).first_or_create
-        rescue ActiveRecord::RecordNotUnique, PG::UniqueViolation => e
-          find(params) || raise("Could not find record for #{params}, but creating it raised #{e.inspect}")
-        end
+        fields = [:link_parent_id, :link_child_id, :link_parent_policy_machine_uuid, :link_child_policy_machine_uuid]
+        values = [[src.id, dst.id, src.policy_machine_uuid, dst.policy_machine_uuid]]
+        LogicalLink.import(fields, values, on_duplicate_key_ignore: true)
       end
     end
 
