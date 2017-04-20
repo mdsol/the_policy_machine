@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.2
+* Update the ActiveRecord Adapter to use upserts instead of first or creates for Assignments.
+
 ## 1.4.1
 * Standardized the return value of batch_pluck.
 
