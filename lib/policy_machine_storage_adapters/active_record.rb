@@ -415,7 +415,7 @@ module PolicyMachineStorageAdapter
       if self.buffering?
         assign_later(parent: src, child: dst)
       else
-        Assignment.where(parent_id: src.id, child_id: dst.id).first_or_create
+        Assignment.import([:parent_id, :child_id], [[src.id, dst.id]], on_duplicate_key_ignore: true)
       end
     end
 
@@ -435,12 +435,11 @@ module PolicyMachineStorageAdapter
       if self.buffering?
         link_later(parent: src, child: dst)
       else
-        LogicalLink.where(
-          link_parent_id: src.id,
-          link_child_id: dst.id,
-          link_parent_policy_machine_uuid: src.policy_machine_uuid,
-          link_child_policy_machine_uuid: dst.policy_machine_uuid
-        ).first_or_create
+        LogicalLink.import(
+          [:link_parent_id, :link_child_id, :link_parent_policy_machine_uuid, :link_child_policy_machine_uuid],
+          [[src.id, dst.id, src.policy_machine_uuid, dst.policy_machine_uuid]],
+          on_duplicate_key_ignore: true
+        )
       end
     end
 
