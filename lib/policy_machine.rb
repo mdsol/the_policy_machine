@@ -11,7 +11,7 @@ require 'will_paginate/array'
 Dir.glob(File.dirname(File.absolute_path(__FILE__)) + '/policy_machine_storage_adapters/*.rb').each{ |f| require f }
 
 class PolicyMachine
-  POLICY_ELEMENT_TYPES = %w(user user_attribute object object_attribute operation policy_class)
+  POLICY_ELEMENT_TYPES = %w(user user_attribute object object_attribute operation operation_set policy_class)
 
   attr_accessor :name
   attr_reader   :uuid
@@ -73,12 +73,13 @@ class PolicyMachine
   # Add an association between a user_attribute, an set_of_operation_objects and an object_attribute
   # in this policy machine.
   #
-  def add_association(user_attribute_pe, set_of_operation_objects, object_attribute_pe)
+  def add_association(user_attribute_pe, set_of_operation_objects, operation_set, object_attribute_pe)
     assert_policy_element_in_machine(user_attribute_pe)
     set_of_operation_objects.each{ |op| assert_policy_element_in_machine(op) }
     assert_policy_element_in_machine(object_attribute_pe)
+    assert_policy_element_in_machine(operation_set)
 
-    PM::Association.create(user_attribute_pe, set_of_operation_objects, object_attribute_pe, @uuid, @policy_machine_storage_adapter)
+    PM::Association.create(user_attribute_pe, set_of_operation_objects, operation_set, object_attribute_pe, @uuid, @policy_machine_storage_adapter)
   end
 
   ##
