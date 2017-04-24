@@ -328,41 +328,41 @@ shared_examples "a policy machine" do
         @object_attribute = policy_machine.create_object_attribute('OA name')
         @operation1 = policy_machine.create_operation('read')
         @operation2 = policy_machine.create_operation('write')
-        @operation_set = Set.new [@operation1, @operation2]
+        @set_of_operation_objects = Set.new [@operation1, @operation2]
         @user_attribute = policy_machine.create_user_attribute('UA name')
       end
 
       it 'raises when first argument is not a PolicyElement' do
-        expect{ policy_machine.add_association("234", @operation_set, @object_attribute) }
+        expect{ policy_machine.add_association("234", @set_of_operation_objects, @object_attribute) }
           .to raise_error(ArgumentError, "arg must each be a kind of PolicyElement; got String instead")
       end
 
       it 'raises when first argument is not in policy machine' do
         pm2 = PolicyMachine.new
         ua = pm2.create_user_attribute(SecureRandom.uuid)
-        expect{ policy_machine.add_association(ua, @operation_set, @object_attribute) }
+        expect{ policy_machine.add_association(ua, @set_of_operation_objects, @object_attribute) }
           .to raise_error(ArgumentError, "#{ua.unique_identifier} is not in policy machine with uuid #{policy_machine.uuid}")
       end
 
       it 'raises when third argument is not a PolicyElement' do
-        expect{ policy_machine.add_association(@user_attribute, @operation_set, 3) }
+        expect{ policy_machine.add_association(@user_attribute, @set_of_operation_objects, 3) }
           .to raise_error(ArgumentError, "arg must each be a kind of PolicyElement; got Fixnum instead")
       end
 
       it 'raises when third argument is not in policy machine' do
         pm2 = PolicyMachine.new
         oa = pm2.create_object_attribute(SecureRandom.uuid)
-        expect{ policy_machine.add_association(@user_attribute, @operation_set, oa) }
+        expect{ policy_machine.add_association(@user_attribute, @set_of_operation_objects, oa) }
           .to raise_error(ArgumentError, "#{oa.unique_identifier} is not in policy machine with uuid #{policy_machine.uuid}")
       end
 
       it 'allows an association to be made between an existing user_attribute, operation set and object attribute (returns true)' do
-        policy_machine.add_association(@user_attribute, @operation_set, @object_attribute).should be_true
+        policy_machine.add_association(@user_attribute, @set_of_operation_objects, @object_attribute).should be_true
       end
 
       it 'handles non-unique operation sets' do
-        @operation_set << @operation1.dup
-        policy_machine.add_association(@user_attribute, @operation_set, @object_attribute).should be_true
+        @set_of_operation_objects << @operation1.dup
+        policy_machine.add_association(@user_attribute, @set_of_operation_objects, @object_attribute).should be_true
       end
 
       it 'overwrites old associations between the same attributes' do

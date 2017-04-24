@@ -179,10 +179,10 @@ module PolicyMachineStorageAdapter
     ##
     # Add the given association to the policy map.  If an association between user_attribute
     # and object_attribute already exists, then replace it with that given in the arguments.
-    def add_association(user_attribute, operation_set, object_attribute, policy_machine_uuid)
+    def add_association(user_attribute, set_of_operation_objects, object_attribute, policy_machine_uuid)
       # TODO:  scope by policy machine uuid
       associations[user_attribute.unique_identifier + object_attribute.unique_identifier] =
-        [user_attribute, operation_set, object_attribute]
+        [user_attribute, set_of_operation_objects, object_attribute]
 
       true
     end
@@ -190,7 +190,7 @@ module PolicyMachineStorageAdapter
     ##
     # Return all associations in which the given operation is included
     # Returns an array of arrays.  Each sub-array is of the form
-    # [user_attribute, operation_set, object_attribute]
+    # [user_attribute, set_of_operation_objects, object_attribute]
     def associations_with(operation)
       matching = associations.values.select do |assoc|
         assoc[1].include?(operation)
