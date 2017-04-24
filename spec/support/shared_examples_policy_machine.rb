@@ -80,7 +80,7 @@ shared_examples "a policy machine" do
       it 'raises when first argument is not a policy element' do
         pe = policy_machine.create_user_attribute(SecureRandom.uuid)
         expect{ policy_machine.add_assignment(1, pe) }
-          .to raise_error(ArgumentError, "arg must each be a kind of PolicyElement; got Fixnum instead")
+          .to raise_error(ArgumentError, "arg must each be a kind of PolicyElement; got #{SmallNumber} instead")
       end
 
       it 'raises when first argument is not in policy machine' do
@@ -123,7 +123,7 @@ shared_examples "a policy machine" do
 
       it 'raises when first argument is not a policy element' do
         expect{ policy_machine.add_assignment(1, @pe1) }
-          .to raise_error(ArgumentError, "arg must each be a kind of PolicyElement; got Fixnum instead")
+          .to raise_error(ArgumentError, "arg must each be a kind of PolicyElement; got #{SmallNumber} instead")
       end
 
       it 'raises when first argument is not in policy machine' do
@@ -180,12 +180,12 @@ shared_examples "a policy machine" do
       end
 
       it 'raises when the first argument is not a policy element' do
-        err_msg = 'args must each be a kind of PolicyElement; got a Fixnum and PM::UserAttribute instead'
+        err_msg = "args must each be a kind of PolicyElement; got a #{SmallNumber} and PM::UserAttribute instead"
         expect{ pm1.add_link(1, pe1) }.to raise_error(ArgumentError, err_msg)
       end
 
       it 'raises when the second argument is not a policy element' do
-        err_msg = 'args must each be a kind of PolicyElement; got a PM::UserAttribute and Fixnum instead'
+        err_msg = "args must each be a kind of PolicyElement; got a PM::UserAttribute and #{SmallNumber} instead"
         expect{ pm1.add_link(pe1, 1) }.to raise_error(ArgumentError, err_msg)
       end
 
@@ -209,7 +209,7 @@ shared_examples "a policy machine" do
       end
 
       it 'raises when first argument is not a policy element' do
-        err_msg = 'args must each be a kind of PolicyElement; got a Fixnum and PM::UserAttribute instead'
+        err_msg = "args must each be a kind of PolicyElement; got a #{SmallNumber} and PM::UserAttribute instead"
         expect{ pm1.add_link(1, pe1) }.to raise_error(ArgumentError, err_msg)
       end
 
@@ -260,12 +260,12 @@ shared_examples "a policy machine" do
         end
 
         it 'raises when the first argument is not a policy element' do
-          err_msg = 'args must each be a kind of PolicyElement; got a Fixnum and PM::UserAttribute instead'
+          err_msg = "args must each be a kind of PolicyElement; got a #{SmallNumber} and PM::UserAttribute instead"
           expect{ pm1.bulk_persist { pm1.add_link(1, pe1) } }.to raise_error(ArgumentError, err_msg)
         end
 
         it 'raises when the second argument is not a policy element' do
-          err_msg = 'args must each be a kind of PolicyElement; got a PM::UserAttribute and Fixnum instead'
+          err_msg = "args must each be a kind of PolicyElement; got a PM::UserAttribute and #{SmallNumber} instead"
           expect{ pm1.bulk_persist { pm1.add_link(pe1, 1) } }.to raise_error(ArgumentError, err_msg)
         end
 
@@ -305,7 +305,7 @@ shared_examples "a policy machine" do
         end
 
         it 'raises when first argument is not a policy element' do
-          err_msg = 'args must each be a kind of PolicyElement; got a Fixnum and PM::UserAttribute instead'
+          err_msg = "args must each be a kind of PolicyElement; got a #{SmallNumber} and PM::UserAttribute instead"
           expect{ pm1.bulk_persist { pm1.add_link(1, pe1) } }.to raise_error(ArgumentError, err_msg)
         end
 
@@ -346,7 +346,7 @@ shared_examples "a policy machine" do
 
       it 'raises when third argument is not a PolicyElement' do
         expect{ policy_machine.add_association(@user_attribute, @operation_set, 3) }
-          .to raise_error(ArgumentError, "arg must each be a kind of PolicyElement; got Fixnum instead")
+          .to raise_error(ArgumentError, "arg must each be a kind of PolicyElement; got #{SmallNumber} instead")
       end
 
       it 'raises when third argument is not in policy machine' do
@@ -579,7 +579,7 @@ shared_examples "a policy machine" do
       describe 'associations' do
         it 'raises unless options[:associations] is an Array' do
           expect{ policy_machine.is_privilege?(@u1, @w, @o2, :associations => 4) }.
-            to raise_error(ArgumentError, "expected options[:associations] to be an Array; got Fixnum")
+            to raise_error(ArgumentError, "expected options[:associations] to be an Array; got #{SmallNumber}")
         end
 
         it 'raises if options[:associations] is an empty array' do
@@ -621,7 +621,7 @@ shared_examples "a policy machine" do
       describe 'in_user_attribute' do
         it 'raises unless options[:in_user_attribute] is a PM::UserAttribute' do
           expect{ policy_machine.is_privilege?(@u1, @w, @o2, :in_user_attribute => 4) }.
-            to raise_error(ArgumentError, 'expected options[:in_user_attribute] to be a PM::UserAttribute; got Fixnum')
+            to raise_error(ArgumentError, "expected options[:in_user_attribute] to be a PM::UserAttribute; got #{SmallNumber}")
         end
 
         it 'accepts in_user_attribute in options[:in_user_attribute]' do
@@ -641,7 +641,7 @@ shared_examples "a policy machine" do
       describe 'in_object_attribute' do
         it 'raises unless options[:in_object_attribute] is a PM::ObjectAttribute' do
           expect{ policy_machine.is_privilege?(@u1, @w, @o2, :in_object_attribute => 4) }.
-            to raise_error(ArgumentError, 'expected options[:in_object_attribute] to be a PM::ObjectAttribute; got Fixnum')
+            to raise_error(ArgumentError, "expected options[:in_object_attribute] to be a PM::ObjectAttribute; got #{SmallNumber}")
         end
 
         it 'accepts in_object_attribute in options[:in_object_attribute]' do

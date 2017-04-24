@@ -239,7 +239,7 @@ class PolicyMachine
     if policy_machine_storage_adapter.respond_to?(:batch_pluck)
       policy_machine_storage_adapter.batch_pluck(type, query: query, fields: fields, config: config, &blk)
     else
-      Warn.once("WARNING: batch_pluck is not implemented for storage adapter #{policy_machine_storage_adapter}")
+      Warn.once("WARNING: batch_pluck is not implemented for storage adapter #{policy_machine_storage_adapter.class}")
       results = batch_find(type: type, query: query, config: config) do |batch|
         yield batch.map { |elt| convert_pe_to_fields(elt, fields) }
       end
