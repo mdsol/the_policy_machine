@@ -2,10 +2,10 @@ module PM
   class Association
     attr_accessor :user_attribute
     attr_accessor :set_of_operation_objects
-    # attr_accessor :operation_set
+    attr_accessor :operation_set
     attr_accessor :object_attribute
 
-    def initialize(stored_user_attribute, stored_set_of_operation_objects, stored_object_attribute, pm_storage_adapter)
+    def initialize(stored_user_attribute, stored_set_of_operation_objects, stored_operation_set, stored_object_attribute, pm_storage_adapter)
       @user_attribute = PM::PolicyElement.convert_stored_pe_to_pe(
         stored_user_attribute,
         pm_storage_adapter,
@@ -21,6 +21,12 @@ module PM
         )
         @set_of_operation_objects << op
       end
+
+      @operation_set = PM::PolicyElement.convert_stored_pe_to_pe(
+        stored_operation_set,
+        pm_storage_adapter,
+        PM::OperationSet
+      )
 
       @object_attribute = PM::PolicyElement.convert_stored_pe_to_pe(
         stored_object_attribute,
@@ -38,7 +44,7 @@ module PM
 
     # Create an association given persisted policy elements
     #
-    def self.create(user_attribute_pe, set_of_operation_objects, object_attribute_pe, policy_machine_uuid, pm_storage_adapter)
+    def self.create(user_attribute_pe, set_of_operation_objects, operation_set, object_attribute_pe, policy_machine_uuid, pm_storage_adapter)
       # argument errors for user_attribute_pe
       raise(ArgumentError, "user_attribute_pe must be a UserAttribute.") unless user_attribute_pe.is_a?(PM::UserAttribute)
       unless user_attribute_pe.policy_machine_uuid == policy_machine_uuid
@@ -57,6 +63,12 @@ module PM
         end
       end
 
+      #argument errors for operation_set
+      raise(ArgumentError, "operation_set must be an OperationSet") unless operation_set.is_a?(PM::OperationSet)
+      unless operation_set.policy_machine_uuid == policy_machine_uuid
+        raise(ArgumentError, "operation_set must be in policy machine with uuid #{policy_machine_uuid}")
+      end
+
       # argument errors for object_attribute_pe
       raise(ArgumentError, "object_attribute_pe must be an ObjectAttribute.") unless object_attribute_pe.is_a?(PM::ObjectAttribute)
       unless object_attribute_pe.policy_machine_uuid == policy_machine_uuid
@@ -66,6 +78,7 @@ module PM
       pm_storage_adapter.add_association(
         user_attribute_pe.stored_pe,
         Set.new(set_of_operation_objects.map(&:stored_pe)),
+        operation_set,
         object_attribute_pe.stored_pe,
         policy_machine_uuid
       )
