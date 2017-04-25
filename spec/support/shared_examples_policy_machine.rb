@@ -347,9 +347,8 @@ shared_examples "a policy machine" do
           .to raise_error(ArgumentError, "#{ua.unique_identifier} is not in policy machine with uuid #{policy_machine.uuid}")
       end
 
-      #TODO Add third
       it 'raises when third argument is not a PolicyElement' do
-        expect{ policy_machine.add_association(@user_attribute, @set_of_oepration_objects, @operation_set, 3) }
+        expect{ policy_machine.add_association(@user_attribute, @set_of_operation_objects, @operation_set, 3) }
           .to raise_error(ArgumentError, "arg must each be a kind of PolicyElement; got #{SmallNumber} instead")
       end
 
@@ -425,6 +424,10 @@ shared_examples "a policy machine" do
     it 'can negate operations expressed as PM::Operations' do
       expect(PM::Prohibition.on(policy_machine.create_operation('fly'))).to be_a PM::Operation
     end
+  end
+
+  describe 'OperationSets' do
+
   end
 
   describe 'User Attributes' do
