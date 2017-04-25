@@ -17,6 +17,8 @@ $LOAD_PATH.uniq!
 
 require 'policy_machine'
 
+SmallNumber = 3.class #Integer in 2.4, Fixnum before that
+
 Dir["./spec/support/**/*.rb"].each {|f| require f}
 
 RSpec.configure do |config|

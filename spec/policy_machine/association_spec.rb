@@ -40,7 +40,7 @@ describe PM::Association do
 
     it 'raises when second argument is a set in which at least one element is not a PM::Operation' do
       expect{ PM::Association.create(@user_attribute, Set.new([@operation1, 1]), @operation_set, @object_attribute, @policy_machine.uuid, @policy_machine.policy_machine_storage_adapter) }.
-        to raise_error(ArgumentError, "expected 1 to be PM::Operation; got Fixnum")
+        to raise_error(ArgumentError, "expected 1 to be PM::Operation; got #{SmallNumber}")
     end
 
     it 'raises when second argument is a set in which at least one element is a PM::Operation which is in a different policy machine' do
