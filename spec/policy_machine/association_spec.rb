@@ -17,7 +17,6 @@ describe PM::Association do
       @other_op = other_pm.create_operation('delete')
     end
 
-    #TODO: check arity crap
     it 'raises when first argument is not a user attribute' do
       expect{ PM::Association.create(@object_attribute, @set_of_operation_objects, @operation_set, @object_attribute, @policy_machine.uuid, @policy_machine.policy_machine_storage_adapter) }.
         to raise_error(ArgumentError, "user_attribute_pe must be a UserAttribute.")
