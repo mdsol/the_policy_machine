@@ -860,7 +860,6 @@ shared_examples "a policy machine" do
             [@u3, @r, @o1], [@u3, @r, @o2], [@u3, @r, @o3], [@u4, @e, @o4]
           ]
 
-          binding.pry if policy_machine.privileges.any? { |p| p == nil }
           assert_pm_privilege_expectations(policy_machine.privileges, expected_privileges)
         end
 
