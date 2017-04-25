@@ -284,7 +284,7 @@ module PolicyMachineStorageAdapter
                                             .where(operation_id: removed_operation_objects.map(&:id))
                                             .delete_all
           OperationsPolicyElementAssociation.import([:policy_element_association_id, :operation_id],
-                                                     new_operation_objects.map{ |op| [self.id, op.id] },
+                                                     new_operation_objects.map { |op| [self.id, op.id] },
                                                      validate: false)
         end
         self.clear_association_cache
