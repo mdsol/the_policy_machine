@@ -70,7 +70,7 @@ class PolicyMachine
   end
 
   ##
-  # Add an association between a user_attribute, an set_of_operation_objects and an object_attribute
+  # Add an association between a user_attribute, a set_of_operation_objects and an object_attribute
   # in this policy machine.
   #
   def add_association(user_attribute_pe, set_of_operation_objects, operation_set, object_attribute_pe)
