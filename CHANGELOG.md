@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.0
+* Add an OperationSet element, and make an operation set a new required field for
+  creating an Association.  This will be a required field to populate before consuming
+  the 2.0 version of the policy machine.
+
 ## 1.4.2
 * Update the ActiveRecord Adapter to use upserts instead of first or creates for Assignments.
 
