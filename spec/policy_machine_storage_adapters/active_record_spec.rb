@@ -83,13 +83,14 @@ describe 'ActiveRecord' do
         let(:user) { pm.create_user('user') }
         let(:pm2_user) { pm2.create_user('PM 2 user') }
         let(:operation) { pm.create_operation('operation') }
+        let(:op_set) { pm.create_operation_set('op_set')}
         let(:user_attribute) { pm.create_user_attribute('user_attribute') }
         let(:object_attribute) { pm.create_object_attribute('object_attribute') }
         let(:object) { pm.create_object('object') }
 
         it 'deletes only those assignments that were on deleted elements' do
           pm.add_assignment(user, user_attribute)
-          pm.add_association(user_attribute, Set.new([operation]), object_attribute)
+          pm.add_association(user_attribute, Set.new([operation]), op_set, object_attribute)
           pm.add_assignment(object, object_attribute)
 
           expect(pm.is_privilege?(user, operation, object)).to be
@@ -233,7 +234,8 @@ describe 'ActiveRecord' do
               pm.bulk_persist do
                 operation = pm.create_operation('drink')
                 operations = [operation, PM::Prohibition.on(operation), PM::Prohibition.on(operation)]
-                pm.add_association(caffeinated, Set.new(operations), cup)
+                op_set = pm.create_operation_set('new_op_set')
+                pm.add_association(caffeinated, Set.new(operations), op_set, cup)
               end
 
               associated_operation_strings = pm.policy_machine_storage_adapter.associations_with(caffeinated.stored_pe).first.second.to_a.map(&:unique_identifier)
@@ -350,11 +352,12 @@ describe 'ActiveRecord' do
         @pm = PolicyMachine.new(:name => 'ActiveRecord PM', :storage_adapter => PolicyMachineStorageAdapter::ActiveRecord)
         @u1 = @pm.create_user('u1')
         @op = @pm.create_operation('own')
+        @op_set = @pm.create_operation_set('owner')
         @user_attributes = (1..n).map { |i| @pm.create_user_attribute("ua#{i}") }
         @object_attributes = (1..n).map { |i| @pm.create_object_attribute("oa#{i}") }
         @objects = (1..n).map { |i| @pm.create_object("o#{i}") }
         @user_attributes.each { |ua| @pm.add_assignment(@u1, ua) }
-        @object_attributes.product(@user_attributes) { |oa, ua| @pm.add_association(ua, Set.new([@op]), oa) }
+        @object_attributes.product(@user_attributes) { |oa, ua| @pm.add_association(ua, Set.new([@op]), @op_set, oa) }
         @object_attributes.zip(@objects) { |oa, o| @pm.add_assignment(o, oa) }
       end
 
@@ -377,6 +380,7 @@ describe 'ActiveRecord' do
       @pm2_u1 = @pm2.create_user('pm2 u1')
 
       @op = @pm.create_operation('own')
+      @op_set = @pm.create_operation_set('owner')
       @pm2_op = @pm2.create_operation('pm2 op')
 
       @user_attributes = (1..n).map { |i| @pm.create_user_attribute("ua#{i}") }
@@ -385,7 +389,7 @@ describe 'ActiveRecord' do
       @pm3_user_attribute = @pm3.create_user_attribute('pm3_user_attribute')
 
       @user_attributes.each { |ua| @pm.add_assignment(@u1, ua) }
-      @object_attributes.product(@user_attributes) { |oa, ua| @pm.add_association(ua, Set.new([@op]), oa) }
+      @object_attributes.product(@user_attributes) { |oa, ua| @pm.add_association(ua, Set.new([@op]), @op_set, oa) }
       @object_attributes.zip(@objects) { |oa, o| @pm.add_assignment(o, oa) }
       @pm.add_assignment(@user_attributes.first, @user_attributes.second)
 

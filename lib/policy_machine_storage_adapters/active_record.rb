@@ -218,21 +218,23 @@ module PolicyMachineStorageAdapter
       end
 
       def self.bulk_associate(associations, upsert_buffer)
-        associations.map! do |user_attribute, operation_set, object_attribute, policy_machine_uuid|
-          [PolicyElementAssociation.new(user_attribute_id: user_attribute.id, object_attribute_id: object_attribute.id),
-           operation_set]
+        associations.map! do |user_attribute, set_of_operation_objects, operation_set, object_attribute, policy_machine_uuid|
+          [PolicyElementAssociation.new(user_attribute_id: user_attribute.id,
+                                        object_attribute_id: object_attribute.id,
+                                        operation_set_id: operation_set.id),
+           set_of_operation_objects]
         end
         PolicyElementAssociation.import(associations.map(&:first), on_duplicate_key_ignore: true)
 
         #TODO: This should be a bulk upsert too but, among other things, AR doesn't understand nested arrays so deleting where a tuple
         # isn't in a list of tuples seems to require raw SQL
         # NB: operations= is a persistence method
-        associations.each do |model, operation_set|
-          operation_set.map! do |operation|
+        associations.each do |model, set_of_operation_objects|
+          set_of_operation_objects.map! do |operation|
             operation.id ? operation : upsert_buffer[operation.unique_identifier]
           end
 
-          model.operations = operation_set
+          model.operations = set_of_operation_objects
         end
       end
 
@@ -256,6 +258,10 @@ module PolicyMachineStorageAdapter
       has_and_belongs_to_many :policy_element_associations, class_name: 'PolicyMachineStorageAdapter::ActiveRecord::PolicyElementAssociation', join_table: 'operations_policy_element_associations'
     end
 
+    class OperationSet < PolicyElement
+      has_many :policy_element_associations, dependent: :destroy
+    end
+
     class PolicyClass < PolicyElement
     end
 
@@ -265,31 +271,33 @@ module PolicyMachineStorageAdapter
 
       belongs_to :user_attribute
       belongs_to :object_attribute
+      belongs_to :operation_set
 
       #TODO: ActiveRecord's generated operations= method is inefficient, makes 1 query for each op added or removed even though there's no hooks
       # Awkward manual implementation for now, but in the future change this to an hstore or something in the postgres adapter,
       # and/or fix Rails.
-      def operations=(updated_operations)
-        updated_operation_set = Set.new(updated_operations)
-        current_operation_set = Set.new(self.operations)
-        new_operations = updated_operation_set - current_operation_set
-        removed_operations = current_operation_set - updated_operation_set
+      def operations=(updated_operations_objects)
+        updated_set_of_operation_objects = Set.new(updated_operations_objects)
+        current_set_of_operation_objects = Set.new(self.operations)
+        new_operation_objects = updated_set_of_operation_objects - current_set_of_operation_objects
+        removed_operation_objects = current_set_of_operation_objects - updated_set_of_operation_objects
         transaction do
           OperationsPolicyElementAssociation.where(policy_element_association_id: self.id)
-                                            .where(operation_id: removed_operations.map(&:id))
+                                            .where(operation_id: removed_operation_objects.map(&:id))
                                             .delete_all
           OperationsPolicyElementAssociation.import([:policy_element_association_id, :operation_id],
-                                                     new_operations.map{ |op| [self.id, op.id] },
+                                                     new_operation_objects.map { |op| [self.id, op.id] },
                                                      validate: false)
         end
         self.clear_association_cache
       end
 
-      def self.add_association(user_attribute, operation_set, object_attribute, policy_machine_uuid)
+      def self.add_association(user_attribute, set_of_operation_objects, operation_set, object_attribute, policy_machine_uuid)
         where(
           user_attribute_id: user_attribute.id,
-          object_attribute_id: object_attribute.id
-        ).first_or_create.operations = operation_set.to_a
+          object_attribute_id: object_attribute.id,
+          operation_set_id: operation_set.id
+        ).first_or_create.operations = set_of_operation_objects.to_a
       end
 
     end
@@ -297,7 +305,7 @@ module PolicyMachineStorageAdapter
     class OperationsPolicyElementAssociation < ::ActiveRecord::Base
     end
 
-    POLICY_ELEMENT_TYPES = %w(user user_attribute object object_attribute operation policy_class)
+    POLICY_ELEMENT_TYPES = %w(user user_attribute object object_attribute operation operation_set policy_class)
 
     POLICY_ELEMENT_TYPES.each do |pe_type|
       ##
@@ -559,17 +567,17 @@ module PolicyMachineStorageAdapter
     # and object_attribute already exists, then replace it with that given in the arguments.
     # Returns true if the association was added and false otherwise.
     #
-    def add_association(user_attribute, operation_set, object_attribute, policy_machine_uuid)
+    def add_association(user_attribute, set_of_operation_objects, operation_set, object_attribute, policy_machine_uuid)
       if self.buffering?
-        associate_later(user_attribute, operation_set, object_attribute, policy_machine_uuid)
+        associate_later(user_attribute, set_of_operation_objects, operation_set, object_attribute, policy_machine_uuid)
       else
-        PolicyElementAssociation.add_association(user_attribute, operation_set, object_attribute, policy_machine_uuid)
+        PolicyElementAssociation.add_association(user_attribute, set_of_operation_objects, operation_set, object_attribute, policy_machine_uuid)
       end
     end
 
     #TODO PM uuid potentially useful for future optimization, currently unused
-    def associate_later(user_attribute, operation_set, object_attribute, policy_machine_uuid)
-      buffers[:associations] << [user_attribute, operation_set, object_attribute, policy_machine_uuid]
+    def associate_later(user_attribute, set_of_operation_objects, operation_set, object_attribute, policy_machine_uuid)
+      buffers[:associations] << [user_attribute, set_of_operation_objects, operation_set, object_attribute, policy_machine_uuid]
     end
 
     ##
@@ -581,10 +589,10 @@ module PolicyMachineStorageAdapter
     # If no associations are found then the empty array should be returned.
     #
     def associations_with(operation)
-      assocs = operation.policy_element_associations(true).includes(:user_attribute, :operations, :object_attribute).all
+      assocs = operation.policy_element_associations(true).includes(:user_attribute, :operations, :operation_set, :object_attribute).all
       assocs.map do |assoc|
         assoc.clear_association_cache #TODO Either do this better (touch through HABTM on bulk insert?) or dont do this?
-        [assoc.user_attribute, Set.new(assoc.operations), assoc.object_attribute]
+        [assoc.user_attribute, Set.new(assoc.operations), assoc.operation_set, assoc.object_attribute]
       end
     end
 

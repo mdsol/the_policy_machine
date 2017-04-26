@@ -36,6 +36,8 @@ module PolicyMachineStorageAdapter
     def add_operation(unique_identifier, policy_machine_uuid, extra_attributes = {})
 
     end
+    def add_operation_set(unique_identifier, policy_machine_uuid, extra_attributes = {})
+    end
     def add_policy_class(unique_identifier, policy_machine_uuid, extra_attributes = {})
 
     end
@@ -59,6 +61,9 @@ module PolicyMachineStorageAdapter
 
     end
     def find_all_of_type_operation(options = {})
+
+    end
+    def find_all_of_type_operation_set(options = {})
 
     end
     def find_all_of_type_policy_class(options = {})
@@ -159,7 +164,7 @@ module PolicyMachineStorageAdapter
     # and object_attribute already exists, then replace it with that given in the arguments.
     # Returns true if the association was added and false otherwise.
     #
-    def add_association(user_attribute, operation_set, object_attribute, policy_machine_uuid)
+    def add_association(user_attribute, set_of_operation_objects, object_attribute, policy_machine_uuid)
 
     end
 

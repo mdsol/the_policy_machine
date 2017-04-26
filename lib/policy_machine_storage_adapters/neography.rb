@@ -163,7 +163,7 @@ module PolicyMachineStorageAdapter
     ##
     # Add the given association to the policy map.  If an association between user_attribute
     # and object_attribute already exists, then replace it with that given in the arguments.
-    def add_association(user_attribute, operation_set, object_attribute, policy_machine_uuid)
+    def add_association(user_attribute, set_of_operation_objects, object_attribute, policy_machine_uuid)
       remove_association(user_attribute, object_attribute, policy_machine_uuid)
 
       # TODO:  scope by policy machine uuid
@@ -173,12 +173,12 @@ module PolicyMachineStorageAdapter
         :policy_machine_uuid => policy_machine_uuid,
         :user_attribute_unique_identifier => user_attribute.unique_identifier,
         :object_attribute_unique_identifier => object_attribute.unique_identifier,
-        :operations => operation_set.map(&:unique_identifier).to_json,
+        :operations => set_of_operation_objects.map(&:unique_identifier).to_json,
       }
       persisted_assoc = ::Neography::Node.create(node_attrs)
       persisted_assoc.add_to_index('associations', 'unique_identifier', unique_identifier)
 
-      [user_attribute, object_attribute, *operation_set].each do |element|
+      [user_attribute, object_attribute, *set_of_operation_objects].each do |element|
         ::Neography::Relationship.create(:in_association, element, persisted_assoc)
       end
 
@@ -188,20 +188,20 @@ module PolicyMachineStorageAdapter
     ##
     # Return all associations in which the given operation is included
     # Returns an array of arrays.  Each sub-array is of the form
-    # [user_attribute, operation_set, object_attribute]
+    # [user_attribute, set_of_operation_objects, object_attribute]
     #
     def associations_with(operation)
       operation.outgoing(:in_association).map do |association|
         user_attribute = ::Neography::Node.find('nodes', 'unique_identifier', association.user_attribute_unique_identifier)
         object_attribute = ::Neography::Node.find('nodes', 'unique_identifier', association.object_attribute_unique_identifier)
 
-        operation_set = Set.new
+        set_of_operation_objects = Set.new
         JSON.parse(association.operations).each do |op_unique_id|
           op_node = ::Neography::Node.find('nodes', 'unique_identifier', op_unique_id)
-          operation_set << op_node
+          set_of_operation_objects << op_node
         end
 
-        [user_attribute, operation_set, object_attribute]
+        [user_attribute, set_of_operation_objects, object_attribute]
       end
     end
 
