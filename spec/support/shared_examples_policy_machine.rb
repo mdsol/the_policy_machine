@@ -426,10 +426,6 @@ shared_examples "a policy machine" do
     end
   end
 
-  describe 'OperationSets' do
-
-  end
-
   describe 'User Attributes' do
     describe '#extra_attributes' do
       it 'accepts and persists arbitrary extra attributes' do

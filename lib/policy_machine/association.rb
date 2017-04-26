@@ -39,7 +39,7 @@ module PM
     #
     def includes_operation?(operation)
       # Note:  set_of_operation_objects.member? isn't calling PM::PolicyElement ==
-      set_of_operation_objects.any?{ |op| op == operation }
+      set_of_operation_objects.any? { |op| op == operation }
     end
 
     # Create an association given persisted policy elements

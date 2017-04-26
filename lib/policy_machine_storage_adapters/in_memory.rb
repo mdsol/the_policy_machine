@@ -195,7 +195,7 @@ module PolicyMachineStorageAdapter
         assoc[1].include?(operation)
       end
 
-      matching.map{ |m| [m[0], m[1], m[2], m[3]] }
+      matching.map { |m| [m[0], m[1], m[2], m[3]] }
     end
 
     ##

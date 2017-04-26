@@ -75,7 +75,7 @@ class PolicyMachine
   #
   def add_association(user_attribute_pe, set_of_operation_objects, operation_set, object_attribute_pe)
     assert_policy_element_in_machine(user_attribute_pe)
-    set_of_operation_objects.each{ |op| assert_policy_element_in_machine(op) }
+    set_of_operation_objects.each { |op| assert_policy_element_in_machine(op) }
     assert_policy_element_in_machine(object_attribute_pe)
     assert_policy_element_in_machine(operation_set)
 

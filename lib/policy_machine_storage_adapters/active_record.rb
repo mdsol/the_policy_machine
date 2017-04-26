@@ -219,7 +219,9 @@ module PolicyMachineStorageAdapter
 
       def self.bulk_associate(associations, upsert_buffer)
         associations.map! do |user_attribute, set_of_operation_objects, operation_set, object_attribute, policy_machine_uuid|
-          [PolicyElementAssociation.new(user_attribute_id: user_attribute.id, object_attribute_id: object_attribute.id, operation_set_id: operation_set.id),
+          [PolicyElementAssociation.new(user_attribute_id: user_attribute.id,
+                                        object_attribute_id: object_attribute.id,
+                                        operation_set_id: operation_set.id),
            set_of_operation_objects]
         end
         PolicyElementAssociation.import(associations.map(&:first), on_duplicate_key_ignore: true)
