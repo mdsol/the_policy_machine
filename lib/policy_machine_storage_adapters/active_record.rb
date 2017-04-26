@@ -294,7 +294,7 @@ module PolicyMachineStorageAdapter
 
       def self.add_association(user_attribute, set_of_operation_objects, operation_set, object_attribute, policy_machine_uuid)
         where(
-          user_attribute: user_attribute.id,
+          user_attribute_id: user_attribute.id,
           object_attribute_id: object_attribute.id,
           operation_set_id: operation_set.id
         ).first_or_create.operations = set_of_operation_objects.to_a
