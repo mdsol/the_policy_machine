@@ -1,3 +1,4 @@
+# coding: utf-8
 require 'policy_machine/policy_element'
 require 'policy_machine/association'
 require 'policy_machine/warn_once'
@@ -10,7 +11,7 @@ require 'will_paginate/array'
 Dir.glob(File.dirname(File.absolute_path(__FILE__)) + '/policy_machine_storage_adapters/*.rb').each{ |f| require f }
 
 class PolicyMachine
-  POLICY_ELEMENT_TYPES = %w(user user_attribute object object_attribute operation policy_class)
+  POLICY_ELEMENT_TYPES = %w(user user_attribute object object_attribute operation operation_set policy_class)
 
   attr_accessor :name
   attr_reader   :uuid
@@ -69,15 +70,16 @@ class PolicyMachine
   end
 
   ##
-  # Add an association between a user_attribute, an operation_set and an object_attribute
+  # Add an association between a user_attribute, a set_of_operation_objects and an object_attribute
   # in this policy machine.
   #
-  def add_association(user_attribute_pe, operation_set, object_attribute_pe)
+  def add_association(user_attribute_pe, set_of_operation_objects, operation_set, object_attribute_pe)
     assert_policy_element_in_machine(user_attribute_pe)
-    operation_set.each{ |op| assert_policy_element_in_machine(op) }
+    set_of_operation_objects.each { |op| assert_policy_element_in_machine(op) }
     assert_policy_element_in_machine(object_attribute_pe)
+    assert_policy_element_in_machine(operation_set)
 
-    PM::Association.create(user_attribute_pe, operation_set, object_attribute_pe, @uuid, @policy_machine_storage_adapter)
+    PM::Association.create(user_attribute_pe, set_of_operation_objects, operation_set, object_attribute_pe, @uuid, @policy_machine_storage_adapter)
   end
 
   ##
@@ -362,7 +364,7 @@ class PolicyMachine
 
   # According to the NIST spec:  "the triple (u, op, o) is a privilege, iff there
   # exists an association (ua, ops, oa), such that user u→+ua, op ∈ ops, and o→*oa."
-  # Note:  this method assumes that the caller has already checked that the given operation is in the operation_set
+  # Note:  this method assumes that the caller has already checked that the given operation is in the set_of_operation_objects
   # for all associations provided.
   def is_privilege_single_policy_class(user_or_attribute, object_or_attribute, associations)
     # does there exist an association (ua, ops, oa), such that user u→+ua, op ∈ ops, and o→*oa?
@@ -374,7 +376,7 @@ class PolicyMachine
   # According to the NIST spec:  "In multiple policy class situations, the triple (u, op, o) is a PM privilege, iff for
   # each policy class pcl that contains o, there exists an association (uai, opsj, oak),
   # such that user u→+uai, op ∈ opsj, o→*oak, and oak→+pcl."
-  # Note:  this method assumes that the caller has already checked that the given operation is in the operation_set
+  # Note:  this method assumes that the caller has already checked that the given operation is in the set_of_operation_objects
   # for all associations provided.
   def is_privilege_multiple_policy_classes(user_or_attribute, object_or_attribute, associations, policy_classes_containing_object)
     policy_classes_containing_object.all? do |pc|

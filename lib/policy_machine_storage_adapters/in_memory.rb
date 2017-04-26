@@ -6,7 +6,7 @@ require 'policy_machine'
 module PolicyMachineStorageAdapter
   class InMemory
 
-    POLICY_ELEMENT_TYPES = %w(user user_attribute object object_attribute operation policy_class)
+    POLICY_ELEMENT_TYPES = %w(user user_attribute object object_attribute operation operation_set policy_class)
 
     def buffering?
       false
@@ -163,7 +163,6 @@ module PolicyMachineStorageAdapter
       policy_elements.delete(element)
     end
 
-    ##
     # Update a persisted policy element
     #
     def update(element, changes_hash)
@@ -179,10 +178,10 @@ module PolicyMachineStorageAdapter
     ##
     # Add the given association to the policy map.  If an association between user_attribute
     # and object_attribute already exists, then replace it with that given in the arguments.
-    def add_association(user_attribute, operation_set, object_attribute, policy_machine_uuid)
+    def add_association(user_attribute, set_of_operation_objects, operation_set, object_attribute, policy_machine_uuid)
       # TODO:  scope by policy machine uuid
-      associations[user_attribute.unique_identifier + object_attribute.unique_identifier] =
-        [user_attribute, operation_set, object_attribute]
+     associations[user_attribute.unique_identifier + object_attribute.unique_identifier] =
+        [user_attribute, set_of_operation_objects, operation_set, object_attribute]
 
       true
     end
@@ -190,13 +189,13 @@ module PolicyMachineStorageAdapter
     ##
     # Return all associations in which the given operation is included
     # Returns an array of arrays.  Each sub-array is of the form
-    # [user_attribute, operation_set, object_attribute]
+    # [user_attribute, set_of_operation_objects, object_attribute]
     def associations_with(operation)
       matching = associations.values.select do |assoc|
         assoc[1].include?(operation)
       end
 
-      matching.map{ |m| [m[0], m[1], m[2]] }
+      matching.map { |m| [m[0], m[1], m[2], m[3]] }
     end
 
     ##

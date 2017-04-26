@@ -235,13 +235,20 @@ module PM
     # Associations are arrays of PM::Attributes.
     def associations
       pm_storage_adapter.associations_with(self.stored_pe).map do |assoc|
-        PM::Association.new(assoc[0], assoc[1], assoc[2], pm_storage_adapter)
+        PM::Association.new(assoc[0], assoc[1], assoc[2], assoc[3], pm_storage_adapter)
       end
     end
 
     protected
     def allowed_assignee_classes
       []
+    end
+  end
+
+  class OperationSet < PolicyElement
+
+    def allowed_assignee_classes
+      [OperationSet, Operation]
     end
   end
 
