@@ -231,12 +231,12 @@ module PolicyMachineStorageAdapter
         #TODO: This should be a bulk upsert too but, among other things, AR doesn't understand nested arrays so deleting where a tuple
         # isn't in a list of tuples seems to require raw SQL
         # NB: operations= is a persistence method
-        associations.each do |assoc, set_of_operation_objects|
+        associations.each do |association, set_of_operation_objects|
           set_of_operation_objects.map! do |operation|
             operation.id ? operation : upsert_buffer[operation.unique_identifier]
           end
 
-          assoc.operations = set_of_operation_objects
+          association.operations = set_of_operation_objects
         end
       end
 
@@ -305,7 +305,7 @@ module PolicyMachineStorageAdapter
         pea_args = {user_attribute_id: user_attribute.id, object_attribute_id: object_attribute.id, operation_set_id: operation_set.id}
         association = new(pea_args)
 
-        import([association], on_duplicate_key_ignore: DUPLICATE_KEY_UPDATE_PARAMS)
+        import([association], on_duplicate_key_update: DUPLICATE_KEY_UPDATE_PARAMS)
 
         association.operations = set_of_operation_objects.to_a
       end
