@@ -1,7 +1,7 @@
 # Changelog
 
 ## 1.5.1
-* Fix a bug in some of the new import code that prevented operation policy element
+* Fix a bug in some of the new import code that prevented operation policy
   element associations from saving correctly when encountering duplicates, also
   apply a new partial unique backing index to the policy element associations table
 
