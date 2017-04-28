@@ -224,17 +224,19 @@ module PolicyMachineStorageAdapter
                                         operation_set_id: operation_set.id),
            set_of_operation_objects]
         end
-        PolicyElementAssociation.import(associations.map(&:first), on_duplicate_key_ignore: true)
+
+        PolicyElementAssociation.import(associations.map(&:first),
+                                        on_duplicate_key_update: PolicyElementAssociation::DUPLICATE_KEY_UPDATE_PARAMS)
 
         #TODO: This should be a bulk upsert too but, among other things, AR doesn't understand nested arrays so deleting where a tuple
         # isn't in a list of tuples seems to require raw SQL
         # NB: operations= is a persistence method
-        associations.each do |model, set_of_operation_objects|
+        associations.each do |association, set_of_operation_objects|
           set_of_operation_objects.map! do |operation|
             operation.id ? operation : upsert_buffer[operation.unique_identifier]
           end
 
-          model.operations = set_of_operation_objects
+          association.operations = set_of_operation_objects
         end
       end
 
@@ -266,6 +268,13 @@ module PolicyMachineStorageAdapter
     end
 
     class PolicyElementAssociation < ::ActiveRecord::Base
+      # The index predicate is effectively the 'where' clause of the partial index on policy element associations
+      DUPLICATE_KEY_UPDATE_PARAMS = { conflict_target: [:user_attribute_id, :object_attribute_id, :operation_set_id],
+                                      index_predicate: 'operation_set_id IS NOT NULL',
+                                      columns: [:user_attribute_id, :object_attribute_id, :operation_set_id]
+                                    }
+
+
       # requires a join table (should be indexed!)
       has_and_belongs_to_many :operations, class_name: "PolicyMachineStorageAdapter::ActiveRecord::Operation", join_table: 'operations_policy_element_associations'
 
@@ -293,13 +302,13 @@ module PolicyMachineStorageAdapter
       end
 
       def self.add_association(user_attribute, set_of_operation_objects, operation_set, object_attribute, policy_machine_uuid)
-        where(
-          user_attribute_id: user_attribute.id,
-          object_attribute_id: object_attribute.id,
-          operation_set_id: operation_set.id
-        ).first_or_create.operations = set_of_operation_objects.to_a
-      end
+        pea_args = {user_attribute_id: user_attribute.id, object_attribute_id: object_attribute.id, operation_set_id: operation_set.id}
+        association = new(pea_args)
 
+        import([association], on_duplicate_key_update: DUPLICATE_KEY_UPDATE_PARAMS)
+
+        association.operations = set_of_operation_objects.to_a
+      end
     end
 
     class OperationsPolicyElementAssociation < ::ActiveRecord::Base
