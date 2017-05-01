@@ -10,12 +10,12 @@ shared_examples "a policy machine storage adapter" do
     describe "#add_#{pe_type}" do
       it 'stores the policy element' do
         src = policy_machine_storage_adapter.send("add_#{pe_type}", 'some_uuid', 'some_policy_machine_uuid')
-        policy_machine_storage_adapter.element_in_machine?(src).should be_true
+        policy_machine_storage_adapter.element_in_machine?(src).should be_truthy
       end
 
       it 'returns the instantiated policy element with persisted attribute set to true' do
         node = policy_machine_storage_adapter.send("add_#{pe_type}", 'some_uuid', 'some_policy_machine_uuid')
-        node.persisted.should be_true
+        node.persisted.should be_truthy
       end
     end
 
@@ -101,16 +101,16 @@ shared_examples "a policy machine storage adapter" do
     context 'source or destination node is of the Node type return by add_' do
       it 'assigns the nodes in one direction (from source to destination)' do
         policy_machine_storage_adapter.assign(@src, @dst)
-        policy_machine_storage_adapter.connected?(@src, @dst).should be_true
+        policy_machine_storage_adapter.connected?(@src, @dst).should be_truthy
       end
 
       it 'does not connect the nodes from destination to source' do
         policy_machine_storage_adapter.assign(@src, @dst)
-        policy_machine_storage_adapter.connected?(@dst, @src).should be_false
+        policy_machine_storage_adapter.connected?(@dst, @src).should be_falsey
       end
 
       it 'returns true' do
-        policy_machine_storage_adapter.assign(@src, @dst).should be_true
+        policy_machine_storage_adapter.assign(@src, @dst).should be_truthy
       end
     end
 
@@ -142,11 +142,11 @@ shared_examples "a policy machine storage adapter" do
 
     context 'source or destination node is of the Node type return by add_node' do
       it 'returns true if source and destination nodes are connected' do
-        policy_machine_storage_adapter.connected?(@src, @dst).should be_true
+        policy_machine_storage_adapter.connected?(@src, @dst).should be_truthy
       end
 
       it 'returns false if source and destination nodes are not connected' do
-        policy_machine_storage_adapter.connected?(@src, @internal2).should be_false
+        policy_machine_storage_adapter.connected?(@src, @internal2).should be_falsey
       end
     end
 
@@ -203,22 +203,22 @@ shared_examples "a policy machine storage adapter" do
     context 'source or destination node is of the Node type return by add_' do
       it 'disconnects source node from destination node' do
         policy_machine_storage_adapter.unassign(@src, @dst)
-        policy_machine_storage_adapter.connected?(@src, @dst).should be_false
+        policy_machine_storage_adapter.connected?(@src, @dst).should be_falsey
       end
 
       it 'does not disconnect destination from source node if there is an assignment in that direction' do
         policy_machine_storage_adapter.assign(@dst, @src)
         policy_machine_storage_adapter.unassign(@src, @dst)
-        policy_machine_storage_adapter.connected?(@dst, @src).should be_true
+        policy_machine_storage_adapter.connected?(@dst, @src).should be_truthy
       end
 
       it 'returns true on successful disconnection' do
-        policy_machine_storage_adapter.unassign(@src, @dst).should be_true
+        policy_machine_storage_adapter.unassign(@src, @dst).should be_truthy
       end
 
       it "returns false on unsuccessful disconnection (if the nodes weren't connected in the first place')" do
         policy_machine_storage_adapter.unassign(@src, @dst)
-        policy_machine_storage_adapter.unassign(@src, @dst).should be_false
+        policy_machine_storage_adapter.unassign(@src, @dst).should be_falsey
       end
     end
 
@@ -239,7 +239,7 @@ shared_examples "a policy machine storage adapter" do
     end
 
     it 'returns true when element is in machine' do
-      policy_machine_storage_adapter.element_in_machine?(@pe).should be_true
+      policy_machine_storage_adapter.element_in_machine?(@pe).should be_truthy
     end
   end
 
@@ -254,7 +254,7 @@ shared_examples "a policy machine storage adapter" do
     end
 
     it 'returns true' do
-      policy_machine_storage_adapter.add_association(@ua, Set.new([@r, @w]), @reader_writer, @oa, 'some_policy_machine_uuid1').should be_true
+      policy_machine_storage_adapter.add_association(@ua, Set.new([@r, @w]), @reader_writer, @oa, 'some_policy_machine_uuid1').should be_truthy
     end
 
     it 'stores the association' do

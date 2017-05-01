@@ -181,9 +181,9 @@ describe 'ActiveRecord' do
               caffeinated.unassign(decaffeinated)
             end
 
-            expect(user.connected?(decaffeinated)).to be true
-            expect(user.connected?(caffeinated)).to be true
-            expect(caffeinated.connected?(decaffeinated)).to be false
+            expect(user.connected?(decaffeinated)).to be_truthy
+            expect(user.connected?(caffeinated)).to be_truthy
+            expect(caffeinated.connected?(decaffeinated)).to be_falsey
           end
 
           it 'deletes preexisting assignments removed' do
@@ -194,8 +194,8 @@ describe 'ActiveRecord' do
               caffeinated.unassign(decaffeinated)
             end
 
-            expect(user.connected?(caffeinated)).to be true
-            expect(caffeinated.connected?(decaffeinated)).to be false
+            expect(user.connected?(caffeinated)).to be_truthy
+            expect(caffeinated.connected?(decaffeinated)).to be_falsey
           end
 
           it 'creates an assignment if the assignment is created, deleted and then recreated' do
@@ -207,8 +207,8 @@ describe 'ActiveRecord' do
               user.assign_to(caffeinated)
             end
 
-            expect(user.connected?(caffeinated)).to be true
-            expect(user.connected?(decaffeinated)).to be false
+            expect(user.connected?(caffeinated)).to be_truthy
+            expect(user.connected?(decaffeinated)).to be_falsey
           end
 
           it 'creates an assigment if a preexisting assignment is deleted and then recreated' do
@@ -220,8 +220,8 @@ describe 'ActiveRecord' do
               user.assign_to(caffeinated)
             end
 
-            expect(user.connected?(caffeinated)).to be true
-            expect(user.connected?(decaffeinated)).to be false
+            expect(user.connected?(caffeinated)).to be_truthy
+            expect(user.connected?(decaffeinated)).to be_falsey
           end
 
         end
@@ -261,10 +261,10 @@ describe 'ActiveRecord' do
               mirror_user.unlink(decaffeinated)
             end
 
-            expect(user.linked?(is_evil)).to be true
-            expect(user.linked?(has_a_goatee)).to be false
-            expect(mirror_user.linked?(caffeinated)).to be true
-            expect(mirror_user.linked?(decaffeinated)).to be false
+            expect(user.linked?(is_evil)).to be_truthy
+            expect(user.linked?(has_a_goatee)).to be_falsey
+            expect(mirror_user.linked?(caffeinated)).to be_truthy
+            expect(mirror_user.linked?(decaffeinated)).to be_falsey
           end
 
           it 'deletes preexisting links removed' do
@@ -279,10 +279,10 @@ describe 'ActiveRecord' do
               mirror_user.unlink(decaffeinated)
             end
 
-            expect(user.linked?(is_evil)).to be true
-            expect(user.linked?(has_a_goatee)).to be false
-            expect(mirror_user.linked?(caffeinated)).to be true
-            expect(mirror_user.linked?(decaffeinated)).to be false
+            expect(user.linked?(is_evil)).to be_truthy
+            expect(user.linked?(has_a_goatee)).to be_falsey
+            expect(mirror_user.linked?(caffeinated)).to be_truthy
+            expect(mirror_user.linked?(decaffeinated)).to be_falsey
           end
 
           it 'creates a link if the link is created, deleted, and then recreated' do
@@ -299,10 +299,10 @@ describe 'ActiveRecord' do
               mirror_user.link_to(decaffeinated)
             end
 
-            expect(user.linked?(has_a_goatee)).to be true
-            expect(user.linked?(is_evil)).to be true
-            expect(mirror_user.linked?(caffeinated)).to be true
-            expect(mirror_user.linked?(decaffeinated)).to be true
+            expect(user.linked?(has_a_goatee)).to be_truthy
+            expect(user.linked?(is_evil)).to be_truthy
+            expect(mirror_user.linked?(caffeinated)).to be_truthy
+            expect(mirror_user.linked?(decaffeinated)).to be_truthy
           end
 
           it 'creates a link if a preexisting assignment is deleted and then recreated' do
@@ -320,10 +320,10 @@ describe 'ActiveRecord' do
               mirror_user.link_to(decaffeinated)
             end
 
-            expect(user.linked?(has_a_goatee)).to be true
-            expect(user.linked?(is_evil)).to be true
-            expect(mirror_user.linked?(caffeinated)).to be true
-            expect(mirror_user.linked?(decaffeinated)).to be true
+            expect(user.linked?(has_a_goatee)).to be_truthy
+            expect(user.linked?(is_evil)).to be_truthy
+            expect(mirror_user.linked?(caffeinated)).to be_truthy
+            expect(mirror_user.linked?(decaffeinated)).to be_truthy
           end
         end
       end
@@ -384,6 +384,8 @@ describe 'ActiveRecord' do
       @pm2_op = @pm2.create_operation('pm2 op')
 
       @user_attributes = (1..n).map { |i| @pm.create_user_attribute("ua#{i}") }
+      @user_attributes.first.update(color: 'red')
+
       @object_attributes = (1..n).map { |i| @pm.create_object_attribute("oa#{i}") }
       @objects = (1..n).map { |i| @pm.create_object("o#{i}") }
       @pm3_user_attribute = @pm3.create_user_attribute('pm3_user_attribute')

@@ -65,7 +65,7 @@ shared_examples "a policy machine" do
           pe0 = policy_machine.send("create_#{allowed_assignment[0]}", SecureRandom.uuid)
           pe1 = policy_machine.send("create_#{allowed_assignment[1]}", SecureRandom.uuid)
 
-          policy_machine.add_assignment(pe0, pe1).should be_true
+          policy_machine.add_assignment(pe0, pe1).should be_truthy
         end
       end
 
@@ -116,11 +116,11 @@ shared_examples "a policy machine" do
 
       it 'removes an existing assignment (returns true)' do
         policy_machine.add_assignment(@pe0, @pe1)
-        policy_machine.remove_assignment(@pe0, @pe1).should be_true
+        policy_machine.remove_assignment(@pe0, @pe1).should be_truthy
       end
 
       it 'does not remove a non-existant assignment (returns false)' do
-        policy_machine.remove_assignment(@pe0, @pe1).should be_false
+        policy_machine.remove_assignment(@pe0, @pe1).should be_falsey
       end
 
       it 'raises when first argument is not a policy element' do
@@ -360,12 +360,12 @@ shared_examples "a policy machine" do
       end
 
       it 'allows an association to be made between an existing user_attribute, operation set and object attribute (returns true)' do
-        policy_machine.add_association(@user_attribute, @set_of_operation_objects, @operation_set, @object_attribute).should be_true
+        policy_machine.add_association(@user_attribute, @set_of_operation_objects, @operation_set, @object_attribute).should be_truthy
       end
 
       it 'handles non-unique operation sets' do
         @set_of_operation_objects << @operation1.dup
-        policy_machine.add_association(@user_attribute, @set_of_operation_objects, @operation_set, @object_attribute).should be_true
+        policy_machine.add_association(@user_attribute, @set_of_operation_objects, @operation_set, @object_attribute).should be_truthy
       end
 
       xit 'overwrites old associations between the same attributes' do
@@ -545,40 +545,40 @@ shared_examples "a policy machine" do
     end
 
     it 'returns true if privilege can be inferred from user, operation and object' do
-      policy_machine.is_privilege?(@u1, @w, @o1).should be_true
+      policy_machine.is_privilege?(@u1, @w, @o1).should be_truthy
     end
 
     it 'returns true if privilege can be inferred from user_attribute, operation and object' do
-      policy_machine.is_privilege?(@group1, @w, @o1).should be_true
+      policy_machine.is_privilege?(@group1, @w, @o1).should be_truthy
     end
 
     it 'returns true if privilege can be inferred from user, operation and object_attribute' do
-      policy_machine.is_privilege?(@u1, @w, @project1).should be_true
+      policy_machine.is_privilege?(@u1, @w, @project1).should be_truthy
     end
 
     it 'returns false if privilege cannot be inferred from arguments' do
-      policy_machine.is_privilege?(@u1, @w, @o2).should be_false
+      policy_machine.is_privilege?(@u1, @w, @o2).should be_falsey
     end
 
     it 'accepts the unique identifier for an operation in place of the operation' do
-      policy_machine.is_privilege?(@u1, @w.unique_identifier, @o1).should be_true
+      policy_machine.is_privilege?(@u1, @w.unique_identifier, @o1).should be_truthy
     end
 
     it 'accepts the unique identifier in symbol form for an operation in place of the operation' do
-      policy_machine.is_privilege?(@u1, @w.unique_identifier.to_sym, @o1).should be_true
+      policy_machine.is_privilege?(@u1, @w.unique_identifier.to_sym, @o1).should be_truthy
     end
 
     it 'returns false on string input when the operation exists but the privilege does not' do
-      policy_machine.is_privilege?(@u1, @w.unique_identifier, @o2).should be_false
+      policy_machine.is_privilege?(@u1, @w.unique_identifier, @o2).should be_falsey
     end
 
     it 'returns false on string input when the operation does not exist' do
-      policy_machine.is_privilege?(@u1, 'non-existent-operation', @o2).should be_false
+      policy_machine.is_privilege?(@u1, 'non-existent-operation', @o2).should be_falsey
     end
 
     it 'does not infer privileges from deleted attributes' do
       @group1.delete
-      policy_machine.is_privilege?(@u1, @w, @o1).should be_false
+      policy_machine.is_privilege?(@u1, @w, @o1).should be_falsey
     end
 
     describe 'options' do
@@ -602,26 +602,26 @@ shared_examples "a policy machine" do
           executer = policy_machine.create_operation_set('executer')
           e = policy_machine.create_operation('execute')
           policy_machine.add_association(@group1, Set.new([e]), executer, @project1)
-          policy_machine.is_privilege?(@u1, @w, @o2, :associations => e.associations).should be_false
+          policy_machine.is_privilege?(@u1, @w, @o2, :associations => e.associations).should be_falsey
         end
 
         it 'accepts associations in options[:associations]' do
-          policy_machine.is_privilege?(@u1, @w, @o1, :associations => @w.associations).should be_true
+          policy_machine.is_privilege?(@u1, @w, @o1, :associations => @w.associations).should be_truthy
         end
 
         it "accepts associations in options['associations']" do
-          policy_machine.is_privilege?(@u1, @w, @o1, 'associations' => @w.associations).should be_true
+          policy_machine.is_privilege?(@u1, @w, @o1, 'associations' => @w.associations).should be_truthy
         end
 
         it 'returns true when given association is part of the granting of a given privilege' do
-          policy_machine.is_privilege?(@u1, @w, @o1, 'associations' => @w.associations).should be_true
+          policy_machine.is_privilege?(@u1, @w, @o1, 'associations' => @w.associations).should be_truthy
         end
 
         it 'returns false when given association is not part of the granting of a given privilege' do
           group2 = policy_machine.create_user_attribute('Group2')
 
           policy_machine.add_association(group2, Set.new([@w]), @writer, @project1)
-          policy_machine.is_privilege?(@u1, @w, @o1, 'associations' => [@w.associations.last]).should be_false
+          policy_machine.is_privilege?(@u1, @w, @o1, 'associations' => [@w.associations.last]).should be_falsey
         end
       end
 
@@ -632,16 +632,16 @@ shared_examples "a policy machine" do
         end
 
         it 'accepts in_user_attribute in options[:in_user_attribute]' do
-          policy_machine.is_privilege?(@u1, @w, @o1, :in_user_attribute => @group1).should be_true
+          policy_machine.is_privilege?(@u1, @w, @o1, :in_user_attribute => @group1).should be_truthy
         end
 
         it "accepts in_user_attribute in options['in_user_attribute']" do
-          policy_machine.is_privilege?(@group1, @w, @o1, 'in_user_attribute' => @group1).should be_true
+          policy_machine.is_privilege?(@group1, @w, @o1, 'in_user_attribute' => @group1).should be_truthy
         end
 
         it 'returns false if given user is not in given in_user_attribute' do
           group2 = policy_machine.create_user_attribute('Group2')
-          policy_machine.is_privilege?(@u1, @w, @o1, 'in_user_attribute' => group2).should be_false
+          policy_machine.is_privilege?(@u1, @w, @o1, 'in_user_attribute' => group2).should be_falsey
         end
       end
 
@@ -652,22 +652,22 @@ shared_examples "a policy machine" do
         end
 
         it 'accepts in_object_attribute in options[:in_object_attribute]' do
-          policy_machine.is_privilege?(@u1, @w, @o1, :in_object_attribute => @project1).should be_true
+          policy_machine.is_privilege?(@u1, @w, @o1, :in_object_attribute => @project1).should be_truthy
         end
 
         it "accepts in_object_attribute in options['in_object_attribute']" do
-          policy_machine.is_privilege?(@u1, @w, @project1, 'in_object_attribute' => @project1).should be_true
+          policy_machine.is_privilege?(@u1, @w, @project1, 'in_object_attribute' => @project1).should be_truthy
         end
 
         it 'returns false if given user is not in given in_object_attribute' do
           project2 = policy_machine.create_object_attribute('Project2')
-          policy_machine.is_privilege?(@u1, @w, @o1, 'in_object_attribute' => project2).should be_false
+          policy_machine.is_privilege?(@u1, @w, @o1, 'in_object_attribute' => project2).should be_falsey
         end
 
         it 'accepts both in_user_attribute and in_object_attribute' do
           project2 = policy_machine.create_object_attribute('Project2')
           policy_machine.is_privilege?(@u1, @w, @o1, 'in_user_attribute' => @group1, 'in_object_attribute' => project2).
-            should be_false
+            should be_falsey
         end
       end
     end
