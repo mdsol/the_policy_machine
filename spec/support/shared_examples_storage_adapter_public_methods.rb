@@ -13,7 +13,7 @@ shared_examples "a policy machine storage adapter with required public methods" 
 
   required_public_methods.each do |req_public_method|
     it "responds to #{req_public_method}" do
-      policy_machine_storage_adapter.should respond_to(req_public_method)
+      expect(policy_machine_storage_adapter).to respond_to(req_public_method)
     end
   end
 

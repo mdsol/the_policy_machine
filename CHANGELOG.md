@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.5.2
+* Upgrade RSpec dependency to version 3.5.0
+
 ## 1.5.1
 * Fix a bug in some of the new import code that prevented operation policy
   element associations from saving correctly when encountering duplicates, also

@@ -31,7 +31,7 @@ describe 'Neography' do
         policy_machine_storage_adapter = PolicyMachineStorageAdapter::Neography.new
         src = policy_machine_storage_adapter.add_user('some_uuid1', 'some_policy_machine_uuid1')
         dst = policy_machine_storage_adapter.add_user_attribute('some_uuid2', 'some_policy_machine_uuid1')
-        policy_machine_storage_adapter.assign(src, dst).should be_false
+        expect(policy_machine_storage_adapter.assign(src, dst)).to be_falsey
       end
     end
   end
