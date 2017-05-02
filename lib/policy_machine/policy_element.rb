@@ -104,7 +104,7 @@ module PM
 
     # Delegates extra attribute reads to stored_pe
     def method_missing(meth, *args)
-      if stored_pe.respond_to?(meth)
+      if args.none? && stored_pe.respond_to?(meth)
         stored_pe.send(meth)
       else
         super
