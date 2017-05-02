@@ -428,6 +428,17 @@ describe 'ActiveRecord' do
           expect(green_descendants.size).to eq 1
           expect(green_descendants).to contain_exactly(@new_ua.stored_pe)
         end
+
+        it 'returns appropriate results when filters apply to no descendants' do
+          expect(@u1.descendants(color: 'taupe')).to be_empty
+          expect { @u1.descendants(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
+        end
+
+        it 'returns appropriate results when filters apply to all descendants' do
+          all_descendants = @user_attributes.map(&:stored_pe) + [@new_ua.stored_pe]
+          expect(@u1.descendants({})).to match_array(all_descendants)
+          expect(@u1.descendants(policy_machine_uuid: @pm.uuid)).to match_array(all_descendants)
+        end
       end
     end
 
@@ -466,6 +477,17 @@ describe 'ActiveRecord' do
           blue_ancestors = @ua1.ancestors(color: 'blue', unique_identifier: 'u3')
           expect(blue_ancestors.size).to eq 1
           expect(blue_ancestors).to contain_exactly(@u3.stored_pe)
+        end
+
+        it 'returns appropriate results when filters apply to no ancestors' do
+          expect(@ua1.ancestors(color: 'taupe')).to be_empty
+          expect { @ua1.ancestors(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
+        end
+
+        it 'returns appropriate results when filters apply to all ancestors' do
+          all_ancestors = [@u1.stored_pe, @u2.stored_pe, @u3.stored_pe]
+          expect(@ua1.ancestors({})).to match_array(all_ancestors)
+          expect(@ua1.ancestors(policy_machine_uuid: @pm.uuid)).to match_array(all_ancestors)
         end
       end
     end
