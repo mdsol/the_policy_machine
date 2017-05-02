@@ -384,7 +384,6 @@ describe 'ActiveRecord' do
       @pm2_op = @pm2.create_operation('pm2 op')
 
       @user_attributes = (1..n).map { |i| @pm.create_user_attribute("ua#{i}") }
-      @user_attributes.first.update(color: 'red')
 
       @object_attributes = (1..n).map { |i| @pm.create_object_attribute("oa#{i}") }
       @objects = (1..n).map { |i| @pm.create_object("o#{i}") }
