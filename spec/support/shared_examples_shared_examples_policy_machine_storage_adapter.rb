@@ -10,29 +10,29 @@ shared_examples "a policy machine storage adapter" do
     describe "#add_#{pe_type}" do
       it 'stores the policy element' do
         src = policy_machine_storage_adapter.send("add_#{pe_type}", 'some_uuid', 'some_policy_machine_uuid')
-        policy_machine_storage_adapter.element_in_machine?(src).should be_truthy
+        expect(policy_machine_storage_adapter.element_in_machine?(src)).to be_truthy
       end
 
       it 'returns the instantiated policy element with persisted attribute set to true' do
         node = policy_machine_storage_adapter.send("add_#{pe_type}", 'some_uuid', 'some_policy_machine_uuid')
-        node.persisted.should be_truthy
+        expect(node.persisted).to be_truthy
       end
     end
 
     describe "find_all_of_type_#{pe_type}" do
       it 'returns empty array if nothing found' do
-        policy_machine_storage_adapter.send("find_all_of_type_#{pe_type}").should == []
+        expect(policy_machine_storage_adapter.send("find_all_of_type_#{pe_type}")).to be_empty
       end
 
       it 'returns array of found policy elements of given type if one is found' do
         node = policy_machine_storage_adapter.send("add_#{pe_type}", 'some_uuid', 'some_policy_machine_uuid')
-        policy_machine_storage_adapter.send("find_all_of_type_#{pe_type}").should == [node]
+        expect(policy_machine_storage_adapter.send("find_all_of_type_#{pe_type}")).to contain_exactly(node)
       end
 
       it 'returns array of found policy elements of given type if more than one is found' do
         node1 = policy_machine_storage_adapter.send("add_#{pe_type}", 'some_uuid1', 'some_policy_machine_uuid')
         node2 = policy_machine_storage_adapter.send("add_#{pe_type}", 'some_uuid2', 'some_policy_machine_uuid')
-        policy_machine_storage_adapter.send("find_all_of_type_#{pe_type}").should match_array([node1, node2])
+        expect(policy_machine_storage_adapter.send("find_all_of_type_#{pe_type}")).to contain_exactly(node1, node2)
       end
 
       context 'inclusions' do
@@ -41,8 +41,7 @@ shared_examples "a policy machine storage adapter" do
           policy_machine_storage_adapter.send("add_#{pe_type}", 'some_uuid2', 'some_policy_machine_uuid', tags: ['up', 'strange'])
         end
 
-        it 'requires an exact match on array attributes' do
-          pending('TODO, Rails unexpectedly does not automatically construct valid SQL here')
+        xit 'requires an exact match on array attributes' do
           expect(policy_machine_storage_adapter.send("find_all_of_type_#{pe_type}", tags: ['down', 'up'])).to be_empty
           expect(policy_machine_storage_adapter.send("find_all_of_type_#{pe_type}", tags: ['up', 'down'])).to be_one
         end
@@ -101,16 +100,16 @@ shared_examples "a policy machine storage adapter" do
     context 'source or destination node is of the Node type return by add_' do
       it 'assigns the nodes in one direction (from source to destination)' do
         policy_machine_storage_adapter.assign(@src, @dst)
-        policy_machine_storage_adapter.connected?(@src, @dst).should be_truthy
+        expect(policy_machine_storage_adapter.connected?(@src, @dst)).to be_truthy
       end
 
       it 'does not connect the nodes from destination to source' do
         policy_machine_storage_adapter.assign(@src, @dst)
-        policy_machine_storage_adapter.connected?(@dst, @src).should be_falsey
+        expect(policy_machine_storage_adapter.connected?(@dst, @src)).to be_falsey
       end
 
       it 'returns true' do
-        policy_machine_storage_adapter.assign(@src, @dst).should be_truthy
+        expect(policy_machine_storage_adapter.assign(@src, @dst)).to be_truthy
       end
     end
 
@@ -142,11 +141,11 @@ shared_examples "a policy machine storage adapter" do
 
     context 'source or destination node is of the Node type return by add_node' do
       it 'returns true if source and destination nodes are connected' do
-        policy_machine_storage_adapter.connected?(@src, @dst).should be_truthy
+        expect(policy_machine_storage_adapter.connected?(@src, @dst)).to be_truthy
       end
 
       it 'returns false if source and destination nodes are not connected' do
-        policy_machine_storage_adapter.connected?(@src, @internal2).should be_falsey
+        expect(policy_machine_storage_adapter.connected?(@src, @internal2)).to be_falsey
       end
     end
 
@@ -203,22 +202,22 @@ shared_examples "a policy machine storage adapter" do
     context 'source or destination node is of the Node type return by add_' do
       it 'disconnects source node from destination node' do
         policy_machine_storage_adapter.unassign(@src, @dst)
-        policy_machine_storage_adapter.connected?(@src, @dst).should be_falsey
+        expect(policy_machine_storage_adapter.connected?(@src, @dst)).to be_falsey
       end
 
       it 'does not disconnect destination from source node if there is an assignment in that direction' do
         policy_machine_storage_adapter.assign(@dst, @src)
         policy_machine_storage_adapter.unassign(@src, @dst)
-        policy_machine_storage_adapter.connected?(@dst, @src).should be_truthy
+        expect(policy_machine_storage_adapter.connected?(@dst, @src)).to be_truthy
       end
 
       it 'returns true on successful disconnection' do
-        policy_machine_storage_adapter.unassign(@src, @dst).should be_truthy
+        expect(policy_machine_storage_adapter.unassign(@src, @dst)).to be_truthy
       end
 
       it "returns false on unsuccessful disconnection (if the nodes weren't connected in the first place')" do
         policy_machine_storage_adapter.unassign(@src, @dst)
-        policy_machine_storage_adapter.unassign(@src, @dst).should be_falsey
+        expect(policy_machine_storage_adapter.unassign(@src, @dst)).to be_falsey
       end
     end
 
@@ -239,7 +238,7 @@ shared_examples "a policy machine storage adapter" do
     end
 
     it 'returns true when element is in machine' do
-      policy_machine_storage_adapter.element_in_machine?(@pe).should be_truthy
+      expect(policy_machine_storage_adapter.element_in_machine?(@pe)).to be_truthy
     end
   end
 
@@ -254,23 +253,23 @@ shared_examples "a policy machine storage adapter" do
     end
 
     it 'returns true' do
-      policy_machine_storage_adapter.add_association(@ua, Set.new([@r, @w]), @reader_writer, @oa, 'some_policy_machine_uuid1').should be_truthy
+      expect(policy_machine_storage_adapter.add_association(@ua, Set.new([@r, @w]), @reader_writer, @oa, 'some_policy_machine_uuid1')).to be_truthy
     end
 
     it 'stores the association' do
       policy_machine_storage_adapter.add_association(@ua, Set.new([@r, @w]), @reader_writer, @oa, 'some_policy_machine_uuid1')
       assocs_with_r = policy_machine_storage_adapter.associations_with(@r)
-      assocs_with_r.size.should eq 1
-      assocs_with_r[0][0].should == @ua
-      assocs_with_r[0][1].to_a.should match_array([@r, @w])
-      assocs_with_r[0][3].should == @oa
+      expect(assocs_with_r.size).to eq 1
+      expect(assocs_with_r[0][0]).to eq @ua
+      expect(assocs_with_r[0][1].to_a).to contain_exactly(@r, @w)
+      expect(assocs_with_r[0][3]).to eq @oa
 
       assocs_with_w = policy_machine_storage_adapter.associations_with(@w)
       assocs_with_w.size == 1
-      assocs_with_w[0][0].should == @ua
-      assocs_with_w[0][1].to_a.should match_array([@r, @w])
-      assocs_with_r[0][2].should == @reader_writer
-      assocs_with_r[0][3].should == @oa
+      expect(assocs_with_w[0][0]).to eq @ua
+      expect(assocs_with_w[0][1].to_a).to contain_exactly(@r, @w)
+      expect(assocs_with_r[0][2]).to eq @reader_writer
+      expect(assocs_with_r[0][3]).to eq @oa
     end
 
     xit 'overwrites a previously stored association' do
@@ -278,11 +277,11 @@ shared_examples "a policy machine storage adapter" do
       policy_machine_storage_adapter.add_association(@ua, Set.new([@r]), @reader, @oa, 'some_policy_machine_uuid1')
       assocs_with_r = policy_machine_storage_adapter.associations_with(@r)
       assocs_with_r.size == 1
-      assocs_with_r[0][0].should == @ua
-      assocs_with_r[0][1].to_a.should == [@r]
-      assocs_with_r[0][2].should == @oa
+      expect(assocs_with_r[0][0]).to eq @ua
+      expect(assocs_with_r[0][1].to_a).to contain_exactly(@r)
+      expect(assocs_with_r[0][2]).to eq @oa
 
-      policy_machine_storage_adapter.associations_with(@w).should == []
+      expect(policy_machine_storage_adapter.associations_with(@w)).to be_empty
     end
   end
 
@@ -299,7 +298,7 @@ shared_examples "a policy machine storage adapter" do
     end
 
     it 'returns empty array when given operation has no associated associations' do
-      policy_machine_storage_adapter.associations_with(@r).should == []
+      expect(policy_machine_storage_adapter.associations_with(@r)).to be_empty
     end
 
     it 'returns structured array when given operation has associated associations' do
@@ -308,14 +307,14 @@ shared_examples "a policy machine storage adapter" do
       assocs_with_w = policy_machine_storage_adapter.associations_with(@w)
 
       assocs_with_w.size == 2
-      assocs_with_w[0][0].should == @ua
-      assocs_with_w[0][1].to_a.should == [@w]
-      assocs_with_w[0][2].should == @writer
-      assocs_with_w[0][3].should == @oa
-      assocs_with_w[1][0].should == @ua2
-      assocs_with_w[1][1].to_a.should match_array([@w, @e])
-      assocs_with_w[1][2].should == @writer_editor
-      assocs_with_w[1][3].should == @oa
+      expect(assocs_with_w[0][0]).to eq @ua
+      expect(assocs_with_w[0][1].to_a).to contain_exactly(@w)
+      expect(assocs_with_w[0][2]).to eq @writer
+      expect(assocs_with_w[0][3]).to eq @oa
+      expect(assocs_with_w[1][0]).to eq @ua2
+      expect(assocs_with_w[1][1].to_a).to contain_exactly(@w, @e)
+      expect(assocs_with_w[1][2]).to eq @writer_editor
+      expect(assocs_with_w[1][3]).to eq @oa
 
     end
 
@@ -330,13 +329,13 @@ shared_examples "a policy machine storage adapter" do
     end
 
     it 'returns empty array if object is in no policy classes' do
-      policy_machine_storage_adapter.policy_classes_for_object_attribute(@oa).should == []
+      expect(policy_machine_storage_adapter.policy_classes_for_object_attribute(@oa)).to be_empty
     end
 
     it 'returns array of policy class(es) if object is in policy class(es)' do
       policy_machine_storage_adapter.assign(@oa, @pc1)
       policy_machine_storage_adapter.assign(@oa, @pc3)
-      policy_machine_storage_adapter.policy_classes_for_object_attribute(@oa).should match_array([@pc1, @pc3])
+      expect(policy_machine_storage_adapter.policy_classes_for_object_attribute(@oa)).to contain_exactly(@pc1, @pc3)
     end
 
     it 'handles non unique associations' do
@@ -354,7 +353,7 @@ shared_examples "a policy machine storage adapter" do
         @pc1 = policy_machine_storage_adapter.add_policy_class('some_pc1', 'some_policy_machine_uuid1')
         policy_machine_storage_adapter.assign(@oa, @pc1)
       end
-      policy_machine_storage_adapter.policy_classes_for_object_attribute(@oa).should == [@pc1]
+      expect(policy_machine_storage_adapter.policy_classes_for_object_attribute(@oa)).to contain_exactly(@pc1)
     end
 
     it 'rolls back the block on error' do
@@ -369,8 +368,8 @@ shared_examples "a policy machine storage adapter" do
           policy_machine_storage_adapter.assign(@oa, :invalid_policy_class)
         end
       end.to raise_error(ArgumentError)
-      policy_machine_storage_adapter.find_all_of_type_policy_class.should == [@pc1]
-      policy_machine_storage_adapter.policy_classes_for_object_attribute(@oa).should == [@pc1]
+      expect(policy_machine_storage_adapter.find_all_of_type_policy_class).to contain_exactly(@pc1)
+      expect(policy_machine_storage_adapter.policy_classes_for_object_attribute(@oa)).to contain_exactly(@pc1)
     end
   end
 

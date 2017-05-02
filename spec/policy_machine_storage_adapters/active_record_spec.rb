@@ -28,27 +28,27 @@ describe 'ActiveRecord' do
     describe 'find_all_of_type' do
 
       it 'warns once when filtering on an extra attribute' do
-        Warn.should_receive(:warn).once
+        expect(Warn).to receive(:warn).once
         2.times do
-          policy_machine_storage_adapter.find_all_of_type_user(foo: 'bar').should be_empty
+          expect(policy_machine_storage_adapter.find_all_of_type_user(foo: 'bar')).to be_empty
         end
       end
 
       context 'an extra attribute column has been added to the database' do
 
         it 'does not warn' do
-          Warn.should_not_receive(:warn)
-          policy_machine_storage_adapter.find_all_of_type_user(color: 'red').should be_empty
+          expect(Warn).to_not receive(:warn)
+          expect(policy_machine_storage_adapter.find_all_of_type_user(color: 'red')).to be_empty
         end
 
         it 'only returns elements that match the hash' do
           policy_machine_storage_adapter.add_object('some_uuid1', 'some_policy_machine_uuid1')
           policy_machine_storage_adapter.add_object('some_uuid2', 'some_policy_machine_uuid1', color: 'red')
           policy_machine_storage_adapter.add_object('some_uuid3', 'some_policy_machine_uuid1', color: 'blue')
-          policy_machine_storage_adapter.find_all_of_type_object(color: 'red').should be_one
-          policy_machine_storage_adapter.find_all_of_type_object(color: nil).should be_one
-          policy_machine_storage_adapter.find_all_of_type_object(color: 'green').should be_none
-          policy_machine_storage_adapter.find_all_of_type_object(color: 'blue').map(&:color).should eql(['blue'])
+          expect(policy_machine_storage_adapter.find_all_of_type_object(color: 'red')).to be_one
+          expect(policy_machine_storage_adapter.find_all_of_type_object(color: nil)).to be_one
+          expect(policy_machine_storage_adapter.find_all_of_type_object(color: 'green')).to be_none
+          expect(policy_machine_storage_adapter.find_all_of_type_object(color: 'blue').map(&:color)).to eq(['blue'])
         end
 
         context 'pagination' do
@@ -58,21 +58,21 @@ describe 'ActiveRecord' do
 
           it 'paginates the results based on page and per_page' do
             results = policy_machine_storage_adapter.find_all_of_type_object(color: 'red', per_page: 2, page: 3)
-            results.first.unique_identifier.should == "uuid_4"
-            results.last.unique_identifier.should == "uuid_5"
+            expect(results.first.unique_identifier).to eq "uuid_4"
+            expect(results.last.unique_identifier).to eq "uuid_5"
           end
 
           # TODO: Investigate why this doesn't fail when not slicing params
           it 'does not paginate if no page or per_page' do
             results = policy_machine_storage_adapter.find_all_of_type_object(color: 'red').sort
-            results.first.unique_identifier.should == "uuid_0"
-            results.last.unique_identifier.should == "uuid_9"
+            expect(results.first.unique_identifier).to eq "uuid_0"
+            expect(results.last.unique_identifier).to eq "uuid_9"
           end
 
           it 'defaults to page 1 if no page' do
             results = policy_machine_storage_adapter.find_all_of_type_object(color: 'red', per_page: 3)
-            results.first.unique_identifier.should == "uuid_0"
-            results.last.unique_identifier.should == "uuid_2"
+            expect(results.first.unique_identifier).to eq "uuid_0"
+            expect(results.last.unique_identifier).to eq "uuid_2"
           end
         end
       end
@@ -341,7 +341,7 @@ describe 'ActiveRecord' do
 
       it 'retrieves the attribute value' do
         @o1.extra_attributes = {foo: 'bar'}
-        @o1.foo.should == 'bar'
+        expect(@o1.foo).to eq 'bar'
       end
 
     end
@@ -363,8 +363,8 @@ describe 'ActiveRecord' do
 
       it 'does not have O(n) database calls' do
         #TODO: Find a way to count all database calls that doesn't conflict with ActiveRecord magic
-        PolicyMachineStorageAdapter::ActiveRecord::Assignment.should_receive(:transitive_closure?).at_most(10).times
-        @pm.is_privilege?(@u1, @op, @objects.first).should be
+        expect(PolicyMachineStorageAdapter::ActiveRecord::Assignment).to receive(:transitive_closure?).at_most(10).times
+        expect(@pm.is_privilege?(@u1, @op, @objects.first)).to be true
       end
     end
   end
