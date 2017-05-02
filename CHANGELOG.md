@@ -2,6 +2,8 @@
 
 ## 1.5.2
 * Upgrade RSpec dependency to version 3.5.0
+* Add optional filtering to descendants and ancestors methods in the ActiveRecord storage
+  adapter.
 
 ## 1.5.1
 * Fix a bug in some of the new import code that prevented operation policy

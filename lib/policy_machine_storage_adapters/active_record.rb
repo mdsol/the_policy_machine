@@ -136,16 +136,16 @@ module PolicyMachineStorageAdapter
         self.class.store_accessor(:extra_attributes, @extra_attributes_hash.keys)
       end
 
-      def descendants
-        Assignment.descendants_of(self)
+      def descendants(filters = {})
+        Assignment.descendants_of(self).where(filters)
       end
 
       def link_descendants
         LogicalLink.descendants_of(self)
       end
 
-      def ancestors
-        Assignment.ancestors_of(self)
+      def ancestors(filters = {})
+        Assignment.ancestors_of(self).where(filters)
       end
 
       def link_ancestors

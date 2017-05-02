@@ -384,7 +384,7 @@ describe 'ActiveRecord' do
       @pm2_op = @pm2.create_operation('pm2 op')
 
       @user_attributes = (1..n).map { |i| @pm.create_user_attribute("ua#{i}") }
-      @user_attributes.first.update(color: 'red')
+      @ua1 = @user_attributes.first
 
       @object_attributes = (1..n).map { |i| @pm.create_object_attribute("oa#{i}") }
       @objects = (1..n).map { |i| @pm.create_object("o#{i}") }
@@ -401,9 +401,33 @@ describe 'ActiveRecord' do
     end
 
     describe '#descendants' do
-      # TODO normalize return value types
-      it 'returns appropriate descendants' do
-        expect(@u1.descendants).to match_array @user_attributes.map(&:stored_pe)
+      context 'no filter is applied' do
+        # TODO normalize return value types
+        it 'returns appropriate descendants' do
+          expect(@u1.descendants).to match_array @user_attributes.map(&:stored_pe)
+        end
+      end
+
+      context 'a filter is applied' do
+        before do
+          @ua1.update(color: 'green')
+
+          @new_ua = @pm.create_user_attribute('new_ua')
+          @new_ua.update(color: 'green')
+          @pm.add_assignment(@u1, @new_ua)
+        end
+
+        it 'applies a single filter if one is supplied' do
+          green_descendants = @u1.descendants(color: 'green')
+          expect(green_descendants.size).to eq 2
+          expect(green_descendants).to contain_exactly(@ua1.stored_pe, @new_ua.stored_pe)
+        end
+
+        it 'applies multiple filters if they are supplied' do
+          green_descendants = @u1.descendants(color: 'green', unique_identifier: 'new_ua')
+          expect(green_descendants.size).to eq 1
+          expect(green_descendants).to contain_exactly(@new_ua.stored_pe)
+        end
       end
     end
 
@@ -415,8 +439,34 @@ describe 'ActiveRecord' do
     end
 
     describe '#ancestors' do
-      it 'returns appropriate ancestors' do
-        expect(@user_attributes.first.ancestors).to match_array [@u1.stored_pe]
+      context 'no filter is applied' do
+        it 'returns appropriate ancestors' do
+          expect(@ua1.ancestors).to contain_exactly(@u1.stored_pe)
+        end
+      end
+
+      context 'a filter is applied' do
+        before do
+          @u2 = @pm.create_user('u2')
+          @u2.update(color: 'blue')
+          @pm.add_assignment(@u2, @ua1)
+
+          @u3 = @pm.create_user('u3')
+          @u3.update(color: 'blue')
+          @pm.add_assignment(@u3, @ua1)
+        end
+
+        it 'applies a single filter if one is supplied' do
+          blue_ancestors = @ua1.ancestors(color: 'blue')
+          expect(blue_ancestors.size).to eq 2
+          expect(blue_ancestors).to contain_exactly(@u2.stored_pe, @u3.stored_pe)
+        end
+
+        it 'applies multiple filters if they are supplied' do
+          blue_ancestors = @ua1.ancestors(color: 'blue', unique_identifier: 'u3')
+          expect(blue_ancestors.size).to eq 1
+          expect(blue_ancestors).to contain_exactly(@u3.stored_pe)
+        end
       end
     end
 

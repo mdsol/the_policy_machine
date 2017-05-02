@@ -665,8 +665,8 @@ shared_examples "a policy machine" do
 
         it 'accepts both in_user_attribute and in_object_attribute' do
           project2 = policy_machine.create_object_attribute('Project2')
-          policy_machine.is_privilege?(@u1, @w, @o1, 'in_user_attribute' => @group1, 'in_object_attribute' => project2).
-            should be_falsey
+          expect(policy_machine.is_privilege?(@u1, @w, @o1, 'in_user_attribute' => @group1, 'in_object_attribute' => project2))
+            .to be_falsey
         end
       end
     end
