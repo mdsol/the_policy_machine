@@ -137,15 +137,13 @@ module PolicyMachineStorageAdapter
       end
 
       def descendants(filters = {})
-        if filters.empty?
-          Assignment.descendants_of(self)
-        else
-          valid_filters = PolicyElement.columns_hash.map { |column| column.first.to_sym }
-          filters.each_key do |key|
+        if filters.present?
+          valid_filters = PolicyElement.column_names
+          filters.stringify_keys.each_key do |key|
             raise(ArgumentError, "#{key} is not a valid filter") unless valid_filters.include?(key)
           end
-          Assignment.descendants_of(self).where(filters)
         end
+        Assignment.descendants_of(self).where(filters)
       end
 
       def link_descendants
@@ -153,15 +151,13 @@ module PolicyMachineStorageAdapter
       end
 
       def ancestors(filters = {})
-        if filters.empty?
-          Assignment.ancestors_of(self)
-        else
-          valid_filters = PolicyElement.columns_hash.map { |column| column.first.to_sym }
-          filters.each_key do |key|
+        if filters.present?
+          valid_filters = PolicyElement.column_names
+          filters.stringify_keys.each_key do |key|
             raise(ArgumentError, "#{key} is not a valid filter") unless valid_filters.include?(key)
           end
-          Assignment.ancestors_of(self).where(filters)
         end
+        Assignment.ancestors_of(self).where(filters)
       end
 
       def link_ancestors
