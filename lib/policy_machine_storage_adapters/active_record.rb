@@ -137,27 +137,17 @@ module PolicyMachineStorageAdapter
       end
 
       def descendants(filters = {})
-        if filters.present?
-          valid_filters = PolicyElement.column_names
-          filters.stringify_keys.each_key do |key|
-            raise(ArgumentError, "#{key} is not a valid filter") unless valid_filters.include?(key)
-          end
-        end
+        assert_valid_filters!(filters)
         Assignment.descendants_of(self).where(filters)
+      end
+
+      def ancestors(filters = {})
+        assert_valid_filters!(filters)
+        Assignment.ancestors_of(self).where(filters)
       end
 
       def link_descendants
         LogicalLink.descendants_of(self)
-      end
-
-      def ancestors(filters = {})
-        if filters.present?
-          valid_filters = PolicyElement.column_names
-          filters.stringify_keys.each_key do |key|
-            raise(ArgumentError, "#{key} is not a valid filter") unless valid_filters.include?(key)
-          end
-        end
-        Assignment.ancestors_of(self).where(filters)
       end
 
       def link_ancestors
@@ -252,6 +242,13 @@ module PolicyMachineStorageAdapter
         end
       end
 
+      private
+
+      def assert_valid_filters!(filters)
+        unless (filters.keys - PolicyElement.column_names.map(&:to_sym)).empty?
+          raise ArgumentError, "Provided argument contains invalid keys, valid keys are #{PolicyElement.column_names}"
+        end
+      end
     end
 
     class User < PolicyElement

@@ -419,13 +419,11 @@ describe 'ActiveRecord' do
 
         it 'applies a single filter if one is supplied' do
           green_descendants = @u1.descendants(color: 'green')
-          expect(green_descendants.size).to eq 2
           expect(green_descendants).to contain_exactly(@ua1.stored_pe, @new_ua.stored_pe)
         end
 
         it 'applies multiple filters if they are supplied' do
           green_descendants = @u1.descendants(color: 'green', unique_identifier: 'new_ua')
-          expect(green_descendants.size).to eq 1
           expect(green_descendants).to contain_exactly(@new_ua.stored_pe)
         end
 
@@ -469,13 +467,11 @@ describe 'ActiveRecord' do
 
         it 'applies a single filter if one is supplied' do
           blue_ancestors = @ua1.ancestors(color: 'blue')
-          expect(blue_ancestors.size).to eq 2
           expect(blue_ancestors).to contain_exactly(@u2.stored_pe, @u3.stored_pe)
         end
 
         it 'applies multiple filters if they are supplied' do
           blue_ancestors = @ua1.ancestors(color: 'blue', unique_identifier: 'u3')
-          expect(blue_ancestors.size).to eq 1
           expect(blue_ancestors).to contain_exactly(@u3.stored_pe)
         end
 
