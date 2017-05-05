@@ -6,40 +6,39 @@ policy_element_types = ::PolicyMachine::POLICY_ELEMENT_TYPES
 shared_examples "a policy machine" do
   describe 'instantiation' do
     it 'has a default name' do
-      PolicyMachine.new.name.length.should_not == 0
+      expect(PolicyMachine.new.name.length).to_not eq 0
     end
 
     it 'can be named' do
       ['name', :name].each do |key|
-        PolicyMachine.new(key => 'my name').name.should == 'my name'
+        expect(PolicyMachine.new(key => 'my name').name).to eq 'my name'
       end
     end
 
     it 'sets the uuid if not specified' do
-      PolicyMachine.new.uuid.length.should_not == 0
+      expect(PolicyMachine.new.uuid.length).to_not eq 0
     end
 
     it 'allows uuid to be specified' do
       ['uuid', :uuid].each do |key|
-        PolicyMachine.new(key => 'my uuid').uuid.should == 'my uuid'
+        expect(PolicyMachine.new(key => 'my uuid').uuid).to eq 'my uuid'
       end
     end
 
     it 'raises when uuid is blank' do
       ['', '   '].each do |blank_value|
-        expect{ PolicyMachine.new(:uuid => blank_value) }
-          .to raise_error(ArgumentError, 'uuid cannot be blank')
+        expect{ PolicyMachine.new(:uuid => blank_value) }.to raise_error(ArgumentError, 'uuid cannot be blank')
       end
     end
 
     it 'defaults to in-memory storage adapter' do
-      PolicyMachine.new.policy_machine_storage_adapter.should be_a(::PolicyMachineStorageAdapter::InMemory)
+      expect(PolicyMachine.new.policy_machine_storage_adapter).to be_a(::PolicyMachineStorageAdapter::InMemory)
     end
 
     it 'allows user to set storage adapter' do
       ['storage_adapter', :storage_adapter].each do |key|
-        PolicyMachine.new(key => ::PolicyMachineStorageAdapter::Neography).policy_machine_storage_adapter.
-          should be_a(::PolicyMachineStorageAdapter::Neography)
+        storage_adapter = PolicyMachine.new(key => ::PolicyMachineStorageAdapter::Neography).policy_machine_storage_adapter
+        expect(storage_adapter).to be_a(::PolicyMachineStorageAdapter::Neography)
       end
     end
   end
@@ -65,7 +64,7 @@ shared_examples "a policy machine" do
           pe0 = policy_machine.send("create_#{allowed_assignment[0]}", SecureRandom.uuid)
           pe1 = policy_machine.send("create_#{allowed_assignment[1]}", SecureRandom.uuid)
 
-          policy_machine.add_assignment(pe0, pe1).should be_true
+          expect(policy_machine.add_assignment(pe0, pe1)).to be_truthy
         end
       end
 
@@ -116,11 +115,11 @@ shared_examples "a policy machine" do
 
       it 'removes an existing assignment (returns true)' do
         policy_machine.add_assignment(@pe0, @pe1)
-        policy_machine.remove_assignment(@pe0, @pe1).should be_true
+        expect(policy_machine.remove_assignment(@pe0, @pe1)).to be_truthy
       end
 
       it 'does not remove a non-existant assignment (returns false)' do
-        policy_machine.remove_assignment(@pe0, @pe1).should be_false
+        expect(policy_machine.remove_assignment(@pe0, @pe1)).to be_falsey
       end
 
       it 'raises when first argument is not a policy element' do
@@ -360,12 +359,12 @@ shared_examples "a policy machine" do
       end
 
       it 'allows an association to be made between an existing user_attribute, operation set and object attribute (returns true)' do
-        policy_machine.add_association(@user_attribute, @set_of_operation_objects, @operation_set, @object_attribute).should be_true
+        expect(policy_machine.add_association(@user_attribute, @set_of_operation_objects, @operation_set, @object_attribute)).to be_truthy
       end
 
       it 'handles non-unique operation sets' do
         @set_of_operation_objects << @operation1.dup
-        policy_machine.add_association(@user_attribute, @set_of_operation_objects, @operation_set, @object_attribute).should be_true
+        expect(policy_machine.add_association(@user_attribute, @set_of_operation_objects, @operation_set, @object_attribute)).to be_truthy
       end
 
       xit 'overwrites old associations between the same attributes' do
@@ -385,14 +384,14 @@ shared_examples "a policy machine" do
     PolicyMachine::POLICY_ELEMENT_TYPES.each do |pe_type|
       it "returns an array of all #{pe_type.to_s.pluralize}" do
         pe = policy_machine.send("create_#{pe_type}", 'some name')
-        policy_machine.send(pe_type.to_s.pluralize).should == [pe]
+        expect(policy_machine.send(pe_type.to_s.pluralize)).to eq([pe])
       end
 
       it "scopes by policy machine when finding an array of #{pe_type.to_s.pluralize}" do
         pe = policy_machine.send("create_#{pe_type}", 'some name')
         other_pm = PolicyMachine.new
         pe_in_other_machine = other_pm.send("create_#{pe_type}", 'some name')
-        policy_machine.send(pe_type.to_s.pluralize).should == [pe]
+        expect(policy_machine.send(pe_type.to_s.pluralize)).to eq([pe])
       end
     end
   end
@@ -430,8 +429,8 @@ shared_examples "a policy machine" do
     describe '#extra_attributes' do
       it 'accepts and persists arbitrary extra attributes' do
         @ua = policy_machine.create_user_attribute('ua1', foo: 'bar')
-        @ua.foo.should == 'bar'
-        policy_machine.user_attributes.last.foo.should == 'bar'
+        expect(@ua.foo).to eq 'bar'
+        expect(policy_machine.user_attributes.last.foo).to eq 'bar'
       end
     end
 
@@ -439,7 +438,7 @@ shared_examples "a policy machine" do
       it 'successfully deletes itself' do
         @ua = policy_machine.create_user_attribute('ua1')
         @ua.delete
-        policy_machine.user_attributes.should_not include(@ua)
+        expect(policy_machine.user_attributes).to_not include(@ua)
       end
     end
   end
@@ -448,39 +447,39 @@ shared_examples "a policy machine" do
     describe '#extra_attributes' do
       it 'accepts and persists arbitrary extra attributes' do
         @u = policy_machine.create_user('u1', foo: 'bar')
-        @u.foo.should == 'bar'
-        policy_machine.users.last.foo.should == 'bar'
+        expect(@u.foo).to eq 'bar'
+        expect(policy_machine.users.last.foo).to eq 'bar'
       end
 
       it 'updates persisted extra attributes' do
         @u = policy_machine.create_user('u1', foo: 'bar')
         @u.update(foo: 'baz')
-        @u.foo.should == 'baz'
-        policy_machine.users.last.foo.should == 'baz'
+        expect(@u.foo).to eq 'baz'
+        expect(policy_machine.users.last.foo).to eq 'baz'
       end
 
       it 'updates persisted extra attributes with new keys' do
         @u = policy_machine.create_user('u1', foo: 'bar')
         @u.update(foo: 'baz', bla: 'bar')
-        @u.foo.should == 'baz'
-        policy_machine.users.last.foo.should == 'baz'
+        expect(@u.foo).to eq 'baz'
+        expect(policy_machine.users.last.foo).to eq 'baz'
       end
 
       it 'does not remove old attributes when adding new ones' do
         @u = policy_machine.create_user('u1', foo: 'bar')
         @u.update(deleted: true)
-        @u.foo.should == 'bar'
-        policy_machine.users.last.foo.should == 'bar'
+        expect(@u.foo).to eq 'bar'
+        expect(policy_machine.users.last.foo).to eq 'bar'
       end
 
       it 'allows searching on any extra attribute keys' do
         policy_machine.create_user('u1', foo: 'bar')
         policy_machine.create_user('u2', foo: nil, attitude: 'sassy')
         silence_warnings do
-          policy_machine.users(foo: 'bar').should be_one
-          policy_machine.users(foo: nil).should be_one
-          policy_machine.users(foo: 'baz').should be_none
-          policy_machine.users(foo: 'bar', attitude: 'sassy').should be_none
+          expect(policy_machine.users(foo: 'bar')).to be_one
+          expect(policy_machine.users(foo: nil)).to be_one
+          expect(policy_machine.users(foo: 'baz')).to be_none
+          expect(policy_machine.users(foo: 'bar', attitude: 'sassy')).to be_none
         end
       end
     end
@@ -545,40 +544,40 @@ shared_examples "a policy machine" do
     end
 
     it 'returns true if privilege can be inferred from user, operation and object' do
-      policy_machine.is_privilege?(@u1, @w, @o1).should be_true
+      expect(policy_machine.is_privilege?(@u1, @w, @o1)).to be_truthy
     end
 
     it 'returns true if privilege can be inferred from user_attribute, operation and object' do
-      policy_machine.is_privilege?(@group1, @w, @o1).should be_true
+      expect(policy_machine.is_privilege?(@group1, @w, @o1)).to be_truthy
     end
 
     it 'returns true if privilege can be inferred from user, operation and object_attribute' do
-      policy_machine.is_privilege?(@u1, @w, @project1).should be_true
+      expect(policy_machine.is_privilege?(@u1, @w, @project1)).to be_truthy
     end
 
     it 'returns false if privilege cannot be inferred from arguments' do
-      policy_machine.is_privilege?(@u1, @w, @o2).should be_false
+      expect(policy_machine.is_privilege?(@u1, @w, @o2)).to be_falsey
     end
 
     it 'accepts the unique identifier for an operation in place of the operation' do
-      policy_machine.is_privilege?(@u1, @w.unique_identifier, @o1).should be_true
+      expect(policy_machine.is_privilege?(@u1, @w.unique_identifier, @o1)).to be_truthy
     end
 
     it 'accepts the unique identifier in symbol form for an operation in place of the operation' do
-      policy_machine.is_privilege?(@u1, @w.unique_identifier.to_sym, @o1).should be_true
+      expect(policy_machine.is_privilege?(@u1, @w.unique_identifier.to_sym, @o1)).to be_truthy
     end
 
     it 'returns false on string input when the operation exists but the privilege does not' do
-      policy_machine.is_privilege?(@u1, @w.unique_identifier, @o2).should be_false
+      expect(policy_machine.is_privilege?(@u1, @w.unique_identifier, @o2)).to be_falsey
     end
 
     it 'returns false on string input when the operation does not exist' do
-      policy_machine.is_privilege?(@u1, 'non-existent-operation', @o2).should be_false
+      expect(policy_machine.is_privilege?(@u1, 'non-existent-operation', @o2)).to be_falsey
     end
 
     it 'does not infer privileges from deleted attributes' do
       @group1.delete
-      policy_machine.is_privilege?(@u1, @w, @o1).should be_false
+      expect(policy_machine.is_privilege?(@u1, @w, @o1)).to be_falsey
     end
 
     describe 'options' do
@@ -602,26 +601,26 @@ shared_examples "a policy machine" do
           executer = policy_machine.create_operation_set('executer')
           e = policy_machine.create_operation('execute')
           policy_machine.add_association(@group1, Set.new([e]), executer, @project1)
-          policy_machine.is_privilege?(@u1, @w, @o2, :associations => e.associations).should be_false
+          expect(policy_machine.is_privilege?(@u1, @w, @o2, :associations => e.associations)).to be_falsey
         end
 
         it 'accepts associations in options[:associations]' do
-          policy_machine.is_privilege?(@u1, @w, @o1, :associations => @w.associations).should be_true
+          expect(policy_machine.is_privilege?(@u1, @w, @o1, :associations => @w.associations)).to be_truthy
         end
 
         it "accepts associations in options['associations']" do
-          policy_machine.is_privilege?(@u1, @w, @o1, 'associations' => @w.associations).should be_true
+          expect(policy_machine.is_privilege?(@u1, @w, @o1, 'associations' => @w.associations)).to be_truthy
         end
 
         it 'returns true when given association is part of the granting of a given privilege' do
-          policy_machine.is_privilege?(@u1, @w, @o1, 'associations' => @w.associations).should be_true
+          expect(policy_machine.is_privilege?(@u1, @w, @o1, 'associations' => @w.associations)).to be_truthy
         end
 
         it 'returns false when given association is not part of the granting of a given privilege' do
           group2 = policy_machine.create_user_attribute('Group2')
 
           policy_machine.add_association(group2, Set.new([@w]), @writer, @project1)
-          policy_machine.is_privilege?(@u1, @w, @o1, 'associations' => [@w.associations.last]).should be_false
+          expect(policy_machine.is_privilege?(@u1, @w, @o1, 'associations' => [@w.associations.last])).to be_falsey
         end
       end
 
@@ -632,16 +631,16 @@ shared_examples "a policy machine" do
         end
 
         it 'accepts in_user_attribute in options[:in_user_attribute]' do
-          policy_machine.is_privilege?(@u1, @w, @o1, :in_user_attribute => @group1).should be_true
+          expect(policy_machine.is_privilege?(@u1, @w, @o1, :in_user_attribute => @group1)).to be_truthy
         end
 
         it "accepts in_user_attribute in options['in_user_attribute']" do
-          policy_machine.is_privilege?(@group1, @w, @o1, 'in_user_attribute' => @group1).should be_true
+          expect(policy_machine.is_privilege?(@group1, @w, @o1, 'in_user_attribute' => @group1)).to be_truthy
         end
 
         it 'returns false if given user is not in given in_user_attribute' do
           group2 = policy_machine.create_user_attribute('Group2')
-          policy_machine.is_privilege?(@u1, @w, @o1, 'in_user_attribute' => group2).should be_false
+          expect(policy_machine.is_privilege?(@u1, @w, @o1, 'in_user_attribute' => group2)).to be_falsey
         end
       end
 
@@ -652,22 +651,22 @@ shared_examples "a policy machine" do
         end
 
         it 'accepts in_object_attribute in options[:in_object_attribute]' do
-          policy_machine.is_privilege?(@u1, @w, @o1, :in_object_attribute => @project1).should be_true
+          expect(policy_machine.is_privilege?(@u1, @w, @o1, :in_object_attribute => @project1)).to be_truthy
         end
 
         it "accepts in_object_attribute in options['in_object_attribute']" do
-          policy_machine.is_privilege?(@u1, @w, @project1, 'in_object_attribute' => @project1).should be_true
+          expect(policy_machine.is_privilege?(@u1, @w, @project1, 'in_object_attribute' => @project1)).to be_truthy
         end
 
         it 'returns false if given user is not in given in_object_attribute' do
           project2 = policy_machine.create_object_attribute('Project2')
-          policy_machine.is_privilege?(@u1, @w, @o1, 'in_object_attribute' => project2).should be_false
+          expect(policy_machine.is_privilege?(@u1, @w, @o1, 'in_object_attribute' => project2)).to be_falsey
         end
 
         it 'accepts both in_user_attribute and in_object_attribute' do
           project2 = policy_machine.create_object_attribute('Project2')
-          policy_machine.is_privilege?(@u1, @w, @o1, 'in_user_attribute' => @group1, 'in_object_attribute' => project2).
-            should be_false
+          expect(policy_machine.is_privilege?(@u1, @w, @o1, 'in_user_attribute' => @group1, 'in_object_attribute' => project2))
+            .to be_falsey
         end
       end
     end
@@ -689,11 +688,11 @@ shared_examples "a policy machine" do
     end
 
     it 'lists the user attributes for a user' do
-      policy_machine.list_user_attributes(@u2).should == [@group2]
+      expect(policy_machine.list_user_attributes(@u2)).to contain_exactly(@group2)
     end
 
     it 'searches multiple hops deep' do
-      policy_machine.list_user_attributes(@u1).should =~ [@group1, @subgroup1a]
+      expect(policy_machine.list_user_attributes(@u1)).to contain_exactly(@group1, @subgroup1a)
     end
 
     it 'raises an argument error when passed anything other than a user' do
@@ -707,7 +706,7 @@ shared_examples "a policy machine" do
       policy_machine.transaction do
         @oa = policy_machine.create_object_attribute('some_oa')
       end
-      policy_machine.object_attributes.should == [@oa]
+      expect(policy_machine.object_attributes).to contain_exactly(@oa)
     end
 
     it 'rolls back the block on error' do
@@ -719,7 +718,7 @@ shared_examples "a policy machine" do
           policy_machine.add_assignment(@oa2, :invalid_policy_class)
         end
       end.to raise_error(ArgumentError)
-      policy_machine.object_attributes.should == [@oa1]
+      expect(policy_machine.object_attributes).to contain_exactly(@oa1)
     end
   end
 
