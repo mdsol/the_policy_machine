@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = "policy_machine"
-  s.version     = "1.4.1"
+  s.version     = "1.5.2"
   s.summary     = "Policy Machine!"
   s.description = "A ruby implementation of the Policy Machine authorization formalism."
   s.authors     = ['Matthew Szenher', 'Aaron Weiner']
@@ -23,7 +23,7 @@ Gem::Specification.new do |s|
     s.add_dependency('pg')
     s.add_dependency('activerecord-hierarchical_query', '~> 0.0')
 
-  s.add_development_dependency('rspec', '~> 2.13.0')
+  s.add_development_dependency('rspec', '~> 3.5.0')
   s.add_development_dependency('simplecov', '~> 0.7.1')
   s.add_development_dependency('pry')
   s.add_development_dependency('pry-nav')

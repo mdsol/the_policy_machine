@@ -136,16 +136,18 @@ module PolicyMachineStorageAdapter
         self.class.store_accessor(:extra_attributes, @extra_attributes_hash.keys)
       end
 
-      def descendants
-        Assignment.descendants_of(self)
+      def descendants(filters = {})
+        assert_valid_filters!(filters)
+        Assignment.descendants_of(self).where(filters)
+      end
+
+      def ancestors(filters = {})
+        assert_valid_filters!(filters)
+        Assignment.ancestors_of(self).where(filters)
       end
 
       def link_descendants
         LogicalLink.descendants_of(self)
-      end
-
-      def ancestors
-        Assignment.ancestors_of(self)
       end
 
       def link_ancestors
@@ -240,6 +242,13 @@ module PolicyMachineStorageAdapter
         end
       end
 
+      private
+
+      def assert_valid_filters!(filters)
+        unless (filters.keys - PolicyElement.column_names.map(&:to_sym)).empty?
+          raise ArgumentError, "Provided argument contains invalid keys, valid keys are #{PolicyElement.column_names}"
+        end
+      end
     end
 
     class User < PolicyElement
