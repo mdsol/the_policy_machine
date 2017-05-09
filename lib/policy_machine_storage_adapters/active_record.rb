@@ -147,12 +147,8 @@ module PolicyMachineStorageAdapter
       end
 
       def parents(filters = {})
-        if filters.present?
-          assert_valid_filters!(filters)
-          super.where(filters)
-        else
-          super
-        end
+        assert_valid_filters!(filters)
+        super.where(filters)
       end
 
       def children(filters = {})
