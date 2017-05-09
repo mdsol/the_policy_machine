@@ -499,8 +499,41 @@ describe 'ActiveRecord' do
     end
 
     describe '#parents' do
-      it 'returns appropriate parents' do
-        expect(@user_attributes.second.parents).to match_array [@user_attributes.first.stored_pe, @u1.stored_pe]
+      context 'no filter is applied' do
+        it 'returns appropriate parents' do
+          expect(@user_attributes.second.parents).to match_array [@user_attributes.first.stored_pe, @u1.stored_pe]
+        end
+      end
+
+      context 'a filter is applied' do
+        before do
+          @u2 = @pm.create_user('u2')
+          @u2.update(color: 'blue')
+          @pm.add_assignment(@u2, @ua1)
+
+          @u3 = @pm.create_user('u3')
+          @u3.update(color: 'blue')
+          @pm.add_assignment(@u3, @ua1)
+        end
+
+        it 'applies a single filter if one is supplied' do
+          expect(@ua1.parents(color: 'blue')).to contain_exactly(@u2.stored_pe, @u3.stored_pe)
+        end
+
+        it 'applies multiple filters if they are supplied' do
+          expect(@ua1.parents(color: 'blue', unique_identifier: 'u3')).to contain_exactly(@u3.stored_pe)
+        end
+
+        it 'returns appropriate results when filters apply to no parents' do
+          expect(@ua1.parents(color: 'taupe')).to be_empty
+          expect { @ua1.parents(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
+        end
+
+        it 'returns appropriate results when filters apply to all parents' do
+          all_parents = [@u1.stored_pe, @u2.stored_pe, @u3.stored_pe]
+          expect(@ua1.parents({})).to match_array(all_parents)
+          expect(@ua1.parents(policy_machine_uuid: @pm.uuid)).to match_array(all_parents)
+        end
       end
     end
 
@@ -511,8 +544,39 @@ describe 'ActiveRecord' do
     end
 
     describe '#children' do
-      it 'returns appropriate children' do
-        expect(@user_attributes.first.children).to match_array [@user_attributes.second.stored_pe]
+      context 'no filter is applied' do
+        it 'returns appropriate children' do
+          expect(@user_attributes.first.children).to match_array [@user_attributes.second.stored_pe]
+        end
+      end
+
+      context 'a filter is applied' do
+        before do
+          @ua1.update(color: 'green')
+
+          @new_ua = @pm.create_user_attribute('new_ua')
+          @new_ua.update(color: 'green')
+          @pm.add_assignment(@u1, @new_ua)
+        end
+
+        it 'applies a single filter if one is supplied' do
+          expect(@u1.children(color: 'green')).to contain_exactly(@ua1.stored_pe, @new_ua.stored_pe)
+        end
+
+        it 'applies multiple filters if they are supplied' do
+          expect(@u1.children(color: 'green', unique_identifier: 'new_ua')).to contain_exactly(@new_ua.stored_pe)
+        end
+
+        it 'returns appropriate results when filters apply to no children' do
+          expect(@u1.children(color: 'taupe')).to be_empty
+          expect { @u1.children(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
+        end
+
+        it 'returns appropriate results when filters apply to all children' do
+          all_children = @user_attributes.map(&:stored_pe) + [@new_ua.stored_pe]
+          expect(@u1.children({})).to match_array(all_children)
+          expect(@u1.children(policy_machine_uuid: @pm.uuid)).to match_array(all_children)
+        end
       end
     end
 

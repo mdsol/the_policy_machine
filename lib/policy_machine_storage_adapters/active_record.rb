@@ -146,6 +146,16 @@ module PolicyMachineStorageAdapter
         Assignment.ancestors_of(self).where(filters)
       end
 
+      def parents(filters = {})
+        assert_valid_filters!(filters)
+        super.where(filters)
+      end
+
+      def children(filters = {})
+        assert_valid_filters!(filters)
+        super.where(filters)
+      end
+
       def link_descendants
         LogicalLink.descendants_of(self)
       end
