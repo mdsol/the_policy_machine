@@ -156,12 +156,12 @@ module PolicyMachineStorageAdapter
         super.where(filters)
       end
 
-      def link_descendants
+      def link_descendants(filters = {})
         assert_valid_filters!(filters)
         LogicalLink.descendants_of(self).where(filters)
       end
 
-      def link_ancestors
+      def link_ancestors(filters = {})
         assert_valid_filters!(filters)
         LogicalLink.ancestors_of(self).where(filters)
       end
