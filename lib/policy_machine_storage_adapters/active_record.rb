@@ -157,11 +157,23 @@ module PolicyMachineStorageAdapter
       end
 
       def link_descendants
-        LogicalLink.descendants_of(self)
+        assert_valid_filters!(filters)
+        LogicalLink.descendants_of(self).where(filters)
       end
 
       def link_ancestors
-        LogicalLink.ancestors_of(self)
+        assert_valid_filters!(filters)
+        LogicalLink.ancestors_of(self).where(filters)
+      end
+
+      def link_parents(filters = {})
+        assert_valid_filters!(filters)
+        super.where(filters)
+      end
+
+      def link_children(filters = {})
+        assert_valid_filters!(filters)
+        super.where(filters)
       end
 
       def self.serialize(store:, name:, serializer: nil)
