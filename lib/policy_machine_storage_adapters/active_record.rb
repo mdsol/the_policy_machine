@@ -105,10 +105,10 @@ module PolicyMachineStorageAdapter
       has_many :filial_ties, class_name: 'Assignment', foreign_key: :child_id
       has_many :link_filial_ties, class_name: 'LogicalLink', foreign_key: :link_child_id
       # these don't actually destroy the relations, just the assignments
-      has_many :children, through: :assignments, dependent: :destroy
-      has_many :parents, through: :filial_ties, dependent: :destroy
-      has_many :link_children, through: :logical_links, dependent: :destroy
-      has_many :link_parents, through: :link_filial_ties, dependent: :destroy
+      has_many :unfiltered_children, through: :assignments, source: :child, dependent: :destroy
+      has_many :unfiltered_parents, through: :filial_ties, source: :parent, dependent: :destroy
+      has_many :unfiltered_link_children, through: :logical_links, source: :link_child, dependent: :destroy
+      has_many :unfiltered_link_parents, through: :link_filial_ties, source: :link_parent, dependent: :destroy
 
       attr_accessor :extra_attributes_hash
 
@@ -148,12 +148,12 @@ module PolicyMachineStorageAdapter
 
       def parents(filters = {})
         assert_valid_filters!(filters)
-        super.where(filters)
+        unfiltered_parents.where(filters)
       end
 
       def children(filters = {})
         assert_valid_filters!(filters)
-        super.where(filters)
+        unfiltered_children.where(filters)
       end
 
       def link_descendants(filters = {})
@@ -168,12 +168,12 @@ module PolicyMachineStorageAdapter
 
       def link_parents(filters = {})
         assert_valid_filters!(filters)
-        super.where(filters)
+        unfiltered_link_parents.where(filters)
       end
 
       def link_children(filters = {})
         assert_valid_filters!(filters)
-        super.where(filters)
+        unfiltered_link_children.where(filters)
       end
 
       def self.serialize(store:, name:, serializer: nil)
