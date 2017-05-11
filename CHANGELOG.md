@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.3
+* Add optional filtering to parents and children attribute accessors in the ActiveRecord storage
+  adapter.
+
 ## 1.5.2
 * Upgrade RSpec dependency to version 3.5.0
 * Add optional filtering to descendants and ancestors methods in the ActiveRecord storage
