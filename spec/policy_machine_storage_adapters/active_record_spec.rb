@@ -411,7 +411,6 @@ describe 'ActiveRecord' do
       context 'a filter is applied' do
         before do
           @ua1.update(color: 'green')
-
           @new_ua = @pm.create_user_attribute('new_ua')
           @new_ua.update(color: 'green')
           @pm.add_assignment(@u1, @new_ua)
@@ -431,19 +430,39 @@ describe 'ActiveRecord' do
           expect(@u1.descendants(color: 'taupe')).to be_empty
           expect { @u1.descendants(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
         end
-
-        it 'returns appropriate results when filters apply to all descendants' do
-          all_descendants = @user_attributes.map(&:stored_pe) + [@new_ua.stored_pe]
-          expect(@u1.descendants({})).to match_array(all_descendants)
-          expect(@u1.descendants(policy_machine_uuid: @pm.uuid)).to match_array(all_descendants)
-        end
       end
     end
 
     describe '#link_descendants' do
-      it 'returns appropriate cross descendants' do
-        desc = [@pm2_u1.stored_pe, @pm2_op.stored_pe, @pm3_user_attribute.stored_pe]
-        expect(@u1.link_descendants).to match_array desc
+      context 'no filter is applied' do
+        it 'returns appropriate cross descendants one level deep' do
+          expect(@pm2_op.link_descendants).to contain_exactly(@pm3_user_attribute.stored_pe)
+        end
+
+        it 'returns appropriate cross descendants multiple levels deep' do
+          desc = [@pm2_u1.stored_pe, @pm2_op.stored_pe, @pm3_user_attribute.stored_pe]
+          expect(@u1.link_descendants).to match_array desc
+        end
+      end
+
+      context 'a filter is applied' do
+        before do
+          @pm2_u1.update(color: 'blue')
+          @pm2_op.update(color: 'blue')
+        end
+
+        it 'applies a single filter if one is supplied' do
+          expect(@u1.link_descendants(color: 'blue')).to contain_exactly(@pm2_u1.stored_pe, @pm2_op.stored_pe)
+        end
+
+        it 'applies multiple filters if they are supplied' do
+          expect(@u1.link_descendants(color: 'blue', unique_identifier: 'pm2 op')).to contain_exactly(@pm2_op.stored_pe)
+        end
+
+        it 'returns appropriate results when filters apply to no link_descendants' do
+          expect(@u1.link_descendants(color: 'taupe')).to be_empty
+          expect { @u1.link_descendants(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
+        end
       end
     end
 
@@ -456,69 +475,178 @@ describe 'ActiveRecord' do
 
       context 'a filter is applied' do
         before do
+          @u1.update(color: 'blue')
           @u2 = @pm.create_user('u2')
           @u2.update(color: 'blue')
           @pm.add_assignment(@u2, @ua1)
-
-          @u3 = @pm.create_user('u3')
-          @u3.update(color: 'blue')
-          @pm.add_assignment(@u3, @ua1)
         end
 
         it 'applies a single filter if one is supplied' do
-          blue_ancestors = @ua1.ancestors(color: 'blue')
-          expect(blue_ancestors).to contain_exactly(@u2.stored_pe, @u3.stored_pe)
+          expect(@ua1.ancestors(color: 'blue')).to contain_exactly(@u1.stored_pe, @u2.stored_pe)
         end
 
         it 'applies multiple filters if they are supplied' do
-          blue_ancestors = @ua1.ancestors(color: 'blue', unique_identifier: 'u3')
-          expect(blue_ancestors).to contain_exactly(@u3.stored_pe)
+          expect(@ua1.ancestors(color: 'blue', unique_identifier: 'u2')).to contain_exactly(@u2.stored_pe)
         end
 
         it 'returns appropriate results when filters apply to no ancestors' do
           expect(@ua1.ancestors(color: 'taupe')).to be_empty
           expect { @ua1.ancestors(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
         end
-
-        it 'returns appropriate results when filters apply to all ancestors' do
-          all_ancestors = [@u1.stored_pe, @u2.stored_pe, @u3.stored_pe]
-          expect(@ua1.ancestors({})).to match_array(all_ancestors)
-          expect(@ua1.ancestors(policy_machine_uuid: @pm.uuid)).to match_array(all_ancestors)
-        end
       end
     end
 
     describe '#link_ancestors' do
-      it 'returns appropriate cross ancestors one level deep' do
-        expect(@pm2_u1.link_ancestors).to match_array [@u1.stored_pe]
+      context 'no filter is applied' do
+        it 'returns appropriate cross ancestors one level deep' do
+          expect(@pm2_u1.link_ancestors).to match_array [@u1.stored_pe]
+        end
+
+        it 'returns appropriate cross ancestors multiple levels deep' do
+          expect(@pm3_user_attribute.link_ancestors).to match_array [@pm2_op.stored_pe, @u1.stored_pe]
+        end
       end
 
-      it 'returns appropriate cross ancestors multiple levels deep' do
-        expect(@pm3_user_attribute.link_ancestors).to match_array [@pm2_op.stored_pe, @u1.stored_pe]
+      context 'a filter is applied' do
+        before do
+          @u1.update(color: 'blue')
+          @pm2_op.update(color: 'blue')
+        end
+
+        it 'applies a single filter if one is supplied' do
+          expect(@pm3_user_attribute.link_ancestors(color: 'blue')).to contain_exactly(@u1.stored_pe, @pm2_op.stored_pe)
+        end
+
+        it 'applies multiple filters if they are supplied' do
+          expect(@pm3_user_attribute.link_ancestors(color: 'blue', unique_identifier: 'pm2 op')).to contain_exactly(@pm2_op.stored_pe)
+        end
+
+        it 'returns appropriate results when filters apply to no link_ancestors' do
+          expect(@pm3_user_attribute.link_ancestors(color: 'taupe')).to be_empty
+          expect { @pm3_user_attribute.link_ancestors(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
+        end
       end
     end
 
     describe '#parents' do
-      it 'returns appropriate parents' do
-        expect(@user_attributes.second.parents).to match_array [@user_attributes.first.stored_pe, @u1.stored_pe]
+      context 'no filter is applied' do
+        it 'returns appropriate parents' do
+          expect(@user_attributes.second.parents).to match_array [@user_attributes.first.stored_pe, @u1.stored_pe]
+        end
       end
-    end
 
-    describe '#link_parents' do
-      it 'returns appropriate parents' do
-        expect(@pm3_user_attribute.link_parents).to match_array [@pm2_op.stored_pe]
+      context 'a filter is applied' do
+        before do
+          @u2 = @pm.create_user('u2')
+          @u3 = @pm.create_user('u3')
+          @u2.update(color: 'blue')
+          @u3.update(color: 'blue')
+          @pm.add_assignment(@u2, @ua1)
+          @pm.add_assignment(@u3, @ua1)
+        end
+
+        it 'applies a single filter if one is supplied' do
+          expect(@ua1.parents(color: 'blue')).to contain_exactly(@u2.stored_pe, @u3.stored_pe)
+        end
+
+        it 'applies multiple filters if they are supplied' do
+          expect(@ua1.parents(color: 'blue', unique_identifier: 'u3')).to contain_exactly(@u3.stored_pe)
+        end
+
+        it 'returns appropriate results when filters apply to no parents' do
+          expect(@ua1.parents(color: 'taupe')).to be_empty
+          expect { @ua1.parents(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
+        end
       end
     end
 
     describe '#children' do
-      it 'returns appropriate children' do
-        expect(@user_attributes.first.children).to match_array [@user_attributes.second.stored_pe]
+      context 'no filter is applied' do
+        it 'returns appropriate children' do
+          expect(@user_attributes.first.children).to match_array [@user_attributes.second.stored_pe]
+        end
+      end
+
+      context 'a filter is applied' do
+        before do
+          @ua1.update(color: 'green')
+          @new_ua = @pm.create_user_attribute('new_ua')
+          @new_ua.update(color: 'green')
+          @pm.add_assignment(@u1, @new_ua)
+        end
+
+        it 'applies a single filter if one is supplied' do
+          expect(@u1.children(color: 'green')).to contain_exactly(@ua1.stored_pe, @new_ua.stored_pe)
+        end
+
+        it 'applies multiple filters if they are supplied' do
+          expect(@u1.children(color: 'green', unique_identifier: 'new_ua')).to contain_exactly(@new_ua.stored_pe)
+        end
+
+        it 'returns appropriate results when filters apply to no children' do
+          expect(@u1.children(color: 'taupe')).to be_empty
+          expect { @u1.children(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
+        end
+      end
+    end
+
+    describe '#link_parents' do
+      context 'no filter is applied' do
+        it 'returns appropriate parents' do
+          expect(@pm3_user_attribute.link_parents).to match_array [@pm2_op.stored_pe]
+        end
+      end
+
+      context 'a filter is applied' do
+        before do
+          @pm2_op.update(color: 'green')
+          @new_op = @pm2.create_operation('new_op')
+          @new_op.update(color: 'green')
+          @pm.add_link(@new_op, @pm3_user_attribute)
+        end
+
+        it 'applies a single filter if one is supplied' do
+          expect(@pm3_user_attribute.link_parents(color: 'green')).to contain_exactly(@pm2_op.stored_pe, @new_op.stored_pe)
+        end
+
+        it 'applies multiple filters if they are supplied' do
+          expect(@pm3_user_attribute.link_parents(color: 'green', unique_identifier: 'new_op')).to contain_exactly(@new_op.stored_pe)
+        end
+
+        it 'returns appropriate results when filters apply to no link_parents' do
+          expect(@pm3_user_attribute.link_parents(color: 'taupe')).to be_empty
+          expect { @pm3_user_attribute.link_parents(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
+        end
       end
     end
 
     describe '#link_children' do
-      it 'returns appropriate children' do
-        expect(@u1.link_children).to match_array [@pm2_u1.stored_pe, @pm2_op.stored_pe]
+      context 'no filter is applied' do
+        it 'returns appropriate children' do
+          expect(@u1.link_children).to match_array [@pm2_u1.stored_pe, @pm2_op.stored_pe]
+        end
+      end
+
+      context 'a filter is applied' do
+        before do
+          @pm2_u1.update(color: 'green')
+          @new_ua = @pm2.create_user_attribute('new_ua')
+          @new_ua.update(color: 'green')
+          @pm.add_link(@u1, @new_ua)
+        end
+
+        it 'applies a single filter if one is supplied' do
+          expect(@u1.link_children(color: 'green')).to contain_exactly(@pm2_u1.stored_pe, @new_ua.stored_pe)
+        end
+
+        it 'applies multiple filters if they are supplied' do
+          expect(@u1.link_children(color: 'green', unique_identifier: 'new_ua')).to contain_exactly(@new_ua.stored_pe)
+        end
+
+        it 'returns appropriate results when filters apply to no link_children' do
+          expect(@u1.link_children(color: 'taupe')).to be_empty
+          expect { @u1.link_children(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
+        end
       end
     end
   end
