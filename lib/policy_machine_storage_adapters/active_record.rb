@@ -282,7 +282,7 @@ module PolicyMachineStorageAdapter
 
         extra_attribute_filters.each do |key, value|
           Warn.once("WARNING: #{self.class} is filtering on #{key} in memory, which won't scale well.")
-          results = results.to_a.select { |pe| pe_matches_extra_attributes?(pe, key, value, true) }
+          results = results.select { |pe| pe_matches_extra_attributes?(pe, key, value, true) }
         end
 
         results
