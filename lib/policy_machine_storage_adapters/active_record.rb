@@ -137,43 +137,51 @@ module PolicyMachineStorageAdapter
       end
 
       def descendants(filters = {})
-        assert_valid_filters!(filters)
-        Assignment.descendants_of(self).where(filters)
+        apply_filters(filters) do |column_filters|
+          Assignment.descendants_of(self).where(column_filters)
+        end
       end
 
       def ancestors(filters = {})
-        assert_valid_filters!(filters)
-        Assignment.ancestors_of(self).where(filters)
+        apply_filters(filters) do |column_filters|
+          Assignment.ancestors_of(self).where(column_filters)
+        end
       end
 
       def parents(filters = {})
-        assert_valid_filters!(filters)
-        unfiltered_parents.where(filters)
+        apply_filters(filters) do |column_filters|
+          unfiltered_parents.where(column_filters)
+        end
       end
 
       def children(filters = {})
-        assert_valid_filters!(filters)
-        unfiltered_children.where(filters)
+        apply_filters(filters) do |column_filters|
+          unfiltered_children.where(column_filters)
+        end
       end
 
       def link_descendants(filters = {})
-        assert_valid_filters!(filters)
-        LogicalLink.descendants_of(self).where(filters)
+        apply_filters(filters) do |column_filters|
+          LogicalLink.descendants_of(self).where(column_filters)
+        end
       end
 
       def link_ancestors(filters = {})
-        assert_valid_filters!(filters)
-        LogicalLink.ancestors_of(self).where(filters)
+        apply_filters(filters) do |column_filters|
+          LogicalLink.ancestors_of(self).where(column_filters)
+        end
       end
 
       def link_parents(filters = {})
-        assert_valid_filters!(filters)
-        unfiltered_link_parents.where(filters)
+        apply_filters(filters) do |column_filters|
+          unfiltered_link_parents.where(column_filters)
+        end
       end
 
       def link_children(filters = {})
-        assert_valid_filters!(filters)
-        unfiltered_link_children.where(filters)
+        apply_filters(filters) do |column_filters|
+          unfiltered_link_children.where(column_filters)
+        end
       end
 
       def self.serialize(store:, name:, serializer: nil)
@@ -266,9 +274,29 @@ module PolicyMachineStorageAdapter
 
       private
 
-      def assert_valid_filters!(filters)
-        unless (filters.keys - PolicyElement.column_names.map(&:to_sym)).empty?
-          raise ArgumentError, "Provided argument contains invalid keys, valid keys are #{PolicyElement.column_names}"
+      def apply_filters(filters, &blk)
+        filters.symbolize_keys!
+        extra_attribute_filters = filters.slice!(*PolicyElement.column_names.map(&:to_sym))
+
+        results = yield(filters)
+
+        extra_attribute_filters.each do |key, value|
+          Warn.once("WARNING: #{self.class} is filtering on #{key} in memory, which won't scale well.")
+          results = results.to_a.select { |pe| pe_matches_extra_attributes?(pe, key, value, true) }
+        end
+
+        results
+      end
+
+      def pe_matches_extra_attributes?(policy_element, key, value, ignore_case)
+        if policy_element.store_attributes
+          attr_value = policy_element.extra_attributes_hash.with_indifferent_access[key]
+
+          if ignore_case && attr_value.is_a?(String) && value.is_a?(String)
+            attr_value.downcase == value.downcase
+          else
+            attr_value == value
+          end
         end
       end
     end

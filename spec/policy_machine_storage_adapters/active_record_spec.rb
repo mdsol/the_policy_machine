@@ -412,7 +412,7 @@ describe 'ActiveRecord' do
         before do
           @ua1.update(color: 'green')
           @new_ua = @pm.create_user_attribute('new_ua')
-          @new_ua.update(color: 'green')
+          @new_ua.update(color: 'green', extra_attributes: { texture: 'rough' })
           @pm.add_assignment(@u1, @new_ua)
         end
 
@@ -426,9 +426,13 @@ describe 'ActiveRecord' do
           expect(green_descendants).to contain_exactly(@new_ua.stored_pe)
         end
 
+        it 'applies extra_attribute filters if they are supplied' do
+          expect(@u1.descendants(texture: 'rough')).to contain_exactly(@new_ua.stored_pe)
+        end
+
         it 'returns appropriate results when filters apply to no descendants' do
           expect(@u1.descendants(color: 'taupe')).to be_empty
-          expect { @u1.descendants(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
+          expect(@u1.descendants(not_a_real_attribute: 'fake')).to be_empty
         end
       end
     end
@@ -448,7 +452,7 @@ describe 'ActiveRecord' do
       context 'a filter is applied' do
         before do
           @pm2_u1.update(color: 'blue')
-          @pm2_op.update(color: 'blue')
+          @pm2_op.update(color: 'blue', extra_attributes: { texture: 'rough' })
         end
 
         it 'applies a single filter if one is supplied' do
@@ -459,9 +463,13 @@ describe 'ActiveRecord' do
           expect(@u1.link_descendants(color: 'blue', unique_identifier: 'pm2 op')).to contain_exactly(@pm2_op.stored_pe)
         end
 
+        it 'applies extra_attribute filters if they are supplied' do
+          expect(@u1.link_descendants(texture: 'rough')).to contain_exactly(@pm2_op.stored_pe)
+        end
+
         it 'returns appropriate results when filters apply to no link_descendants' do
           expect(@u1.link_descendants(color: 'taupe')).to be_empty
-          expect { @u1.link_descendants(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
+          expect(@u1.link_descendants(not_a_real_attribute: 'fake')).to be_empty
         end
       end
     end
@@ -477,7 +485,7 @@ describe 'ActiveRecord' do
         before do
           @u1.update(color: 'blue')
           @u2 = @pm.create_user('u2')
-          @u2.update(color: 'blue')
+          @u2.update(color: 'blue', extra_attributes: { texture: 'rough' })
           @pm.add_assignment(@u2, @ua1)
         end
 
@@ -489,9 +497,13 @@ describe 'ActiveRecord' do
           expect(@ua1.ancestors(color: 'blue', unique_identifier: 'u2')).to contain_exactly(@u2.stored_pe)
         end
 
+        it 'applies extra_attribute filters if they are supplied' do
+          expect(@ua1.ancestors(texture: 'rough')).to contain_exactly(@u2.stored_pe)
+        end
+
         it 'returns appropriate results when filters apply to no ancestors' do
           expect(@ua1.ancestors(color: 'taupe')).to be_empty
-          expect { @ua1.ancestors(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
+          expect(@ua1.ancestors(not_a_real_attribute: 'fake')).to be_empty
         end
       end
     end
@@ -510,7 +522,7 @@ describe 'ActiveRecord' do
       context 'a filter is applied' do
         before do
           @u1.update(color: 'blue')
-          @pm2_op.update(color: 'blue')
+          @pm2_op.update(color: 'blue', extra_attributes: { texture: 'rough' })
         end
 
         it 'applies a single filter if one is supplied' do
@@ -521,9 +533,13 @@ describe 'ActiveRecord' do
           expect(@pm3_user_attribute.link_ancestors(color: 'blue', unique_identifier: 'pm2 op')).to contain_exactly(@pm2_op.stored_pe)
         end
 
+        it 'applies extra_attribute filters if they are supplied' do
+          expect(@pm3_user_attribute.link_ancestors(texture: 'rough')).to contain_exactly(@pm2_op.stored_pe)
+        end
+
         it 'returns appropriate results when filters apply to no link_ancestors' do
           expect(@pm3_user_attribute.link_ancestors(color: 'taupe')).to be_empty
-          expect { @pm3_user_attribute.link_ancestors(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
+          expect(@pm3_user_attribute.link_ancestors(not_a_real_attribute: 'fake')).to be_empty
         end
       end
     end
@@ -540,7 +556,7 @@ describe 'ActiveRecord' do
           @u2 = @pm.create_user('u2')
           @u3 = @pm.create_user('u3')
           @u2.update(color: 'blue')
-          @u3.update(color: 'blue')
+          @u3.update(color: 'blue', extra_attributes: { texture: 'rough' })
           @pm.add_assignment(@u2, @ua1)
           @pm.add_assignment(@u3, @ua1)
         end
@@ -553,9 +569,13 @@ describe 'ActiveRecord' do
           expect(@ua1.parents(color: 'blue', unique_identifier: 'u3')).to contain_exactly(@u3.stored_pe)
         end
 
+        it 'applies extra_attribute filters if they are supplied' do
+          expect(@ua1.parents(texture: 'rough')).to contain_exactly(@u3.stored_pe)
+        end
+
         it 'returns appropriate results when filters apply to no parents' do
           expect(@ua1.parents(color: 'taupe')).to be_empty
-          expect { @ua1.parents(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
+          expect(@ua1.parents(not_a_real_attribute: 'fake')).to be_empty
         end
       end
     end
@@ -571,7 +591,7 @@ describe 'ActiveRecord' do
         before do
           @ua1.update(color: 'green')
           @new_ua = @pm.create_user_attribute('new_ua')
-          @new_ua.update(color: 'green')
+          @new_ua.update(color: 'green', extra_attributes: { texture: 'rough' })
           @pm.add_assignment(@u1, @new_ua)
         end
 
@@ -583,9 +603,13 @@ describe 'ActiveRecord' do
           expect(@u1.children(color: 'green', unique_identifier: 'new_ua')).to contain_exactly(@new_ua.stored_pe)
         end
 
+        it 'applies extra_attribute filters if they are supplied' do
+          expect(@u1.children(texture: 'rough')).to contain_exactly(@new_ua.stored_pe)
+        end
+
         it 'returns appropriate results when filters apply to no children' do
           expect(@u1.children(color: 'taupe')).to be_empty
-          expect { @u1.children(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
+          expect(@u1.children(not_a_real_attribute: 'fake')).to be_empty
         end
       end
     end
@@ -601,7 +625,7 @@ describe 'ActiveRecord' do
         before do
           @pm2_op.update(color: 'green')
           @new_op = @pm2.create_operation('new_op')
-          @new_op.update(color: 'green')
+          @new_op.update(color: 'green', extra_attributes: { texture: 'rough' })
           @pm.add_link(@new_op, @pm3_user_attribute)
         end
 
@@ -613,9 +637,13 @@ describe 'ActiveRecord' do
           expect(@pm3_user_attribute.link_parents(color: 'green', unique_identifier: 'new_op')).to contain_exactly(@new_op.stored_pe)
         end
 
+        it 'applies extra_attribute filters if they are supplied' do
+          expect(@pm3_user_attribute.link_parents(texture: 'rough')).to contain_exactly(@new_op.stored_pe)
+        end
+
         it 'returns appropriate results when filters apply to no link_parents' do
           expect(@pm3_user_attribute.link_parents(color: 'taupe')).to be_empty
-          expect { @pm3_user_attribute.link_parents(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
+          expect(@pm3_user_attribute.link_parents(not_a_real_attribute: 'fake')).to be_empty
         end
       end
     end
@@ -631,7 +659,7 @@ describe 'ActiveRecord' do
         before do
           @pm2_u1.update(color: 'green')
           @new_ua = @pm2.create_user_attribute('new_ua')
-          @new_ua.update(color: 'green')
+          @new_ua.update(color: 'green', extra_attributes: { texture: 'rough' })
           @pm.add_link(@u1, @new_ua)
         end
 
@@ -643,9 +671,13 @@ describe 'ActiveRecord' do
           expect(@u1.link_children(color: 'green', unique_identifier: 'new_ua')).to contain_exactly(@new_ua.stored_pe)
         end
 
+        it 'applies extra_attribute filters if they are supplied' do
+          expect(@u1.link_children(texture: 'rough')).to contain_exactly(@new_ua.stored_pe)
+        end
+
         it 'returns appropriate results when filters apply to no link_children' do
           expect(@u1.link_children(color: 'taupe')).to be_empty
-          expect { @u1.link_children(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
+          expect(@u1.link_children(not_a_real_attribute: 'fake')).to be_empty
         end
       end
     end
