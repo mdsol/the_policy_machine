@@ -1180,7 +1180,7 @@ shared_examples "a policy machine" do
       end
 
       context 'but given config options' do
-        it 'resepects batch size configs while return all results' do
+        it 'respects batch size configs while return all results' do
           enum = policy_machine.batch_find(type: :object, config: { batch_size: 3})
           results = enum.flat_map do |batch|
             expect(batch.size).to eq 3
@@ -1195,7 +1195,6 @@ shared_examples "a policy machine" do
   end
 
   describe 'batch_pluck' do
-
     before do
       @one_fish = policy_machine.create_object('one:fish')
       @two_fish = policy_machine.create_object('two:fish')
@@ -1220,10 +1219,11 @@ shared_examples "a policy machine" do
         end
 
         it 'does not return non-specified attributes' do
-          policy_machine.batch_pluck(type: :object, query: { unique_identifier: 'blue:one' }, fields: [:color]) do |batch|
+          policy_machine.batch_pluck(type: :object, query: { unique_identifier: 'blue:one' }, fields: [:unique_identifier]) do |batch|
             expect(batch.size).to eq 1
-            expect(batch.first[:color]).to eq 'blue'
-            expect(batch.first).not_to have_key(:unique_identifier)
+            expect(batch.first[:unique_identifier]).to eq 'blue:one'
+            expect(batch.first).not_to have_key(:type)
+            expect(batch.first).not_to have_key(:color)
           end
         end
       end
