@@ -344,6 +344,15 @@ describe 'ActiveRecord' do
         expect(@o1.foo).to eq 'bar'
       end
 
+      it 'gives precedence to the column accessor' do
+        @o1.color = 'Color via column'
+        @o1.extra_attributes = { color: 'Color via extra_attributes' }
+        @o1.save
+
+        expect(@o1.color).to eq 'Color via column'
+        expect(policy_machine_storage_adapter.find_all_of_type_object(color: 'Color via column')).to contain_exactly(@o1)
+        expect(policy_machine_storage_adapter.find_all_of_type_object(color: 'Color via extra_attributes')).to be_empty
+      end
     end
 
     context 'when there is a lot of data' do

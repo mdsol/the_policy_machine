@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.5.4
+* Give precedence to column attribute accessors instead of extra_attributes during store_attributes memoization.
+
 ## 1.5.3
 * Add optional filtering to parents and children attribute accessors in the ActiveRecord storage
   adapter.

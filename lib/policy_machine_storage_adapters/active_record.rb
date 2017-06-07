@@ -132,8 +132,10 @@ module PolicyMachineStorageAdapter
 
       # Uses ActiveRecord's store method to methodize new attribute keys in extra_attributes
       def store_attributes
+        # Do not overwrite accessors for existing columns
         @extra_attributes_hash = extra_attributes
-        self.class.store_accessor(:extra_attributes, @extra_attributes_hash.keys)
+        column_attributes = PolicyElement.column_names.map(&:to_sym)
+        self.class.store_accessor(:extra_attributes, @extra_attributes_hash.except(column_attributes).keys)
       end
 
       def descendants(filters = {})
