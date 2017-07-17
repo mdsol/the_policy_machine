@@ -178,6 +178,26 @@ module PolicyMachineStorageAdapter
         unfiltered_link_children.where(filters)
       end
 
+      def pluck_descendants(fields:, filters: {})
+        assert_valid_filters!(filters)
+        Assignment.descendants_of(self).where(filters).pluck(*fields)
+      end
+
+      def pluck_ancestors(fields:, filters: {})
+        assert_valid_filters!(filters)
+        Assignment.ancestors_of(self).where(filters).pluck(*fields)
+      end
+
+      def pluck_parents(fields:, filters: {})
+        assert_valid_filters!(filters)
+        unfiltered_parents.where(filters).pluck(*fields)
+      end
+
+      def pluck_children(fields:, filters: {})
+        assert_valid_filters!(filters)
+        unfiltered_children.where(filters).pluck(*fields)
+      end
+
       def self.serialize(store:, name:, serializer: nil)
         active_record_serialize store, serializer
 

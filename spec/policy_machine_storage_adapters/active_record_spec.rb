@@ -394,6 +394,7 @@ describe 'ActiveRecord' do
 
       @user_attributes = (1..n).map { |i| @pm.create_user_attribute("ua#{i}") }
       @ua1 = @user_attributes.first
+      @ua2 = @user_attributes.second
 
       @object_attributes = (1..n).map { |i| @pm.create_object_attribute("oa#{i}") }
       @objects = (1..n).map { |i| @pm.create_object("o#{i}") }
@@ -655,6 +656,96 @@ describe 'ActiveRecord' do
         it 'returns appropriate results when filters apply to no link_children' do
           expect(@u1.link_children(color: 'taupe')).to be_empty
           expect { @u1.link_children(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
+        end
+      end
+    end
+
+    describe '#pluck policy elements' do
+      before do
+        @u2 = @pm.create_user('u2')
+        @u3 = @pm.create_user('u3')
+        @u2.update(color: 'blue')
+        @u3.update(color: 'blue')
+        @pm.add_assignment(@u2, @ua1)
+        @pm.add_assignment(@u3, @ua1)
+      end
+
+      describe '#pluck_parents' do
+        context 'no filter is applied' do
+          it 'returns a single parent attribute' do
+            expect(@ua1.pluck_parents(fields: [:unique_identifier]))
+              .to contain_exactly(@u1.stored_pe.unique_identifier, @u2.stored_pe.unique_identifier, @u3.stored_pe.unique_identifier)
+          end
+
+          it 'returns multiple attributes' do
+            pluck_array = [
+              [@u1.stored_pe.unique_identifier, @u1.stored_pe.policy_machine_uuid],
+              [@u2.stored_pe.unique_identifier, @u2.stored_pe.policy_machine_uuid],
+              [@u3.stored_pe.unique_identifier, @u3.stored_pe.policy_machine_uuid]
+            ]
+            expect(@ua1.pluck_parents(fields: [:unique_identifier, :policy_machine_uuid])).to match_array(pluck_array)
+          end
+        end
+
+        context 'a filter is applied' do
+          it 'applies a single filter if one is supplied' do
+            expect(@ua1.pluck_parents(fields: [:unique_identifier], filters: { color: 'blue' }))
+              .to contain_exactly(@u2.stored_pe.unique_identifier, @u3.stored_pe.unique_identifier)
+          end
+
+          it 'applies multiple filters if they are supplied' do
+            expect(@ua1.pluck_parents(fields: [:unique_identifier], filters: { color: 'blue', unique_identifier: 'u3' }))
+              .to contain_exactly(@u3.stored_pe.unique_identifier)
+          end
+
+          it 'returns appropriate results when filters apply to no parents' do
+            expect(@ua1.pluck_parents(fields: [:unique_identifier], filters: { color: 'taupe' })).to be_empty
+            expect { @ua1.pluck_parents(fields: [:unique_identifier], filters: { not_a_real_attribute: 'fake' }) }
+              .to raise_error(ArgumentError)
+          end
+        end
+      end
+
+      describe '#pluck_children' do
+        before do
+          @ua1.update(color: 'green')
+          @new_ua = @pm.create_user_attribute('new_ua')
+          @new_ua.update(color: 'green')
+          @pm.add_assignment(@u1, @new_ua)
+        end
+
+        context 'no filter is applied' do
+          it 'returns a single child attribute' do
+            expect(@u1.pluck_children(fields: [:unique_identifier]))
+              .to contain_exactly(@ua1.stored_pe.unique_identifier, @ua2.stored_pe.unique_identifier, @new_ua.stored_pe.unique_identifier)
+          end
+
+          it 'returns multiple attributes' do
+            pluck_array = [
+              [@ua1.stored_pe.unique_identifier, @ua1.stored_pe.policy_machine_uuid],
+              [@ua2.stored_pe.unique_identifier, @ua2.stored_pe.policy_machine_uuid],
+              [@new_ua.stored_pe.unique_identifier, @new_ua.stored_pe.policy_machine_uuid]
+            ]
+            expect(@u1.pluck_children(fields: [:unique_identifier, :policy_machine_uuid])).to match_array(pluck_array)
+          end
+        end
+
+        context 'a filter is applied' do
+          it 'applies a single filter if one is supplied' do
+            expect(@u1.pluck_children(fields: [:unique_identifier], filters: { color: 'green' }))
+              .to contain_exactly(@ua1.stored_pe.unique_identifier, @new_ua.stored_pe.unique_identifier)
+          end
+
+          it 'applies multiple filters if they are supplied' do
+            expect(@u1.pluck_children(fields: [:unique_identifier], filters: { color: 'green', unique_identifier: 'new_ua' }))
+              .to contain_exactly(@new_ua.stored_pe.unique_identifier)
+          end
+
+          it 'returns appropriate results when filters apply to no parents' do
+            expect(@u1.pluck_children(fields: [:unique_identifier], filters: { color: 'taupe' })).to be_empty
+            expect { @u1.pluck_children(fields: [:unique_identifier], filters: { not_a_real_attribute: 'fake' }) }
+              .to raise_error(ArgumentError)
+          end
         end
       end
     end

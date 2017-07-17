@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.6.0
+* Add pluck_parents and pluck_children methods to ActiveRecord storage adapter.
+
 ## 1.5.4
 * Give precedence to column attribute accessors instead of extra_attributes during store_attributes memoization.
 
