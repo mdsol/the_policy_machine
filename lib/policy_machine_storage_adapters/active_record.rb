@@ -178,6 +178,16 @@ module PolicyMachineStorageAdapter
         unfiltered_link_children.where(filters)
       end
 
+      def pluck_parents(fields:, filters: {})
+        assert_valid_filters!(filters)
+        unfiltered_parents.where(filters).pluck(*fields)
+      end
+
+      def pluck_children(fields:, filters: {})
+        assert_valid_filters!(filters)
+        unfiltered_children.where(filters).pluck(*fields)
+      end
+
       def self.serialize(store:, name:, serializer: nil)
         active_record_serialize store, serializer
 
@@ -696,17 +706,27 @@ module PolicyMachineStorageAdapter
     # Returns all objects the user has the given operation on
     # TODO: Support multiple policy classes here
     def accessible_objects(user_or_attribute, operation, options = {})
-      operation = class_for_type('operation').find_by_unique_identifier!(operation.to_s) unless operation.is_a?(class_for_type('operation'))
-      permitting_oas = PolicyElement.where(id: operation.policy_element_associations.where(
-        user_attribute_id: user_or_attribute.descendants | [user_or_attribute],
-      ).select(:object_attribute_id))
+      unless operation.is_a?(class_for_type('operation'))
+        operation = class_for_type('operation').find_by_unique_identifier!(operation.to_s)
+      end
+
+      permitting_oas = PolicyElement.where(
+        id: operation.policy_element_associations.where(
+          user_attribute_id: user_or_attribute.descendants | [user_or_attribute]
+        ).select(:object_attribute_id)
+      )
+
       direct_scope = permitting_oas.where(type: class_for_type('object'))
+      # This is where is gets messy
       indirect_scope = Assignment.ancestors_of(permitting_oas).where(type: class_for_type('object'))
+
       if inclusion = options[:includes]
         direct_scope = Adapter.apply_include_condition(scope: direct_scope, key: options[:key], value: inclusion, klass: class_for_type('object'))
         indirect_scope = Adapter.apply_include_condition(scope: indirect_scope, key: options[:key], value: inclusion, klass: class_for_type('object'))
       end
+
       candidates = direct_scope | indirect_scope
+
       if options[:ignore_prohibitions] || !(prohibition = class_for_type('operation').find_by_unique_identifier("~#{operation.unique_identifier}"))
         candidates
       else
