@@ -710,7 +710,6 @@ module PolicyMachineStorageAdapter
       permitting_oas = PolicyElement.where(id: operation.policy_element_associations.where(
         user_attribute_id: user_or_attribute.descendants | [user_or_attribute],
       ).select(:object_attribute_id))
-
       direct_scope = permitting_oas.where(type: class_for_type('object'))
       indirect_scope = Assignment.ancestors_of(permitting_oas).where(type: class_for_type('object'))
       if inclusion = options[:includes]
