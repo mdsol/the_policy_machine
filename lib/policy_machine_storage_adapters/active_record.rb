@@ -348,6 +348,8 @@ module PolicyMachineStorageAdapter
     end
 
     POLICY_ELEMENT_TYPES = %w(user user_attribute object object_attribute operation operation_set policy_class)
+    POLICY_ELEMENT_UPSERT_CONFIGS =
+      { 'object' => { conflict_target: [:uri, :type], columns: [:extra_attributes, :pdated_at, :json_attributes] } }
 
     POLICY_ELEMENT_TYPES.each do |pe_type|
       ##
@@ -372,7 +374,20 @@ module PolicyMachineStorageAdapter
           extra_attributes: extra_attributes
         }.merge(active_record_attributes)
 
-        self.buffering? ? klass.create_later(element_attrs, self) : klass.create(element_attrs)
+        if self.buffering?
+          klass.create_later(element_attrs, self)
+        elsif POLICY_ELEMENT_UPSERT_CONFIGS[pe_type]
+          import_keys = []
+          import_values = []
+          element_attrs.each do |key, val|
+            import_keys << key.to_sym
+            import_values << val
+          end
+
+          klass.import(import_keys, [import_values], on_duplicate_key_update: POLICY_ELEMENT_UPSERT_CONFIGS[pe_type])
+        else
+          klass.create(element_attrs)
+        end
       end
 
       define_method("find_all_of_type_#{pe_type}") do |options = {}|
