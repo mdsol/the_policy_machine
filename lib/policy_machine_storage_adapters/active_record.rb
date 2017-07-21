@@ -148,9 +148,11 @@ module PolicyMachineStorageAdapter
         Assignment.ancestors_of(self).where(filters)
       end
 
-      def parents(filters = {})
+      def parents(filters = {}, includes = [])
         assert_valid_filters!(filters)
-        unfiltered_parents.where(filters)
+        res = unfiltered_parents.where(filters)
+        res = res.includes(includes) if includes.present?
+        res
       end
 
       def children(filters = {})
