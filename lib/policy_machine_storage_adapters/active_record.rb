@@ -140,12 +140,12 @@ module PolicyMachineStorageAdapter
 
       def descendants(filters = {})
         assert_valid_filters!(filters)
-        Assignment.descendants_of(self).where(filters)
+        Assignment.descendants_of(self.id).where(filters)
       end
 
       def ancestors(filters = {})
         assert_valid_filters!(filters)
-        Assignment.ancestors_of(self).where(filters)
+        Assignment.ancestors_of(self.id).where(filters)
       end
 
       def parents(filters = {})
@@ -701,7 +701,7 @@ module PolicyMachineStorageAdapter
         user_attribute_id: user_or_attribute.descendants | [user_or_attribute],
       ).select(:object_attribute_id))
       direct_scope = permitting_oas.where(type: class_for_type('object'))
-      indirect_scope = Assignment.ancestors_of(permitting_oas).where(type: class_for_type('object'))
+      indirect_scope = Assignment.ancestors_of(permitting_oas.id).where(type: class_for_type('object'))
       if inclusion = options[:includes]
         direct_scope = Adapter.apply_include_condition(scope: direct_scope, key: options[:key], value: inclusion, klass: class_for_type('object'))
         indirect_scope = Adapter.apply_include_condition(scope: indirect_scope, key: options[:key], value: inclusion, klass: class_for_type('object'))
@@ -716,17 +716,24 @@ module PolicyMachineStorageAdapter
 
     private
 
-    def relevant_associations(user_or_attribute, operation, object_or_attribute)
-      if operation.is_a?(class_for_type('operation'))
-        associations_between(user_or_attribute, object_or_attribute).where(id: operation.policy_element_associations)
-      else
-        associations_between(user_or_attribute, object_or_attribute).joins(:operations).where(policy_elements: {unique_identifier: operation})
-      end
+    def is_privilege_single_policy_class(user_or_attribute, operation, object_or_attribute)
+      operation_unique_identifier = operation.is_a?(String) ? operation : operation.unique_identifier
+      privileged?(user_or_attribute, operation_unique_identifier, object_or_attribute)
     end
 
-    def is_privilege_single_policy_class(user_or_attribute, operation, object_or_attribute)
+    def privileged?(user_or_attribute, operation_unique_identifier, object_or_attribute)
       transaction_without_mergejoin do
-        relevant_associations(user_or_attribute, operation, object_or_attribute).exists?
+        associations =
+          PolicyElementAssociation.where(
+            user_attribute_id: user_or_attribute.id,
+            object_attribute_id: object_or_attribute.id
+          )
+
+        Assignment.descendants_of(associations.map(&:operation_set_id))
+          .where(
+            type: 'PolicyMachineStorageAdapter::ActiveRecord::Operation',
+            unique_identifier: operation_unique_identifier
+          ).present?
       end
     end
 
@@ -772,8 +779,8 @@ module PolicyMachineStorageAdapter
 
     def associations_between(user_or_attribute, object_or_attribute)
       class_for_type('policy_element_association').where(
-        object_attribute_id: Assignment.descendants_of(object_or_attribute).pluck(:id) << object_or_attribute.id,
-        user_attribute_id: Assignment.descendants_of(user_or_attribute).pluck(:id) << user_or_attribute.id
+        object_attribute_id: Assignment.descendants_of(object_or_attribute.id).pluck(:id) << object_or_attribute.id,
+        user_attribute_id: Assignment.descendants_of(user_or_attribute.id).pluck(:id) << user_or_attribute.id
       )
     end
 
