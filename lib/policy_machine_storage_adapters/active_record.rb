@@ -663,10 +663,15 @@ module PolicyMachineStorageAdapter
     # Returns true if the user has the operation on the object
     def is_privilege?(user_or_attribute, operation, object_or_attribute)
       policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
+
+      operation_id = operation.is_a?(String) ? operation : operation.unique_identifier
+
       if policy_classes_containing_object.count < 2
-        is_privilege_single_policy_class(user_or_attribute, operation, object_or_attribute)
+        privileged?(user_or_attribute.id, operation_id, object_or_attribute.id)
       else
-        is_privilege_multiple_policy_classes(user_or_attribute, operation, object_or_attribute, policy_classes_containing_object)
+        policy_classes_containing_object.all? do |policy_class|
+          privileged?(user_or_attribute.id, operation_id, policy_class.ancestors)
+        end
       end
     end
 
@@ -716,39 +721,27 @@ module PolicyMachineStorageAdapter
 
     private
 
-    def is_privilege_single_policy_class(user_or_attribute, operation, object_or_attribute)
-      operation_unique_identifier = operation.is_a?(String) ? operation : operation.unique_identifier
-      privileged?(user_or_attribute, operation_unique_identifier, object_or_attribute)
-    end
+    #def is_privilege_single_policy_class(user_or_attribute, operation, object_or_attribute)
+    #  privileged?(user_or_attribute, operation, object_or_attribute)
+    #end
 
-    def privileged?(user_or_attribute, operation_unique_identifier, object_or_attribute)
+    def privileged?(user_or_attribute_id, operation_id, object_or_attribute_id)
       transaction_without_mergejoin do
-        associations =
-          PolicyElementAssociation.where(
-            user_attribute_id: user_or_attribute.id,
-            object_attribute_id: object_or_attribute.id
-          )
-
-        Assignment.descendants_of(associations.map(&:operation_set_id))
-          .where(
-            type: 'PolicyMachineStorageAdapter::ActiveRecord::Operation',
-            unique_identifier: operation_unique_identifier
-          ).present?
+        accessible_operations(user_or_attribute_id, operation_id, object_or_attribute_id).any?
       end
     end
 
-    def is_privilege_multiple_policy_classes(user_or_attribute, operation, object_or_attribute, policy_classes_containing_object)
-      transaction_without_mergejoin do
-        #Outstanding active record sql adapter prevents chaining an additional where using the association.
-        # TODO: fix when active record is fixed
-        policy_classes_containing_object.all? do |pc|
-          if operation.is_a?(class_for_type('operation'))
-            associations_between(user_or_attribute, object_or_attribute).where(id: operation.policy_element_associations.to_a, object_attribute_id: pc.ancestors).any?
-          else
-            associations_between(user_or_attribute, object_or_attribute).joins(:operations).where(policy_elements: {unique_identifier: operation}, object_attribute_id: pc.ancestors).any?
-          end
-        end
-      end
+    def accessible_operations(options)
+      associations =
+        PolicyElementAssociation.where(
+          user_attribute_id: user_or_attribute_id,
+          object_attribute_id: object_or_attribute_id
+        )
+
+      Assignment.descendants_of(associations.map(&:operation_set_id)).where(
+        type: PolicyMachineStorageAdapter::ActiveRecord::Operation.to_s,
+        unique_identifier: operation_id
+      )
     end
 
     # Pass in options to allow forced row ordering by id in results
@@ -775,13 +768,6 @@ module PolicyMachineStorageAdapter
         end
         operations_for_policy_classes.reduce(:&) || []
       end
-    end
-
-    def associations_between(user_or_attribute, object_or_attribute)
-      class_for_type('policy_element_association').where(
-        object_attribute_id: Assignment.descendants_of(object_or_attribute.id).pluck(:id) << object_or_attribute.id,
-        user_attribute_id: Assignment.descendants_of(user_or_attribute.id).pluck(:id) << user_or_attribute.id
-      )
     end
 
     def assert_persisted_policy_element(*arguments)
