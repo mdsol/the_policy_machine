@@ -721,17 +721,13 @@ module PolicyMachineStorageAdapter
 
     private
 
-    #def is_privilege_single_policy_class(user_or_attribute, operation, object_or_attribute)
-    #  privileged?(user_or_attribute, operation, object_or_attribute)
-    #end
-
     def privileged?(user_or_attribute_id, operation_id, object_or_attribute_id)
       transaction_without_mergejoin do
         accessible_operations(user_or_attribute_id, operation_id, object_or_attribute_id).any?
       end
     end
 
-    def accessible_operations(options)
+    def accessible_operations(user_or_attribute_id, operation_id, object_or_attribute_id)
       associations =
         PolicyElementAssociation.where(
           user_attribute_id: user_or_attribute_id,
