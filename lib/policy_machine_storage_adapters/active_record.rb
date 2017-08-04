@@ -667,10 +667,10 @@ module PolicyMachineStorageAdapter
       operation_id = operation.is_a?(String) ? operation : operation.unique_identifier
 
       if policy_classes_containing_object.count < 2
-        privileged?(user_or_attribute.id, operation_id, object_or_attribute.id)
+        accessible_operations(user_or_attribute.id, object_or_attribute.id, operation_id).any?
       else
         policy_classes_containing_object.all? do |policy_class|
-          privileged?(user_or_attribute.id, operation_id, policy_class.ancestors)
+          accessible_operations(user_or_attribute.id, policy_class.ancestors, operation_id).any?
         end
       end
     end
@@ -679,11 +679,17 @@ module PolicyMachineStorageAdapter
     # Returns all operations the user has on the object
     def scoped_privileges(user_or_attribute, object_or_attribute, options = {})
       policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
-      if policy_classes_containing_object.count < 2
-        scoped_privileges_single_policy_class(user_or_attribute, object_or_attribute, options)
-      else
-        scoped_privileges_multiple_policy_classes(user_or_attribute, object_or_attribute, policy_classes_containing_object, options)
-      end
+
+      operations =
+        if policy_classes_containing_object.count < 2
+          accessible_operations(user_or_attribute.id, object_or_attribute.id)
+        else
+          policy_classes_containing_object.flat_map do |policy_class|
+            accessible_operations(user_or_attribute.id, policy_class.ancestors)
+          end
+        end
+
+      options[:order] ? operations.sort : operations
     end
 
     def batch_find(policy_object, query = {}, config = {}, &blk)
@@ -721,48 +727,18 @@ module PolicyMachineStorageAdapter
 
     private
 
-    def privileged?(user_or_attribute_id, operation_id, object_or_attribute_id)
+    def accessible_operations(user_or_attribute_id, object_or_attribute_id, operation_id = nil)
       transaction_without_mergejoin do
-        accessible_operations(user_or_attribute_id, operation_id, object_or_attribute_id).any?
-      end
-    end
+        associations =
+          PolicyElementAssociation.where(
+            user_attribute_id: user_or_attribute_id,
+            object_attribute_id: object_or_attribute_id
+          )
 
-    def accessible_operations(user_or_attribute_id, operation_id, object_or_attribute_id)
-      associations =
-        PolicyElementAssociation.where(
-          user_attribute_id: user_or_attribute_id,
-          object_attribute_id: object_or_attribute_id
-        )
+        prms = { type: PolicyMachineStorageAdapter::ActiveRecord::Operation.to_s }
+        prms.merge!(unique_identifier: operation_id) if operation_id
 
-      Assignment.descendants_of(associations.map(&:operation_set_id)).where(
-        type: PolicyMachineStorageAdapter::ActiveRecord::Operation.to_s,
-        unique_identifier: operation_id
-      )
-    end
-
-    # Pass in options to allow forced row ordering by id in results
-    def scoped_privileges_single_policy_class(user_or_attribute, object_or_attribute, options = {})
-      transaction_without_mergejoin do
-        associations = associations_between(user_or_attribute, object_or_attribute).includes(:operations)
-        operations = associations.flat_map do |assoc|
-          assoc.clear_association_cache
-          assoc.operations
-        end.uniq
-        options[:order] ? operations.sort : operations
-      end
-    end
-
-    def scoped_privileges_multiple_policy_classes(user_or_attribute, object_or_attribute, policy_classes_containing_object, options = {})
-      transaction_without_mergejoin do
-        base_scope = associations_between(user_or_attribute, object_or_attribute)
-        operations_for_policy_classes = policy_classes_containing_object.map do |pc|
-          associations = base_scope.where(object_attribute_id: pc.ancestors).includes(:operations)
-          associations.flat_map do |assoc|
-            assoc.clear_association_cache
-            assoc.operations
-          end.uniq
-        end
-        operations_for_policy_classes.reduce(:&) || []
+        Assignment.descendants_of(associations.map(&:operation_set_id)).where(prms)
       end
     end
 
