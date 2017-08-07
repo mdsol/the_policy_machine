@@ -663,7 +663,6 @@ module PolicyMachineStorageAdapter
     # Returns true if the user has the operation on the object
     def is_privilege?(user_or_attribute, operation, object_or_attribute)
       policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
-
       operation_id = operation.is_a?(String) ? operation : operation.unique_identifier
 
       if policy_classes_containing_object.count < 2
@@ -707,17 +706,32 @@ module PolicyMachineStorageAdapter
     # Returns all objects the user has the given operation on
     # TODO: Support multiple policy classes here
     def accessible_objects(user_or_attribute, operation, options = {})
-      operation = class_for_type('operation').find_by_unique_identifier!(operation.to_s) unless operation.is_a?(class_for_type('operation'))
-      permitting_oas = PolicyElement.where(id: operation.policy_element_associations.where(
-        user_attribute_id: user_or_attribute.descendants | [user_or_attribute],
-      ).select(:object_attribute_id))
+      operation_id = operation.is_a?(String) ? operation : operation.unique_identifier
+
+      user_attributes = user_or_attribute.descendants | [user_or_attribute]
+      user_attribute_associations = PolicyElementAssociation.where(user_attribute_id: user_attributes)
+
+      params =
+        { type: PolicyMachineStorageAdapter::ActiveRecord::Operation.to_s, unique_identifier: operation_id }
+
+      # TODO: Replace this n+1 query
+      filtered_associations =
+        user_attribute_associations.select do |user_attribute_association|
+          Assignment.descendants_of(user_attribute_association.operation_set_id).where(params).present?
+        end
+
+      permitting_oas = PolicyElement.where(id: filtered_associations.map(&:object_attribute_id))
+
       direct_scope = permitting_oas.where(type: class_for_type('object'))
-      indirect_scope = Assignment.ancestors_of(permitting_oas.id).where(type: class_for_type('object'))
+      indirect_scope = Assignment.ancestors_of(permitting_oas.map(&:id)).where(type: class_for_type('object'))
+
       if inclusion = options[:includes]
         direct_scope = Adapter.apply_include_condition(scope: direct_scope, key: options[:key], value: inclusion, klass: class_for_type('object'))
         indirect_scope = Adapter.apply_include_condition(scope: indirect_scope, key: options[:key], value: inclusion, klass: class_for_type('object'))
       end
+
       candidates = direct_scope | indirect_scope
+
       if options[:ignore_prohibitions] || !(prohibition = class_for_type('operation').find_by_unique_identifier("~#{operation.unique_identifier}"))
         candidates
       else
@@ -728,16 +742,16 @@ module PolicyMachineStorageAdapter
     private
 
     def accessible_operations(user_or_attribute_id, object_or_attribute_id, operation_id = nil)
+      associations =
+        PolicyElementAssociation.where(
+          user_attribute_id: user_or_attribute_id,
+          object_attribute_id: object_or_attribute_id
+        )
+
+      prms = { type: PolicyMachineStorageAdapter::ActiveRecord::Operation.to_s }
+      prms.merge!(unique_identifier: operation_id) if operation_id
+
       transaction_without_mergejoin do
-        associations =
-          PolicyElementAssociation.where(
-            user_attribute_id: user_or_attribute_id,
-            object_attribute_id: object_or_attribute_id
-          )
-
-        prms = { type: PolicyMachineStorageAdapter::ActiveRecord::Operation.to_s }
-        prms.merge!(unique_identifier: operation_id) if operation_id
-
         Assignment.descendants_of(associations.map(&:operation_set_id)).where(prms)
       end
     end

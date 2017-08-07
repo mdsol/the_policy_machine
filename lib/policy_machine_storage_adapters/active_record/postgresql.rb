@@ -79,7 +79,6 @@ module PolicyMachineStorageAdapter
           PolicyElement.where('"policy_elements"."id" IN (SELECT logical_links__recursive.link_parent_id FROM (WITH RECURSIVE "logical_links__recursive" AS ( SELECT "logical_links"."id", "logical_links"."link_parent_id", "logical_links"."link_child_id" FROM "logical_links" WHERE "logical_links"."link_child_id" in (?) UNION ALL SELECT "logical_links"."id", "logical_links"."link_parent_id", "logical_links"."link_child_id" FROM "logical_links" INNER JOIN "logical_links__recursive" ON "logical_links__recursive"."link_parent_id" = "logical_links"."link_child_id" ) SELECT "logical_links__recursive".* FROM "logical_links__recursive") AS "logical_links__recursive")', element_or_scope.map(&:id))
         end
       end
-
     end
 
     class Adapter
@@ -92,8 +91,6 @@ module PolicyMachineStorageAdapter
           scope.where("#{key} LIKE '%#{value.to_s.gsub(/([%_])/, '\\\\\0')}%'", )
         end
       end
-
     end
-
   end
 end
