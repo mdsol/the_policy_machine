@@ -747,16 +747,19 @@ module PolicyMachineStorageAdapter
     end
 
     def accessible_operations(user_or_attribute_id, object_or_attribute_id, operation_id = nil)
-      associations =
-        PolicyElementAssociation.where(
-          user_attribute_id: user_or_attribute_id,
-          object_attribute_id: object_or_attribute_id
-        )
-
-      prms = { type: PolicyMachineStorageAdapter::ActiveRecord::Operation.to_s }
-      prms.merge!(unique_identifier: operation_id) if operation_id
-
       transaction_without_mergejoin do
+        user_attribute_ids = Assignment.descendants_of(user_or_attribute_id).pluck(:id) | [user_or_attribute_id]
+        object_attribute_ids = Assignment.descendants_of(object_or_attribute_id).pluck(:id) | [object_or_attribute_id]
+
+        associations =
+          PolicyElementAssociation.where(
+            user_attribute_id: user_attribute_ids,
+            object_attribute_id: object_attribute_ids
+          )
+
+        prms = { type: PolicyMachineStorageAdapter::ActiveRecord::Operation.to_s }
+        prms.merge!(unique_identifier: operation_id) if operation_id
+
         Assignment.descendants_of(associations.map(&:operation_set_id)).where(prms)
       end
     end
