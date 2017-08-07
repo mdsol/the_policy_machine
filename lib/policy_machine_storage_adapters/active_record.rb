@@ -732,7 +732,7 @@ module PolicyMachineStorageAdapter
 
       candidates = direct_scope | indirect_scope
 
-      if options[:ignore_prohibitions] || !(prohibition = class_for_type('operation').find_by_unique_identifier("~#{operation.unique_identifier}"))
+      if options[:ignore_prohibitions] || !prohibition_for(operation_id)
         candidates
       else
         candidates - accessible_objects(user_or_attribute, prohibition, options.merge(ignore_prohibitions: true))
@@ -740,6 +740,11 @@ module PolicyMachineStorageAdapter
     end
 
     private
+
+    def prohibition_for(operation)
+      operation_id = operation.is_a?(String) ? operation : operation.unique_identifier
+      PolicyMachineStorageAdapter::ActiveRecord::Operation.find_by_unique_identifier("~#{operation_id}")
+    end
 
     def accessible_operations(user_or_attribute_id, object_or_attribute_id, operation_id = nil)
       associations =
