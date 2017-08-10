@@ -245,24 +245,31 @@ module PolicyMachineStorageAdapter
 
       def self.bulk_associate(associations, upsert_buffer)
         associations.map! do |user_attribute, set_of_operation_objects, operation_set, object_attribute, policy_machine_uuid|
-          [PolicyElementAssociation.new(user_attribute_id: user_attribute.id,
-                                        object_attribute_id: object_attribute.id,
-                                        operation_set_id: operation_set.id),
-           set_of_operation_objects]
+          association =
+            PolicyElementAssociation.new(
+              user_attribute_id: user_attribute.id,
+              object_attribute_id: object_attribute.id,
+              operation_set_id: operation_set.id)
+          [association, set_of_operation_objects, operation_set]
         end
 
         PolicyElementAssociation.import(associations.map(&:first),
                                         on_duplicate_key_update: PolicyElementAssociation::DUPLICATE_KEY_UPDATE_PARAMS)
 
+        # Use bulk assign for set_of_operation_objects, operation_set
         #TODO: This should be a bulk upsert too but, among other things, AR doesn't understand nested arrays so deleting where a tuple
         # isn't in a list of tuples seems to require raw SQL
         # NB: operations= is a persistence method
-        associations.each do |association, set_of_operation_objects|
+        associations.each do |association, set_of_operation_objects, operation_set|
           set_of_operation_objects.map! do |operation|
             operation.id ? operation : upsert_buffer[operation.unique_identifier]
           end
 
           association.operations = set_of_operation_objects
+
+          # TODO: Remove the above writing to the OperationsPolicyElementAssociations table
+          id_pairs = set_of_operation_objects.map { |operation| [operation_set.id, operation.id] }
+          Assignment.import([:parent_id, :child_id], id_pairs, on_duplicate_key_ignore: true)
         end
       end
 
@@ -341,6 +348,10 @@ module PolicyMachineStorageAdapter
         import([association], on_duplicate_key_update: DUPLICATE_KEY_UPDATE_PARAMS)
 
         association.operations = set_of_operation_objects.to_a
+
+        # TODO: Remove the above writing to the OperationsPolicyElementAssociations table
+        id_pairs = set_of_operation_objects.map { |operation| [operation_set.id, operation.id] }
+        Assignment.import([:parent_id, :child_id], id_pairs, on_duplicate_key_ignore: true)
       end
     end
 
@@ -663,7 +674,7 @@ module PolicyMachineStorageAdapter
     # Returns true if the user has the operation on the object
     def is_privilege?(user_or_attribute, operation, object_or_attribute)
       policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
-      operation_id = operation.is_a?(String) ? operation : operation.unique_identifier
+      operation_id = operation.try(:unique_identifier) || operation.to_s
 
       if policy_classes_containing_object.count < 2
         accessible_operations(user_or_attribute.id, object_or_attribute.id, operation_id).any?
@@ -706,7 +717,7 @@ module PolicyMachineStorageAdapter
     # Returns all objects the user has the given operation on
     # TODO: Support multiple policy classes here
     def accessible_objects(user_or_attribute, operation, options = {})
-      operation_id = operation.is_a?(String) ? operation : operation.unique_identifier
+      operation_id = operation.try(:unique_identifier) || operation.to_s
 
       user_attributes = user_or_attribute.descendants | [user_or_attribute]
       user_attribute_associations = PolicyElementAssociation.where(user_attribute_id: user_attributes)
@@ -732,7 +743,7 @@ module PolicyMachineStorageAdapter
 
       candidates = direct_scope | indirect_scope
 
-      if options[:ignore_prohibitions] || !prohibition_for(operation_id)
+      if options[:ignore_prohibitions] || !(prohibition = prohibition_for(operation_id))
         candidates
       else
         candidates - accessible_objects(user_or_attribute, prohibition, options.merge(ignore_prohibitions: true))
@@ -742,7 +753,7 @@ module PolicyMachineStorageAdapter
     private
 
     def prohibition_for(operation)
-      operation_id = operation.is_a?(String) ? operation : operation.unique_identifier
+      operation_id = operation.try(:unique_identifier) || operation.to_s
       PolicyMachineStorageAdapter::ActiveRecord::Operation.find_by_unique_identifier("~#{operation_id}")
     end
 
