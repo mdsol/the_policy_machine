@@ -330,49 +330,47 @@ shared_examples "a policy machine" do
         @operation_set = policy_machine.create_operation_set('reader_writer')
         @operation1 = policy_machine.create_operation('read')
         @operation2 = policy_machine.create_operation('write')
-        @set_of_operation_objects = Set.new [@operation1, @operation2]
         @user_attribute = policy_machine.create_user_attribute('UA name')
+        policy_machine.add_assignment(@operation_set, @operation1)
+        policy_machine.add_assignment(@operation_set, @operation2)
       end
 
       it 'raises when first argument is not a PolicyElement' do
-        expect{ policy_machine.add_association("234", @set_of_operation_objects, @operation_set, @object_attribute) }
+        expect{ policy_machine.add_association("234", @operation_set, @object_attribute) }
           .to raise_error(ArgumentError, "arg must each be a kind of PolicyElement; got String instead")
       end
 
       it 'raises when first argument is not in policy machine' do
         pm2 = PolicyMachine.new
         ua = pm2.create_user_attribute(SecureRandom.uuid)
-        expect{ policy_machine.add_association(ua, @set_of_operation_objects, @operation_set, @object_attribute) }
+        expect{ policy_machine.add_association(ua, @operation_set, @object_attribute) }
           .to raise_error(ArgumentError, "#{ua.unique_identifier} is not in policy machine with uuid #{policy_machine.uuid}")
       end
 
-      it 'raises when third argument is not a PolicyElement' do
-        expect{ policy_machine.add_association(@user_attribute, @set_of_operation_objects, @operation_set, 3) }
+      it 'raises when the second argument is not a PolicyElement' do
+        expect{ policy_machine.add_association(@user_attribute, @operation_set, 3) }
           .to raise_error(ArgumentError, "arg must each be a kind of PolicyElement; got #{SmallNumber} instead")
       end
 
-      it 'raises when third argument is not in policy machine' do
+      it 'raises when the second argument is not in policy machine' do
         pm2 = PolicyMachine.new
         oa = pm2.create_object_attribute(SecureRandom.uuid)
-        expect{ policy_machine.add_association(@user_attribute, @set_of_operation_objects, @operation_set, oa) }
+        expect{ policy_machine.add_association(@user_attribute, @operation_set, oa) }
           .to raise_error(ArgumentError, "#{oa.unique_identifier} is not in policy machine with uuid #{policy_machine.uuid}")
       end
 
       it 'allows an association to be made between an existing user_attribute, operation set and object attribute (returns true)' do
-        expect(policy_machine.add_association(@user_attribute, @set_of_operation_objects, @operation_set, @object_attribute)).to be_truthy
-      end
-
-      it 'handles non-unique operation sets' do
-        @set_of_operation_objects << @operation1.dup
-        expect(policy_machine.add_association(@user_attribute, @set_of_operation_objects, @operation_set, @object_attribute)).to be_truthy
+        expect(policy_machine.add_association(@user_attribute, @operation_set, @object_attribute)).to be_truthy
       end
 
       xit 'overwrites old associations between the same attributes' do
         first_op_set = policy_machine.create_operation_set('first_op_set')
         second_op_set = policy_machine.create_operation_set('second_op_set')
-        policy_machine.add_association(@user_attribute, Set.new([@operation1]), first_op_set, @object_attribute)
+        policy_machine.add_assignment(second_op_set, @operation1)
+        policy_machine.add_assignment(second_op_set, @operation2)
+        policy_machine.add_association(@user_attribute, first_op_set, @object_attribute)
 
-        expect{policy_machine.add_association(@user_attribute, Set.new([@operation2]), second_op_set, @object_attribute)}
+        expect{ policy_machine.add_association(@user_attribute, second_op_set, @object_attribute) }
           .to change{ policy_machine.scoped_privileges(@user_attribute, @object_attribute) }
           .from( [[@user_attribute, @operation1, @object_attribute]] )
           .to(   [[@user_attribute, @operation2, @object_attribute]] )
@@ -499,9 +497,10 @@ shared_examples "a policy machine" do
       # Assignments
       policy_machine.add_assignment(@u1, @group1)
       policy_machine.add_assignment(@o1, @project1)
+      policy_machine.add_assignment(@writer, @w)
 
       # Associations
-      policy_machine.add_association(@group1, Set.new([@w]), @writer, @project1)
+      policy_machine.add_association(@group1, @writer, @project1)
 
       # Cross Assignments included to show that privilege derivations are unaffected
       pm2 = PolicyMachine.new(name: 'Another PM', storage_adapter: policy_machine.policy_machine_storage_adapter.class)
@@ -600,7 +599,8 @@ shared_examples "a policy machine" do
         it 'raises if no element of options[:associations] contains the given operation' do
           executer = policy_machine.create_operation_set('executer')
           e = policy_machine.create_operation('execute')
-          policy_machine.add_association(@group1, Set.new([e]), executer, @project1)
+          policy_machine.add_assignment(executer, e)
+          policy_machine.add_association(@group1, executer, @project1)
           expect(policy_machine.is_privilege?(@u1, @w, @o2, :associations => e.associations)).to be_falsey
         end
 
@@ -618,8 +618,8 @@ shared_examples "a policy machine" do
 
         it 'returns false when given association is not part of the granting of a given privilege' do
           group2 = policy_machine.create_user_attribute('Group2')
-
-          policy_machine.add_association(group2, Set.new([@w]), @writer, @project1)
+          policy_machine.add_assignment(@writer, @w)
+          policy_machine.add_association(group2, @writer, @project1)
           expect(policy_machine.is_privilege?(@u1, @w, @o1, 'associations' => [@w.associations.last])).to be_falsey
         end
       end
@@ -806,6 +806,11 @@ shared_examples "a policy machine" do
             policy_machine.add_assignment(@preexisting_project, @preexisting_policy_class)
             policy_machine.add_assignment(@preexisting_group, @preexisting_policy_class)
 
+            # Assignments for operation sets
+            policy_machine.add_assignment(@editor, @e)
+            policy_machine.add_assignment(@writer, @w)
+            policy_machine.add_assignment(@editor, @r)
+
             # Updates of preexisting elements
             @o4.update(foo: 'bar', color: 'purple')
             @u4.update(foo: 'bar', color: 'purple')
@@ -813,12 +818,12 @@ shared_examples "a policy machine" do
             @preexisting_project.update(foo: 'bar', color: 'purple')
 
             #Associations for preexisting objects
-            policy_machine.add_association(@preexisting_group, Set.new([@e]), @editor, @preexisting_project)
+            policy_machine.add_association(@preexisting_group, @editor, @preexisting_project)
 
             # Associations
-            policy_machine.add_association(@group1, Set.new([@w]), @writer, @project1)
-            policy_machine.add_association(@group2, Set.new([@w]), @writer, @project2)
-            policy_machine.add_association(@division, Set.new([@r]), @editor, @projects)
+            policy_machine.add_association(@group1, @writer, @project1)
+            policy_machine.add_association(@group2, @writer, @project2)
+            policy_machine.add_association(@division, @editor, @projects)
 
             [@u5, @u6, @o5, @o6, @group3, @project3].each(&:delete)
           end
@@ -921,11 +926,17 @@ shared_examples "a policy machine" do
       policy_machine.add_assignment(@users, @mail_system)
       policy_machine.add_assignment(@objects, @mail_system)
 
+      policy_machine.add_assignment(@prohibitor, @r)
+      policy_machine.add_assignment(@prohibitor, @w.prohibition)
+      policy_machine.add_assignment(@reader_writer, @r)
+      policy_machine.add_assignment(@reader_writer, @w)
+      policy_machine.add_assignment(@writer, @w)
+
       # Associations
-      policy_machine.add_association(@id_u2, Set.new([@r,@w.prohibition]), @prohibitor, @in_u2)
-      policy_machine.add_association(@id_u2, Set.new([@r, @w]), @reader_writer, @out_u2)
-      policy_machine.add_association(@id_u2, Set.new([@w]), @writer, @inboxes)
-      policy_machine.add_association(@id_u2, Set.new([@r, @w]), @reader_writer, @other_u2)
+      policy_machine.add_association(@id_u2, @prohibitor, @in_u2)
+      policy_machine.add_association(@id_u2, @reader_writer, @out_u2)
+      policy_machine.add_association(@id_u2, @writer, @inboxes)
+      policy_machine.add_association(@id_u2, @reader_writer, @other_u2)
     end
 
     it 'returns all and only those privileges encoded by the policy machine' do
@@ -986,9 +997,13 @@ shared_examples "a policy machine" do
       policy_machine.add_assignment(@users, @dac)
       policy_machine.add_assignment(@objects, @dac)
 
+      policy_machine.add_assignment(@can_do_attitude, @r)
+      policy_machine.add_assignment(@can_do_attitude, @w)
+      policy_machine.add_assignment(@can_do_attitude, @e)
+
       # Associations
-      policy_machine.add_association(@id_u1, Set.new([@r, @w, @e]), @can_do_attitude, @home_u1)
-      policy_machine.add_association(@id_u2, Set.new([@r, @w, @e]), @can_do_attitude, @home_u2)
+      policy_machine.add_association(@id_u1, @can_do_attitude, @home_u1)
+      policy_machine.add_association(@id_u2, @can_do_attitude, @home_u2)
     end
 
     it 'returns all and only those privileges encoded by the policy machine' do
@@ -1033,9 +1048,13 @@ shared_examples "a policy machine" do
       policy_machine.add_assignment(@oa1, @pc1)
       policy_machine.add_assignment(@oa2, @pc2)
 
+      policy_machine.add_assignment(@reader, @r)
+      policy_machine.add_assignment(@reader_writer, @r)
+      policy_machine.add_assignment(@reader_writer, @w)
+
       # Associations
-      policy_machine.add_association(@ua, Set.new([@r]), @reader, @oa1)
-      policy_machine.add_association(@ua, Set.new([@r, @w]), @reader_writer, @oa2)
+      policy_machine.add_association(@ua, @reader, @oa1)
+      policy_machine.add_association(@ua, @reader_writer, @oa2)
     end
 
     it 'returns all and only those privileges encoded by the policy machine' do
@@ -1055,11 +1074,13 @@ shared_examples "a policy machine" do
       @write = policy_machine.create_operation('write')
       @u1 = policy_machine.create_user('u1')
       @ua = policy_machine.create_user_attribute('ua')
+      policy_machine.add_assignment(@reader, @read)
       [@one_fish, @two_fish, @red_one].each do |object|
-        policy_machine.add_association(@ua, Set.new([@read]), @reader, object)
+        policy_machine.add_association(@ua, @reader, object)
       end
       @oa = policy_machine.create_object_attribute('oa')
-      policy_machine.add_association(@ua, Set.new([@write]), @writer, @oa)
+      policy_machine.add_assignment(@writer, @write)
+      policy_machine.add_association(@ua, @writer, @oa)
       policy_machine.add_assignment(@u1, @ua)
       policy_machine.add_assignment(@red_one, @oa)
     end
@@ -1079,7 +1100,8 @@ shared_examples "a policy machine" do
         @oa2 = policy_machine.create_object_attribute('oa2')
         policy_machine.add_assignment(@one_fish, @oa2)
         @cant_read = policy_machine.create_operation_set('cant_read')
-        policy_machine.add_association(@ua, Set.new([@read.prohibition]), @cant_read, @oa2)
+        policy_machine.add_assignment(@cant_read, @read.prohibition)
+        policy_machine.add_association(@ua, @cant_read, @oa2)
       end
 
       it 'filters out prohibited objects by default' do
@@ -1107,11 +1129,13 @@ shared_examples "a policy machine" do
       @write = policy_machine.create_operation('write')
       @u1 = policy_machine.create_user('u1')
       @ua = policy_machine.create_user_attribute('ua')
+      policy_machine.add_assignment(@reader, @read)
       [@one_fish, @two_fish, @red_one].each do |object|
-        policy_machine.add_association(@ua, Set.new([@read]), @reader, object)
+        policy_machine.add_association(@ua, @reader, object)
       end
       @oa = policy_machine.create_object_attribute('oa')
-      policy_machine.add_association(@ua, Set.new([@write]), @writer, @oa)
+      policy_machine.add_assignment(@writer, @write)
+      policy_machine.add_association(@ua, @writer, @oa)
       policy_machine.add_assignment(@u1, @ua)
       policy_machine.add_assignment(@red_one, @oa)
     end

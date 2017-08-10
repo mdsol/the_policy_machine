@@ -90,7 +90,8 @@ describe 'ActiveRecord' do
 
         it 'deletes only those assignments that were on deleted elements' do
           pm.add_assignment(user, user_attribute)
-          pm.add_association(user_attribute, Set.new([operation]), op_set, object_attribute)
+          pm.add_assignment(op_set, operation)
+          pm.add_association(user_attribute, op_set, object_attribute)
           pm.add_assignment(object, object_attribute)
 
           expect(pm.is_privilege?(user, operation, object)).to be
@@ -235,7 +236,8 @@ describe 'ActiveRecord' do
                 operation = pm.create_operation('drink')
                 operations = [operation, PM::Prohibition.on(operation), PM::Prohibition.on(operation)]
                 op_set = pm.create_operation_set('new_op_set')
-                pm.add_association(caffeinated, Set.new(operations), op_set, cup)
+                pm.add_assignment(op_set, operations)
+                pm.add_association(caffeinated, op_set, cup)
               end
 
               associated_operation_strings = pm.policy_machine_storage_adapter.associations_with(caffeinated.stored_pe).first.second.to_a.map(&:unique_identifier)
@@ -366,7 +368,8 @@ describe 'ActiveRecord' do
         @object_attributes = (1..n).map { |i| @pm.create_object_attribute("oa#{i}") }
         @objects = (1..n).map { |i| @pm.create_object("o#{i}") }
         @user_attributes.each { |ua| @pm.add_assignment(@u1, ua) }
-        @object_attributes.product(@user_attributes) { |oa, ua| @pm.add_association(ua, Set.new([@op]), @op_set, oa) }
+        @pm.add_assignment(@op_set, @op)
+        @object_attributes.product(@user_attributes) { |oa, ua| @pm.add_association(ua, @op_set, oa) }
         @object_attributes.zip(@objects) { |oa, o| @pm.add_assignment(o, oa) }
       end
 
@@ -400,7 +403,8 @@ describe 'ActiveRecord' do
       @pm3_user_attribute = @pm3.create_user_attribute('pm3_user_attribute')
 
       @user_attributes.each { |ua| @pm.add_assignment(@u1, ua) }
-      @object_attributes.product(@user_attributes) { |oa, ua| @pm.add_association(ua, Set.new([@op]), @op_set, oa) }
+      @pm.add_assignment(@op_set, @op)
+      @object_attributes.product(@user_attributes) { |oa, ua| @pm.add_association(ua, @op_set, oa) }
       @object_attributes.zip(@objects) { |oa, o| @pm.add_assignment(o, oa) }
       @pm.add_assignment(@user_attributes.first, @user_attributes.second)
 

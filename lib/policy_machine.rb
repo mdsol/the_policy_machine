@@ -70,16 +70,15 @@ class PolicyMachine
   end
 
   ##
-  # Add an association between a user_attribute, a set_of_operation_objects and an object_attribute
+  # Add an association between a user_attribute, an operation_set and an object_attribute
   # in this policy machine.
   #
-  def add_association(user_attribute_pe, set_of_operation_objects, operation_set, object_attribute_pe)
+  def add_association(user_attribute_pe, operation_set, object_attribute_pe)
     assert_policy_element_in_machine(user_attribute_pe)
-    set_of_operation_objects.each { |op| assert_policy_element_in_machine(op) }
     assert_policy_element_in_machine(object_attribute_pe)
     assert_policy_element_in_machine(operation_set)
 
-    PM::Association.create(user_attribute_pe, set_of_operation_objects, operation_set, object_attribute_pe, @uuid, @policy_machine_storage_adapter)
+    PM::Association.create(user_attribute_pe, operation_set, object_attribute_pe, @uuid, @policy_machine_storage_adapter)
   end
 
   ##
