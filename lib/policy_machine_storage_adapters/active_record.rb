@@ -266,10 +266,6 @@ module PolicyMachineStorageAdapter
           end
 
           association.operations = set_of_operation_objects
-
-          # TODO: Remove the above writing to the OperationsPolicyElementAssociations table
-          id_pairs = set_of_operation_objects.map { |operation| [operation_set.id, operation.id] }
-          Assignment.import([:parent_id, :child_id], id_pairs, on_duplicate_key_ignore: true)
         end
       end
 
@@ -314,10 +310,6 @@ module PolicyMachineStorageAdapter
                                       columns: [:user_attribute_id, :object_attribute_id, :operation_set_id]
                                     }
 
-
-      # requires a join table (should be indexed!)
-      has_and_belongs_to_many :operations, class_name: "PolicyMachineStorageAdapter::ActiveRecord::Operation", join_table: 'operations_policy_element_associations'
-
       belongs_to :user_attribute
       belongs_to :object_attribute
       belongs_to :operation_set
@@ -328,15 +320,15 @@ module PolicyMachineStorageAdapter
       def operations=(updated_operations_objects)
         updated_set_of_operation_objects = Set.new(updated_operations_objects)
         current_set_of_operation_objects = Set.new(self.operations)
+
         new_operation_objects = updated_set_of_operation_objects - current_set_of_operation_objects
         removed_operation_objects = current_set_of_operation_objects - updated_set_of_operation_objects
+
+        new_id_pairs = new_operation_objects.map { |op| [operation_set.id, op.id] }
+
         transaction do
-          OperationsPolicyElementAssociation.where(policy_element_association_id: self.id)
-                                            .where(operation_id: removed_operation_objects.map(&:id))
-                                            .delete_all
-          OperationsPolicyElementAssociation.import([:policy_element_association_id, :operation_id],
-                                                     new_operation_objects.map { |op| [self.id, op.id] },
-                                                     validate: false)
+          Assignment.where(parent_id: operation_set.id, child_id: removed_operation_objects.map(&:id)).delete_all
+          Assignment.import([:parent_id, :child_id], new_id_pairs, on_duplicate_key_ignore: true)
         end
         self.clear_association_cache
       end
@@ -348,10 +340,10 @@ module PolicyMachineStorageAdapter
         import([association], on_duplicate_key_update: DUPLICATE_KEY_UPDATE_PARAMS)
 
         association.operations = set_of_operation_objects.to_a
+      end
 
-        # TODO: Remove the above writing to the OperationsPolicyElementAssociations table
-        id_pairs = set_of_operation_objects.map { |operation| [operation_set.id, operation.id] }
-        Assignment.import([:parent_id, :child_id], id_pairs, on_duplicate_key_ignore: true)
+      def operations
+        Assignment.descendants_of(operation_set.id).where(type: PolicyMachineStorageAdapter::ActiveRecord::Operation.to_s)
       end
     end
 
@@ -642,7 +634,10 @@ module PolicyMachineStorageAdapter
     # If no associations are found then the empty array should be returned.
     #
     def associations_with(operation)
-      assocs = operation.policy_element_associations(true).includes(:user_attribute, :operations, :operation_set, :object_attribute).all
+      params = { type: PolicyMachineStorageAdapter::ActiveRecord::OperationSet.to_s }
+      operation_sets = Assignment.ancestors_of(operation.id).where(params)
+      assocs = PolicyElementAssociation.where(operation_set_id: operation_sets.map(&:id))
+
       assocs.map do |assoc|
         assoc.clear_association_cache #TODO Either do this better (touch through HABTM on bulk insert?) or dont do this?
         [assoc.user_attribute, Set.new(assoc.operations), assoc.operation_set, assoc.object_attribute]

@@ -851,13 +851,14 @@ shared_examples "a policy machine" do
         end
 
 
-        it 'returns all and only these privileges encoded by the policy machine' do
+        it 'returns all and only those privileges encoded by the policy machine' do
           expected_privileges = [
             [@u1, @w, @o1], [@u1, @w, @o2], [@u1, @r, @o1], [@u1, @r, @o2], [@u1, @r, @o3],
             [@u2, @w, @o3], [@u2, @r, @o1], [@u2, @r, @o2], [@u2, @r, @o3],
             [@u3, @r, @o1], [@u3, @r, @o2], [@u3, @r, @o3], [@u4, @e, @o4]
           ]
 
+          puts "#{policy_machine.privileges.inspect}" if policy_machine.privileges.size == 23
           assert_pm_privilege_expectations(policy_machine.privileges, expected_privileges)
         end
 
@@ -930,7 +931,7 @@ shared_examples "a policy machine" do
       policy_machine.add_association(@id_u2, Set.new([@r, @w]), @reader_writer, @other_u2)
     end
 
-    it 'returns all and only these privileges encoded by the policy machine' do
+    it 'returns all and only those privileges encoded by the policy machine' do
       expected_privileges = [
         [@u2, @r, @in_u2], [@u2, @r, @out_u2], [@u2, @w, @out_u2], [@u2, @r, @draft_u2],
         [@u2, @w, @draft_u2], [@u2, @r, @trash_u2], [@u2, @w, @trash_u2]
@@ -993,7 +994,7 @@ shared_examples "a policy machine" do
       policy_machine.add_association(@id_u2, Set.new([@r, @w, @e]), @can_do_attitude, @home_u2)
     end
 
-    it 'returns all and only these privileges encoded by the policy machine' do
+    it 'returns all and only those privileges encoded by the policy machine' do
       expected_privileges = [
         [@u1, @r, @o11], [@u1, @w, @o11], [@u1, @e, @o11],
         [@u1, @r, @o12], [@u1, @w, @o12], [@u1, @e, @o12],
@@ -1040,11 +1041,8 @@ shared_examples "a policy machine" do
       policy_machine.add_association(@ua, Set.new([@r, @w]), @reader_writer, @oa2)
     end
 
-    it 'returns all and only these privileges encoded by the policy machine' do
-      expected_privileges = [
-        [@u1, @r, @o1]
-      ]
-      assert_pm_privilege_expectations(policy_machine.privileges, expected_privileges)
+    it 'returns all and only those privileges encoded by the policy machine' do
+      assert_pm_privilege_expectations(policy_machine.privileges, [[@u1, @r, @o1]])
     end
   end
 
