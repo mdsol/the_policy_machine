@@ -256,7 +256,6 @@ module PolicyMachineStorageAdapter
         PolicyElementAssociation.import(associations.map(&:first),
                                         on_duplicate_key_update: PolicyElementAssociation::DUPLICATE_KEY_UPDATE_PARAMS)
 
-        # Use bulk assign for set_of_operation_objects, operation_set
         #TODO: This should be a bulk upsert too but, among other things, AR doesn't understand nested arrays so deleting where a tuple
         # isn't in a list of tuples seems to require raw SQL
         # NB: operations= is a persistence method

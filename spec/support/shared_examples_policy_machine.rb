@@ -850,7 +850,6 @@ shared_examples "a policy machine" do
           end
         end
 
-
         it 'returns all and only those privileges encoded by the policy machine' do
           expected_privileges = [
             [@u1, @w, @o1], [@u1, @w, @o2], [@u1, @r, @o1], [@u1, @r, @o2], [@u1, @r, @o3],
@@ -858,7 +857,6 @@ shared_examples "a policy machine" do
             [@u3, @r, @o1], [@u3, @r, @o2], [@u3, @r, @o3], [@u4, @e, @o4]
           ]
 
-          puts "#{policy_machine.privileges.inspect}" if policy_machine.privileges.size == 23
           assert_pm_privilege_expectations(policy_machine.privileges, expected_privileges)
         end
 
@@ -876,7 +874,6 @@ shared_examples "a policy machine" do
             expect(match).to be_empty
           end
         end
-
       end
     end
   end
