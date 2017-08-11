@@ -858,8 +858,10 @@ shared_examples "a policy machine" do
         it 'returns all and only those privileges encoded by the policy machine' do
           expected_privileges = [
             [@u1, @w, @o1], [@u1, @w, @o2], [@u1, @r, @o1], [@u1, @r, @o2], [@u1, @r, @o3],
-            [@u2, @w, @o3], [@u2, @r, @o1], [@u2, @r, @o2], [@u2, @r, @o3],
-            [@u3, @r, @o1], [@u3, @r, @o2], [@u3, @r, @o3], [@u4, @e, @o4]
+            [@u1, @e, @o1], [@u1, @e, @o2], [@u1, @e, @o3], [@u2, @w, @o3], [@u2, @r, @o1],
+            [@u2, @r, @o2], [@u2, @r, @o3], [@u3, @r, @o1], [@u2, @e, @o1], [@u2, @e, @o2],
+            [@u2, @e, @o3], [@u3, @e, @o1], [@u3, @e, @o2], [@u3, @e, @o3], [@u3, @r, @o2],
+            [@u3, @r, @o3], [@u4, @e, @o4], [@u4, @r, @o4]
           ]
 
           assert_pm_privilege_expectations(policy_machine.privileges, expected_privileges)
@@ -1058,7 +1060,7 @@ shared_examples "a policy machine" do
     end
 
     it 'returns all and only those privileges encoded by the policy machine' do
-      assert_pm_privilege_expectations(policy_machine.privileges, [[@u1, @r, @o1]])
+      assert_pm_privilege_expectations(policy_machine.privileges, [[@u1, @r, @o1], [@u1, @w, @o1]])
     end
   end
 
