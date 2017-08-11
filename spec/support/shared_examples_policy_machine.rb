@@ -1060,7 +1060,7 @@ shared_examples "a policy machine" do
     end
 
     it 'returns all and only those privileges encoded by the policy machine' do
-      assert_pm_privilege_expectations(policy_machine.privileges, [[@u1, @r, @o1], [@u1, @w, @o1]])
+      expect(policy_machine.privileges).to match_array([[@u1, @r, @o1], [@u1, @w, @o1]])
     end
   end
 
