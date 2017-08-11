@@ -253,33 +253,32 @@ shared_examples "a policy machine storage adapter" do
     end
 
     it 'returns true' do
-      policy_machine_storage_adapter.add_assignment(@reader_writer, @r)
-      policy_machine_storage_adapter.add_assignment(@reader_writer, @w)
+      policy_machine_storage_adapter.assign(@reader_writer, @r)
+      policy_machine_storage_adapter.assign(@reader_writer, @w)
       expect(policy_machine_storage_adapter.add_association(@ua, @reader_writer, @oa, 'some_policy_machine_uuid1')).to be_truthy
     end
 
     it 'stores the association' do
-      policy_machine_storage_adapter.add_assignment(@reader_writer, @r)
-      policy_machine_storage_adapter.add_assignment(@reader_writer, @w)
+      policy_machine_storage_adapter.assign(@reader_writer, @r)
+      policy_machine_storage_adapter.assign(@reader_writer, @w)
       policy_machine_storage_adapter.add_association(@ua, @reader_writer, @oa, 'some_policy_machine_uuid1')
       assocs_with_r = policy_machine_storage_adapter.associations_with(@r)
       expect(assocs_with_r.size).to eq 1
       expect(assocs_with_r[0][0]).to eq @ua
-      expect(assocs_with_r[0][1].to_a).to contain_exactly(@r, @w)
-      expect(assocs_with_r[0][3]).to eq @oa
+      expect(assocs_with_r[0][1]).to eq @reader_writer
+      expect(assocs_with_r[0][2]).to eq @oa
 
       assocs_with_w = policy_machine_storage_adapter.associations_with(@w)
       assocs_with_w.size == 1
       expect(assocs_with_w[0][0]).to eq @ua
-      expect(assocs_with_w[0][1].to_a).to contain_exactly(@r, @w)
-      expect(assocs_with_r[0][2]).to eq @reader_writer
-      expect(assocs_with_r[0][3]).to eq @oa
+      expect(assocs_with_r[0][1]).to eq @reader_writer
+      expect(assocs_with_r[0][2]).to eq @oa
     end
 
     xit 'overwrites a previously stored association' do
-      policy_machine_storage_adapter.add_assignment(@reader_writer, @r)
-      policy_machine_storage_adapter.add_assignment(@reader_writer, @w)
-      policy_machine_storage_adapter.add_assignment(@reader, @r)
+      policy_machine_storage_adapter.assign(@reader_writer, @r)
+      policy_machine_storage_adapter.assign(@reader_writer, @w)
+      policy_machine_storage_adapter.assign(@reader, @r)
       policy_machine_storage_adapter.add_association(@ua, @reader_writer, @oa, 'some_policy_machine_uuid1')
       policy_machine_storage_adapter.add_association(@ua, @reader, @oa, 'some_policy_machine_uuid1')
       assocs_with_r = policy_machine_storage_adapter.associations_with(@r)
@@ -309,25 +308,21 @@ shared_examples "a policy machine storage adapter" do
     end
 
     it 'returns structured array when given operation has associated associations' do
-      policy_machine_storage_adapter.add_assignment(@writer, @w)
-      policy_machine_storage_adapter.add_assignment(@writer_editor, @w)
-      policy_machine_storage_adapter.add_assignment(@writer_editor, @e)
+      policy_machine_storage_adapter.assign(@writer, @w)
+      policy_machine_storage_adapter.assign(@writer_editor, @w)
+      policy_machine_storage_adapter.assign(@writer_editor, @e)
       policy_machine_storage_adapter.add_association(@ua, @writer, @oa, 'some_policy_machine_uuid1')
       policy_machine_storage_adapter.add_association(@ua2, @writer_editor, @oa, 'some_policy_machine_uuid1')
       assocs_with_w = policy_machine_storage_adapter.associations_with(@w)
 
       assocs_with_w.size == 2
       expect(assocs_with_w[0][0]).to eq @ua
-      expect(assocs_with_w[0][1].to_a).to contain_exactly(@w)
-      expect(assocs_with_w[0][2]).to eq @writer
-      expect(assocs_with_w[0][3]).to eq @oa
+      expect(assocs_with_w[0][1]).to eq @writer
+      expect(assocs_with_w[0][2]).to eq @oa
       expect(assocs_with_w[1][0]).to eq @ua2
-      expect(assocs_with_w[1][1].to_a).to contain_exactly(@w, @e)
-      expect(assocs_with_w[1][2]).to eq @writer_editor
-      expect(assocs_with_w[1][3]).to eq @oa
-
+      expect(assocs_with_w[1][1]).to eq @writer_editor
+      expect(assocs_with_w[1][2]).to eq @oa
     end
-
   end
 
   describe '#policy_classes_for_object_attribute' do

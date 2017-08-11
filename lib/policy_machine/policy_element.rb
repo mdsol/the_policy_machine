@@ -251,9 +251,6 @@ module PM
       [OperationSet, Operation]
     end
 
-    def operations
-      pm_storage_adapter.assignments_with(self)
-    end
   end
 
   # A prohibition in a policy machine.

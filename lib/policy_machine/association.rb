@@ -24,12 +24,6 @@ module PM
       )
     end
 
-    # Returns true if the operation set of this association includes the given operation.
-    #
-    def includes_operation?(operation)
-      @operation_set.operations.any? { |op| op == operation }
-    end
-
     # Create an association given persisted policy elements
     #
     def self.create(user_attribute_pe, operation_set, object_attribute_pe, policy_machine_uuid, pm_storage_adapter)
