@@ -30,12 +30,15 @@ describe PM::Association do
     end
 
     it 'raises when second argument is a set in which at least one element is not a PM::Operation' do
-      expect{ PM::Association.create(@user_attribute, Set.new([@operation1, 1]), @operation_set, @object_attribute, @policy_machine.uuid, @policy_machine.policy_machine_storage_adapter) }.
+      @policy_machine.add_assignment(@operation_set, @operation1)
+      @policy_machine.add_assignment(@operation_set, 1)
+      expect{ PM::Association.create(@user_attribute, @operation_set, @object_attribute, @policy_machine.uuid, @policy_machine.policy_machine_storage_adapter) }.
         to raise_error(ArgumentError, "expected 1 to be PM::Operation; got #{SmallNumber}")
     end
 
     it 'raises when second argument is a set in which at least one element is a PM::Operation which is in a different policy machine' do
-      expect{ PM::Association.create(@user_attribute, Set.new([@other_op]), @operation_set, @object_attribute, @policy_machine.uuid, @policy_machine.policy_machine_storage_adapter) }.
+      @policy_machine.add_assignment(@operation_set, @other_op)
+      expect{ PM::Association.create(@user_attribute, @operation_set, @object_attribute, @policy_machine.uuid, @policy_machine.policy_machine_storage_adapter) }.
         to raise_error(ArgumentError, "expected #{@other_op.unique_identifier} to be in Policy Machine with uuid #{@policy_machine.uuid}; got #{@other_op.policy_machine_uuid}")
     end
 
