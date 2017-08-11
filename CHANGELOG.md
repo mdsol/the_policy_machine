@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.5.4
+## 1.6.0
 * Give precedence to column attribute accessors instead of extra_attributes during store_attributes memoization.
 * Update `is_privilege` and `accessible_objects` to use the assignments join table instead of the operations policy elements associations table.
 
