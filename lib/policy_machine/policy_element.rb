@@ -250,7 +250,6 @@ module PM
     def allowed_assignee_classes
       [OperationSet, Operation]
     end
-
   end
 
   # A prohibition in a policy machine.
