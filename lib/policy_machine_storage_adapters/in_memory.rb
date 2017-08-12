@@ -192,9 +192,11 @@ module PolicyMachineStorageAdapter
     # [user_attribute, object_attribute]
     def associations_with(operation)
       associations.values.select do |_, operation_set, _|
-        assignments.map do |parent, child|
-          parent.unique_identifier == operation_set.unique_identifier &&
-            child.unique_identifier == operation.unique_identifier
+        self_and_children(operation_set).any? do |pe|
+          assignments.any? do |parent, child|
+            parent.unique_identifier == pe.unique_identifier &&
+              child.unique_identifier == operation.unique_identifier
+          end
         end
       end
     end
