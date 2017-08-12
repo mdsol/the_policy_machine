@@ -191,13 +191,11 @@ module PolicyMachineStorageAdapter
     # Returns an array of arrays.  Each sub-array is of the form
     # [user_attribute, object_attribute]
     def associations_with(operation)
-      matching =
-        associations.values.select do |_, operation_set, _|
-          assignments.include?([operation_set, operation])
+      associations.values.select do |_, operation_set, _|
+        assignments.map do |parent, child|
+          parent.unique_identifier == operation_set.unique_identifier &&
+            child.unique_identifier == operation.unique_identifier
         end
-
-      matching.map do |user_attribute, operation_set, object_attribute|
-        [user_attribute, operation_set, object_attribute]
       end
     end
 
