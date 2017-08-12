@@ -596,7 +596,7 @@ shared_examples "a policy machine" do
             to raise_error(ArgumentError, "expected each element of options[:associations] to be a PM::Association")
         end
 
-        it 'raises if no element of options[:associations] contains the given operation' do
+        it 'returns false if no element of options[:associations] contains the given operation' do
           executer = policy_machine.create_operation_set('executer')
           e = policy_machine.create_operation('execute')
           policy_machine.add_assignment(executer, e)
