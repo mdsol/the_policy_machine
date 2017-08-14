@@ -126,7 +126,9 @@ class PolicyMachine
       raise(ArgumentError, "options[:associations] cannot be empty") if associations.empty?
       raise(ArgumentError, "expected each element of options[:associations] to be a PM::Association") unless associations.all?{|a| a.is_a?(PM::Association)}
 
-      associations.keep_if{ |assoc| assoc.operation_set.stored_pe.connected?(operation) }
+      associations.keep_if do |association|
+        association.operation_set.connected?(operation)
+      end
       return false if associations.empty?
     else
       associations = operation.associations
@@ -176,7 +178,6 @@ class PolicyMachine
   # TODO:  might make privilege a class of its own
   def privileges
     privileges = []
-
     users.each do |user|
       operations.reject(&:prohibition?).each do |operation|
         objects.each do |object|

@@ -192,12 +192,13 @@ module PolicyMachineStorageAdapter
     # [user_attribute, object_attribute]
     def associations_with(operation)
       associations.values.select do |_, operation_set, _|
-        self_and_children(operation_set).any? do |pe|
-          assignments.any? do |parent, child|
-            parent.unique_identifier == pe.unique_identifier &&
-              child.unique_identifier == operation.unique_identifier
+        stored_pe =
+          if operation_set.is_a?(PersistedPolicyElement)
+            operation_set
+          else
+            operation_set.stored_pe
           end
-        end
+        connected?(stored_pe, operation)
       end
     end
 

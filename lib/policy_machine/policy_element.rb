@@ -234,8 +234,8 @@ module PM
     # Return all associations in which this Operation is included
     # Associations are arrays of PM::Attributes.
     def associations
-      pm_storage_adapter.associations_with(self.stored_pe).map do |assoc|
-        PM::Association.new(assoc[0], assoc[1], assoc[2], pm_storage_adapter)
+      pm_storage_adapter.associations_with(self.stored_pe).map do |user_attribute, operation_set, object_attribute|
+        PM::Association.new(user_attribute, operation_set, object_attribute, pm_storage_adapter)
       end
     end
 
