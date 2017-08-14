@@ -317,9 +317,6 @@ module PolicyMachineStorageAdapter
       end
     end
 
-    class OperationsPolicyElementAssociation < ::ActiveRecord::Base
-    end
-
     POLICY_ELEMENT_TYPES = %w(user user_attribute object object_attribute operation operation_set policy_class)
 
     POLICY_ELEMENT_TYPES.each do |pe_type|
