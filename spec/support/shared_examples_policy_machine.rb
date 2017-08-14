@@ -366,7 +366,7 @@ shared_examples "a policy machine" do
       xit 'overwrites old associations between the same attributes' do
         first_op_set = policy_machine.create_operation_set('first_op_set')
         second_op_set = policy_machine.create_operation_set('second_op_set')
-        policy_machine.add_assignment(second_op_set, @operation1)
+        policy_machine.add_assignment(first_op_set, @operation1)
         policy_machine.add_assignment(second_op_set, @operation2)
         policy_machine.add_association(@user_attribute, first_op_set, @object_attribute)
 
@@ -1055,12 +1055,12 @@ shared_examples "a policy machine" do
       policy_machine.add_assignment(@reader_writer, @w)
 
       # Associations
+      policy_machine.add_association(@ua, @reader, @oa2)
       policy_machine.add_association(@ua, @reader, @oa1)
-      policy_machine.add_association(@ua, @reader_writer, @oa2)
     end
 
     it 'returns all and only those privileges encoded by the policy machine' do
-      expect(policy_machine.privileges).to match_array([[@u1, @r, @o1], [@u1, @w, @o1]])
+      expect(policy_machine.privileges).to match_array([[@u1, @r, @o1]])
     end
   end
 

@@ -646,7 +646,7 @@ module PolicyMachineStorageAdapter
         accessible_operations(user_or_attribute.id, object_or_attribute.id, operation_id).any?
       else
         policy_classes_containing_object.all? do |policy_class|
-          accessible_operations(user_or_attribute.id, policy_class.ancestors, operation_id).any?
+          accessible_operations(user_or_attribute.id, object_or_attribute.id, operation_id).any?
         end
       end
     end
