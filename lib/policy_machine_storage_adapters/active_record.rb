@@ -281,7 +281,6 @@ module PolicyMachineStorageAdapter
     end
 
     class Operation < PolicyElement
-      has_and_belongs_to_many :policy_element_associations, class_name: 'PolicyMachineStorageAdapter::ActiveRecord::PolicyElementAssociation', join_table: 'operations_policy_element_associations'
     end
 
     class OperationSet < PolicyElement
