@@ -682,15 +682,13 @@ module PolicyMachineStorageAdapter
       operation_id = operation.try(:unique_identifier) || operation.to_s
 
       user_attributes = user_or_attribute.descendants | [user_or_attribute]
-      user_attribute_associations = PolicyElementAssociation.where(user_attribute_id: user_attributes)
+      associations = PolicyElementAssociation.where(user_attribute_id: user_attributes)
+      operation_set_ids = associations.map(&:operation_set_id)
 
-      params =
-        { type: PolicyMachineStorageAdapter::ActiveRecord::Operation.to_s, unique_identifier: operation_id }
-
-      # TODO: Replace this n+1 query
+      filtered_operation_set_ids = Assignment.filter_operation_set_list_by_assigned_operation(operation_set_ids, operation_id)
       filtered_associations =
-        user_attribute_associations.select do |user_attribute_association|
-          Assignment.descendants_of(user_attribute_association.operation_set_id).where(params).present?
+        associations.select do |association|
+          filtered_operation_set_ids.include?(association.operation_set_id)
         end
 
       permitting_oas = PolicyElement.where(id: filtered_associations.map(&:object_attribute_id))
