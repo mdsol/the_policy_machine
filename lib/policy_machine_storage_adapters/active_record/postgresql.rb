@@ -43,6 +43,7 @@ module PolicyMachineStorageAdapter
 
       # Returns the operation set IDs from the given list where the operation is
       # a descendant of the operation set.
+      # TODO: Generalize this so that we can arbitrarily filter recursive assignments calls.
       def self.filter_operation_set_list_by_assigned_operation(operation_set_ids, operation_id)
         query =
           "WITH RECURSIVE assignments_recursive AS (
