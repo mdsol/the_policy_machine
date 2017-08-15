@@ -1,6 +1,5 @@
 # Policy Machines are directed acyclic graphs (DAG).  These shared examples describe the
 # API for these DAGs, which could be persisted in memory, in a graph database, etc.
-
 require_relative 'storage_adapter_helpers.rb'
 
 shared_examples "a policy machine storage adapter" do
