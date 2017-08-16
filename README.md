@@ -1,8 +1,7 @@
 policy_machine
 ==============
 
-A ruby implementation of the Policy Machine authorization formalism.  You can find the NIST specification for Policy
-Machines [here](http://csrc.nist.gov/pm/documents/pm_report-rev-x_final.pdf).
+A ruby implementation of the Policy Machine authorization formalism.  You can find the NIST specification for Policy Machines [here](http://csrc.nist.gov/pm/documents/pm_report-rev-x_final.pdf).
 
 Note that obligations have not yet been implemented, nor have all aspects of prohibitions and policy classes.  These aspects of the Policy Machine
 will be included in future versions of this gem.
