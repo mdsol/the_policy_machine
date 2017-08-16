@@ -56,7 +56,6 @@ shared_examples "a policy machine storage adapter" do
         it 'performs substring matching' do
           expect(policy_machine_storage_adapter.send("find_all_of_type_#{pe_type}", unique_identifier: {include: '1'})).to be_one
         end
-
       end
 
       context 'case sensitivity' do
@@ -346,7 +345,6 @@ shared_examples "a policy machine storage adapter" do
       policy_machine_storage_adapter.assign(@oa, @pc1)
       expect { policy_machine_storage_adapter.assign(@oa, @pc1) }.to_not raise_error
     end
-
   end
 
   describe '#transaction' do
@@ -376,5 +374,4 @@ shared_examples "a policy machine storage adapter" do
       expect(policy_machine_storage_adapter.policy_classes_for_object_attribute(@oa)).to contain_exactly(@pc1)
     end
   end
-
 end
