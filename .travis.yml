@@ -14,6 +14,7 @@ env:
   matrix:
     - CI_NODE_INDEX=0
 before_install:
+  - rvm rubygems latest
   - gem install bundler
 services:
   - postgresql
