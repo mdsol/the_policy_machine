@@ -9,6 +9,7 @@ end
 
 require 'rspec'
 require 'pry'
+require 'rake'
 SPEC_DIR = File.expand_path("..", __FILE__)
 lib_dir = File.expand_path("../lib", SPEC_DIR)
 
