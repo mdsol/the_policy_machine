@@ -9,6 +9,7 @@ namespace :pm do
       end
 
       Dir.chdir('./test/testapp') do
+        `export BUNDLE_GEMFILE=$PWD/Gemfile`
         `bundle install`
 
         `bundle exec rails generate the_policy_machine:add_initial_policy_machine_tables -f`
