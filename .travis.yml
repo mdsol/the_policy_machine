@@ -12,7 +12,7 @@ env:
   matrix:
     - CI_NODE_INDEX=0
 before_install:
-  - gem install bundler -v 1.15.2
+  - gem install bundler -v 1.14.6
 services:
   - postgresql
 addons:
