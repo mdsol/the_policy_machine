@@ -5,7 +5,6 @@ require 'policy_machine/warn_once'
 # This class stores policy elements in a SQL database using whatever
 # database configuration and adapters are provided by active_record.
 # Currently only MySQL and Postgres are supported via this adapter.
-
 begin
   require 'active_record'
 rescue LoadError
