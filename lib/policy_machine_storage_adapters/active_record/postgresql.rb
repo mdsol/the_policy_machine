@@ -29,7 +29,8 @@ module PolicyMachineStorageAdapter
               (
                 SELECT assignments.id, assignments.child_id, assignments.parent_id
                 FROM assignments
-                INNER JOIN assignments_recursive ON assignments_recursive.child_id = assignments.parent_id
+                INNER JOIN assignments_recursive
+                ON assignments_recursive.child_id = assignments.parent_id
               )
             )
 
@@ -55,7 +56,8 @@ module PolicyMachineStorageAdapter
               (
                 SELECT assignments.id, assignments.parent_id, assignments.child_id
                 FROM assignments
-                INNER JOIN assignments_recursive ON assignments_recursive.parent_id = assignments.child_id
+                INNER JOIN assignments_recursive
+                ON assignments_recursive.parent_id = assignments.child_id
               )
             )
 
@@ -122,7 +124,8 @@ module PolicyMachineStorageAdapter
               (
                 SELECT logical_links.id, logical_links.link_child_id, logical_links.link_parent_id
                 FROM logical_links
-                INNER JOIN logical_links_recursive ON logical_links_recursive.link_child_id = logical_links.link_parent_id
+                INNER JOIN logical_links_recursive
+                ON logical_links_recursive.link_child_id = logical_links.link_parent_id
               )
             )
 
@@ -148,7 +151,8 @@ module PolicyMachineStorageAdapter
               (
                 SELECT logical_links.id, logical_links.link_parent_id, logical_links.link_child_id
                 FROM logical_links
-                INNER JOIN logical_links_recursive ON logical_links_recursive.link_parent_id = logical_links.link_child_id
+                INNER JOIN logical_links_recursive
+                ON logical_links_recursive.link_parent_id = logical_links.link_child_id
               )
             )
 
