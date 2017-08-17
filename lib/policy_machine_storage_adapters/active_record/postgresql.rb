@@ -16,7 +16,6 @@ module PolicyMachineStorageAdapter
         #FIXME: Preloading with to_a seems to be necessary because putting complex sql in start_with can
         # lead to degenerate performance (noticed in ancestors_of call in accessible_objects)
         # Ideally, fix the SQL so it's both a single call and performant
-        element_or_scope = [*element_or_scope]
         PolicyElement.where('
           id IN (
             WITH RECURSIVE assignments_recursive AS (
@@ -37,13 +36,12 @@ module PolicyMachineStorageAdapter
             SELECT assignments_recursive.child_id
             FROM assignments_recursive
           )',
-          element_or_scope.map(&:id))
+          [*element_or_scope].map(&:id))
       end
 
       def self.ancestors_of(element_or_scope)
         #FIXME: Also, removing the superfluous join of Assignment onto the recursive call is hugely beneficial to performance, but not supported
         # by hierarchical_query. Since this is a major performance pain point, generating raw SQL for now.
-        element_or_scope = [*element_or_scope]
         PolicyElement.where('
           id IN (
             WITH RECURSIVE assignments_recursive AS (
@@ -64,7 +62,7 @@ module PolicyMachineStorageAdapter
             SELECT assignments_recursive.parent_id
             FROM assignments_recursive
           )',
-          element_or_scope.map(&:id))
+          [*element_or_scope].map(&:id))
       end
 
       # Returns the operation set IDs from the given list where the operation is
@@ -111,7 +109,6 @@ module PolicyMachineStorageAdapter
         #FIXME: Preloading with to_a seems to be necessary because putting complex sql in start_with can
         # lead to degenerate performance (noticed in ancestors_of call in accessible_objects)
         # Ideally, fix the SQL so it's both a single call and performant
-        element_or_scope = [*element_or_scope]
         PolicyElement.where('
           id IN (
             WITH RECURSIVE logical_links_recursive AS (
@@ -132,13 +129,12 @@ module PolicyMachineStorageAdapter
             SELECT logical_links_recursive.link_child_id
             FROM logical_links_recursive
           )',
-          element_or_scope.map(&:id))
+          [*element_or_scope].map(&:id))
       end
 
       def self.ancestors_of(element_or_scope)
         #FIXME: Also, removing the superfluous join of Assignment onto the recursive call is hugely beneficial to performance, but not supported
         # by hierarchical_query. Since this is a major performance pain point, generating raw SQL for now.
-        element_or_scope = [*element_or_scope]
         PolicyElement.where('
           id IN (
             WITH RECURSIVE logical_links_recursive AS (
@@ -159,7 +155,7 @@ module PolicyMachineStorageAdapter
             SELECT logical_links_recursive.link_parent_id
             FROM logical_links_recursive
           )',
-          element_or_scope.map(&:id))
+          [*element_or_scope].map(&:id))
       end
     end
 
