@@ -21,13 +21,13 @@ module PolicyMachineStorageAdapter
           id IN (
             WITH RECURSIVE assignments_recursive AS (
               (
-                SELECT id, child_id, parent_id
+                SELECT child_id, parent_id
                 FROM assignments
                 WHERE parent_id in (?)
               )
               UNION ALL
               (
-                SELECT assignments.id, assignments.child_id, assignments.parent_id
+                SELECT assignments.child_id, assignments.parent_id
                 FROM assignments
                 INNER JOIN assignments_recursive
                 ON assignments_recursive.child_id = assignments.parent_id
@@ -48,13 +48,13 @@ module PolicyMachineStorageAdapter
           id IN (
             WITH RECURSIVE assignments_recursive AS (
               (
-                SELECT id, parent_id, child_id
+                SELECT parent_id, child_id
                 FROM assignments
                 WHERE child_id IN (?)
               )
               UNION ALL
               (
-                SELECT assignments.id, assignments.parent_id, assignments.child_id
+                SELECT assignments.parent_id, assignments.child_id
                 FROM assignments
                 INNER JOIN assignments_recursive
                 ON assignments_recursive.parent_id = assignments.child_id
@@ -116,13 +116,13 @@ module PolicyMachineStorageAdapter
           id IN (
             WITH RECURSIVE logical_links_recursive AS (
               (
-                SELECT id, link_child_id, link_parent_id
+                SELECT link_child_id, link_parent_id
                 FROM logical_links
                 WHERE link_parent_id in (?)
               )
               UNION ALL
               (
-                SELECT logical_links.id, logical_links.link_child_id, logical_links.link_parent_id
+                SELECT logical_links.link_child_id, logical_links.link_parent_id
                 FROM logical_links
                 INNER JOIN logical_links_recursive
                 ON logical_links_recursive.link_child_id = logical_links.link_parent_id
@@ -143,13 +143,13 @@ module PolicyMachineStorageAdapter
           id IN (
             WITH RECURSIVE logical_links_recursive AS (
               (
-                SELECT id, link_parent_id, link_child_id
+                SELECT link_parent_id, link_child_id
                 FROM logical_links
                 WHERE link_child_id IN (?)
               )
               UNION ALL
               (
-                SELECT logical_links.id, logical_links.link_parent_id, logical_links.link_child_id
+                SELECT logical_links.link_parent_id, logical_links.link_child_id
                 FROM logical_links
                 INNER JOIN logical_links_recursive
                 ON logical_links_recursive.link_parent_id = logical_links.link_child_id
