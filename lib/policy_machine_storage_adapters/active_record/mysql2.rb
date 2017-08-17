@@ -20,15 +20,15 @@ module PolicyMachineStorageAdapter
         TransitiveClosure.exists?(ancestor_id: ancestor.id, descendant_id: descendant.id)
       end
 
-      def self.descendants_of(element_id)
+      def self.descendants_of(element)
         PolicyElement.joins('inner join transitive_closure on policy_elements.id=transitive_closure.descendant_id').where(
-          "transitive_closure.ancestor_id = #{element_id}"
+          "transitive_closure.ancestor_id = #{element.id}"
         )
       end
 
-      def self.ancestors_of(element_id)
+      def self.ancestors_of(element)
         PolicyElement.joins('inner join transitive_closure on policy_elements.id=transitive_closure.ancestor_id').where(
-          "transitive_closure.descendant_id = #{element_id}"
+          "transitive_closure.descendant_id = #{element.id}"
         )
       end
 

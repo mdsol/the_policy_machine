@@ -9,35 +9,35 @@ module PolicyMachineStorageAdapter
       belongs_to :child, class_name: 'PolicyElement', foreign_key: :child_id
 
       def self.transitive_closure?(ancestor, descendant)
-        descendants_of(ancestor.id).include?(descendant)
+        descendants_of(ancestor).include?(descendant)
       end
 
-      def self.descendants_of(ids)
+      def self.descendants_of(element_or_scope)
         #FIXME: Preloading with to_a seems to be necessary because putting complex sql in start_with can
         # lead to degenerate performance (noticed in ancestors_of call in accessible_objects)
         # Ideally, fix the SQL so it's both a single call and performant
-        ids = [*ids]
-        case ids.size
+        element_or_scope = [*element_or_scope]
+        case element_or_scope.size
         when 0
           PolicyElement.none
         when 1
-          PolicyElement.where('"policy_elements"."id" IN (SELECT assignments__recursive.child_id FROM (WITH RECURSIVE "assignments__recursive" AS ( SELECT "assignments"."id", "assignments"."child_id", "assignments"."parent_id" FROM "assignments" WHERE "assignments"."parent_id" = ? UNION ALL SELECT "assignments"."id", "assignments"."child_id", "assignments"."parent_id" FROM "assignments" INNER JOIN "assignments__recursive" ON "assignments__recursive"."child_id" = "assignments"."parent_id" ) SELECT "assignments__recursive".* FROM "assignments__recursive") AS "assignments__recursive")', ids.first)
+          PolicyElement.where('"policy_elements"."id" IN (SELECT assignments__recursive.child_id FROM (WITH RECURSIVE "assignments__recursive" AS ( SELECT "assignments"."id", "assignments"."child_id", "assignments"."parent_id" FROM "assignments" WHERE "assignments"."parent_id" = ? UNION ALL SELECT "assignments"."id", "assignments"."child_id", "assignments"."parent_id" FROM "assignments" INNER JOIN "assignments__recursive" ON "assignments__recursive"."child_id" = "assignments"."parent_id" ) SELECT "assignments__recursive".* FROM "assignments__recursive") AS "assignments__recursive")', element_or_scope.first.id)
         else
-          PolicyElement.where('"policy_elements"."id" IN (SELECT assignments__recursive.child_id FROM (WITH RECURSIVE "assignments__recursive" AS ( SELECT "assignments"."id", "assignments"."child_id", "assignments"."parent_id" FROM "assignments" WHERE "assignments"."parent_id" in (?) UNION ALL SELECT "assignments"."id", "assignments"."child_id", "assignments"."parent_id" FROM "assignments" INNER JOIN "assignments__recursive" ON "assignments__recursive"."child_id" = "assignments"."parent_id" ) SELECT "assignments__recursive".* FROM "assignments__recursive") AS "assignments__recursive")', ids)
+          PolicyElement.where('"policy_elements"."id" IN (SELECT assignments__recursive.child_id FROM (WITH RECURSIVE "assignments__recursive" AS ( SELECT "assignments"."id", "assignments"."child_id", "assignments"."parent_id" FROM "assignments" WHERE "assignments"."parent_id" in (?) UNION ALL SELECT "assignments"."id", "assignments"."child_id", "assignments"."parent_id" FROM "assignments" INNER JOIN "assignments__recursive" ON "assignments__recursive"."child_id" = "assignments"."parent_id" ) SELECT "assignments__recursive".* FROM "assignments__recursive") AS "assignments__recursive")', element_or_scope.map(&:id))
         end
       end
 
-      def self.ancestors_of(ids)
+      def self.ancestors_of(element_or_scope)
         #FIXME: Also, removing the superfluous join of Assignment onto the recursive call is hugely beneficial to performance, but not supported
         # by hierarchical_query. Since this is a major performance pain point, generating raw SQL for now.
-        ids = [*ids]
-        case ids.size
+        element_or_scope = [*element_or_scope]
+        case element_or_scope.size
         when 0
           PolicyElement.none
         when 1
-          PolicyElement.where('"policy_elements"."id" IN (SELECT assignments__recursive.parent_id FROM (WITH RECURSIVE "assignments__recursive" AS ( SELECT "assignments"."id", "assignments"."parent_id", "assignments"."child_id" FROM "assignments" WHERE "assignments"."child_id" = ? UNION ALL SELECT "assignments"."id", "assignments"."parent_id", "assignments"."child_id" FROM "assignments" INNER JOIN "assignments__recursive" ON "assignments__recursive"."parent_id" = "assignments"."child_id" ) SELECT "assignments__recursive".* FROM "assignments__recursive") AS "assignments__recursive")', ids.first)
+          PolicyElement.where('"policy_elements"."id" IN (SELECT assignments__recursive.parent_id FROM (WITH RECURSIVE "assignments__recursive" AS ( SELECT "assignments"."id", "assignments"."parent_id", "assignments"."child_id" FROM "assignments" WHERE "assignments"."child_id" = ? UNION ALL SELECT "assignments"."id", "assignments"."parent_id", "assignments"."child_id" FROM "assignments" INNER JOIN "assignments__recursive" ON "assignments__recursive"."parent_id" = "assignments"."child_id" ) SELECT "assignments__recursive".* FROM "assignments__recursive") AS "assignments__recursive")', element_or_scope.first.id)
         else
-          PolicyElement.where('"policy_elements"."id" IN (SELECT assignments__recursive.parent_id FROM (WITH RECURSIVE "assignments__recursive" AS ( SELECT "assignments"."id", "assignments"."parent_id", "assignments"."child_id" FROM "assignments" WHERE "assignments"."child_id" in (?) UNION ALL SELECT "assignments"."id", "assignments"."parent_id", "assignments"."child_id" FROM "assignments" INNER JOIN "assignments__recursive" ON "assignments__recursive"."parent_id" = "assignments"."child_id" ) SELECT "assignments__recursive".* FROM "assignments__recursive") AS "assignments__recursive")', ids)
+          PolicyElement.where('"policy_elements"."id" IN (SELECT assignments__recursive.parent_id FROM (WITH RECURSIVE "assignments__recursive" AS ( SELECT "assignments"."id", "assignments"."parent_id", "assignments"."child_id" FROM "assignments" WHERE "assignments"."child_id" in (?) UNION ALL SELECT "assignments"."id", "assignments"."parent_id", "assignments"."child_id" FROM "assignments" INNER JOIN "assignments__recursive" ON "assignments__recursive"."parent_id" = "assignments"."child_id" ) SELECT "assignments__recursive".* FROM "assignments__recursive") AS "assignments__recursive")', element_or_scope.map(&:id))
         end
       end
 

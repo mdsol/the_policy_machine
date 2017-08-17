@@ -140,12 +140,12 @@ module PolicyMachineStorageAdapter
 
       def descendants(filters = {})
         assert_valid_filters!(filters)
-        Assignment.descendants_of(self.id).where(filters)
+        Assignment.descendants_of(self).where(filters)
       end
 
       def ancestors(filters = {})
         assert_valid_filters!(filters)
-        Assignment.ancestors_of(self.id).where(filters)
+        Assignment.ancestors_of(self).where(filters)
       end
 
       def parents(filters = {})
@@ -284,7 +284,7 @@ module PolicyMachineStorageAdapter
       has_many :policy_element_associations, dependent: :destroy
 
       def operations
-        Assignment.descendants_of(self.id).where(type: PolicyMachineStorageAdapter::ActiveRecord::Operation.to_s)
+        Assignment.descendants_of(self).where(type: PolicyMachineStorageAdapter::ActiveRecord::Operation.to_s)
       end
     end
 
@@ -599,7 +599,7 @@ module PolicyMachineStorageAdapter
     #
     def associations_with(operation)
       params = { type: PolicyMachineStorageAdapter::ActiveRecord::OperationSet.to_s }
-      operation_sets = Assignment.ancestors_of(operation.id).where(params)
+      operation_sets = Assignment.ancestors_of(operation).where(params)
       assocs = PolicyElementAssociation.where(operation_set_id: operation_sets.map(&:id))
 
       assocs.map do |assoc|
@@ -636,10 +636,10 @@ module PolicyMachineStorageAdapter
       operation_id = operation.try(:unique_identifier) || operation.to_s
 
       if policy_classes_containing_object.count < 2
-        accessible_operations(user_or_attribute.id, object_or_attribute.id, operation_id).any?
+        accessible_operations(user_or_attribute, object_or_attribute, operation_id).any?
       else
         policy_classes_containing_object.all? do |policy_class|
-          accessible_operations(user_or_attribute.id, object_or_attribute.id, operation_id).any?
+          accessible_operations(user_or_attribute, object_or_attribute, operation_id).any?
         end
       end
     end
@@ -651,10 +651,10 @@ module PolicyMachineStorageAdapter
 
       operations =
         if policy_classes_containing_object.count < 2
-          accessible_operations(user_or_attribute.id, object_or_attribute.id)
+          accessible_operations(user_or_attribute, object_or_attribute)
         else
           policy_classes_containing_object.flat_map do |policy_class|
-            accessible_operations(user_or_attribute.id, policy_class.ancestors)
+            accessible_operations(user_or_attribute, policy_class.ancestors)
           end
         end
 
@@ -691,7 +691,7 @@ module PolicyMachineStorageAdapter
       permitting_oas = PolicyElement.where(id: filtered_associations.map(&:object_attribute_id))
 
       direct_scope = permitting_oas.where(type: class_for_type('object'))
-      indirect_scope = Assignment.ancestors_of(permitting_oas.map(&:id)).where(type: class_for_type('object'))
+      indirect_scope = Assignment.ancestors_of(permitting_oas).where(type: class_for_type('object'))
 
       if inclusion = options[:includes]
         direct_scope = Adapter.apply_include_condition(scope: direct_scope, key: options[:key], value: inclusion, klass: class_for_type('object'))
@@ -714,10 +714,10 @@ module PolicyMachineStorageAdapter
       PolicyMachineStorageAdapter::ActiveRecord::Operation.find_by_unique_identifier("~#{operation_id}")
     end
 
-    def accessible_operations(user_or_attribute_id, object_or_attribute_id, operation_id = nil)
+    def accessible_operations(user_or_attribute, object_or_attribute, operation_id = nil)
       transaction_without_mergejoin do
-        user_attribute_ids = Assignment.descendants_of(user_or_attribute_id).pluck(:id) | [user_or_attribute_id]
-        object_attribute_ids = Assignment.descendants_of(object_or_attribute_id).pluck(:id) | [object_or_attribute_id]
+        user_attribute_ids = Assignment.descendants_of(user_or_attribute).pluck(:id) | [user_or_attribute.id]
+        object_attribute_ids = Assignment.descendants_of(object_or_attribute).pluck(:id) | [object_or_attribute.id]
 
         associations =
           PolicyElementAssociation.where(
@@ -728,7 +728,7 @@ module PolicyMachineStorageAdapter
         prms = { type: PolicyMachineStorageAdapter::ActiveRecord::Operation.to_s }
         prms.merge!(unique_identifier: operation_id) if operation_id
 
-        Assignment.descendants_of(associations.map(&:operation_set_id)).where(prms)
+        Assignment.descendants_of(associations.map(&:operation_set)).where(prms)
       end
     end
 
