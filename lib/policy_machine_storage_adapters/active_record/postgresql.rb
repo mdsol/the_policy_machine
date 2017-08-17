@@ -45,8 +45,8 @@ module PolicyMachineStorageAdapter
       # a descendant of the operation set.
       # TODO: Generalize this so that we can arbitrarily filter recursive assignments calls.
       def self.filter_operation_set_list_by_assigned_operation(operation_set_ids, operation_id)
-        query =
-          "WITH RECURSIVE assignments_recursive AS (
+        query = <<-SQL
+          WITH RECURSIVE assignments_recursive AS (
             (
               SELECT parent_id, child_id, ARRAY[parent_id] AS parents
               FROM assignments
@@ -66,7 +66,8 @@ module PolicyMachineStorageAdapter
           JOIN policy_elements
           ON policy_elements.id = assignments_recursive.child_id
           WHERE policy_elements.unique_identifier = '#{operation_id}'
-          AND type = 'PolicyMachineStorageAdapter::ActiveRecord::Operation'"
+          AND type = 'PolicyMachineStorageAdapter::ActiveRecord::Operation'
+        SQL
         PolicyElement.connection.exec_query(query).rows.flatten.map(&:to_i)
       end
     end
