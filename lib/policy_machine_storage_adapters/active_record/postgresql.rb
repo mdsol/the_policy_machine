@@ -18,12 +18,12 @@ module PolicyMachineStorageAdapter
         # Ideally, fix the SQL so it's both a single call and performant
         element_or_scope = [*element_or_scope]
         PolicyElement.where('
-          policy_elements.id IN (
+          id IN (
             WITH RECURSIVE assignments_recursive AS (
               (
-                SELECT assignments.id, assignments.child_id, assignments.parent_id
+                SELECT id, child_id, parent_id
                 FROM assignments
-                WHERE assignments.parent_id in (?)
+                WHERE parent_id in (?)
               )
               UNION ALL
               (
@@ -44,12 +44,12 @@ module PolicyMachineStorageAdapter
         # by hierarchical_query. Since this is a major performance pain point, generating raw SQL for now.
         element_or_scope = [*element_or_scope]
         PolicyElement.where('
-          policy_elements.id IN (
+          id IN (
             WITH RECURSIVE assignments_recursive AS (
               (
-                SELECT assignments.id, assignments.parent_id, assignments.child_id
+                SELECT id, parent_id, child_id
                 FROM assignments
-                WHERE assignments.child_id IN (?)
+                WHERE child_id IN (?)
               )
               UNION ALL
               (
@@ -111,12 +111,12 @@ module PolicyMachineStorageAdapter
         # Ideally, fix the SQL so it's both a single call and performant
         element_or_scope = [*element_or_scope]
         PolicyElement.where('
-          policy_elements.id IN (
+          id IN (
             WITH RECURSIVE logical_links_recursive AS (
               (
-                SELECT logical_links.id, logical_links.link_child_id, logical_links.link_parent_id
+                SELECT id, link_child_id, link_parent_id
                 FROM logical_links
-                WHERE logical_links.link_parent_id in (?)
+                WHERE link_parent_id in (?)
               )
               UNION ALL
               (
@@ -137,12 +137,12 @@ module PolicyMachineStorageAdapter
         # by hierarchical_query. Since this is a major performance pain point, generating raw SQL for now.
         element_or_scope = [*element_or_scope]
         PolicyElement.where('
-          policy_elements.id IN (
+          id IN (
             WITH RECURSIVE logical_links_recursive AS (
               (
-                SELECT logical_links.id, logical_links.link_parent_id, logical_links.link_child_id
+                SELECT id, link_parent_id, link_child_id
                 FROM logical_links
-                WHERE logical_links.link_child_id IN (?)
+                WHERE link_child_id IN (?)
               )
               UNION ALL
               (
