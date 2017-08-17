@@ -86,28 +86,14 @@ module PolicyMachineStorageAdapter
         # lead to degenerate performance (noticed in ancestors_of call in accessible_objects)
         # Ideally, fix the SQL so it's both a single call and performant
         element_or_scope = [*element_or_scope]
-        case element_or_scope.size
-        when 0
-          PolicyElement.none
-        when 1
-          PolicyElement.where('"policy_elements"."id" IN (SELECT logical_links__recursive.link_child_id FROM (WITH RECURSIVE "logical_links__recursive" AS ( SELECT "logical_links"."id", "logical_links"."link_child_id", "logical_links"."link_parent_id" FROM "logical_links" WHERE "logical_links"."link_parent_id" = ? UNION ALL SELECT "logical_links"."id", "logical_links"."link_child_id", "logical_links"."link_parent_id" FROM "logical_links" INNER JOIN "logical_links__recursive" ON "logical_links__recursive"."link_child_id" = "logical_links"."link_parent_id" ) SELECT "logical_links__recursive".* FROM "logical_links__recursive") AS "logical_links__recursive")', element_or_scope.first.id)
-        else
-          PolicyElement.where('"policy_elements"."id" IN (SELECT logical_links__recursive.link_child_id FROM (WITH RECURSIVE "logical_links__recursive" AS ( SELECT "logical_links"."id", "logical_links"."link_child_id", "logical_links"."link_parent_id" FROM "logical_links" WHERE "logical_links"."link_parent_id" in (?) UNION ALL SELECT "logical_links"."id", "logical_links"."link_child_id", "logical_links"."link_parent_id" FROM "logical_links" INNER JOIN "logical_links__recursive" ON "logical_links__recursive"."link_child_id" = "logical_links"."link_parent_id" ) SELECT "logical_links__recursive".* FROM "logical_links__recursive") AS "logical_links__recursive")', element_or_scope.map(&:id))
-        end
+        PolicyElement.where('"policy_elements"."id" IN (SELECT logical_links__recursive.link_child_id FROM (WITH RECURSIVE "logical_links__recursive" AS ( SELECT "logical_links"."id", "logical_links"."link_child_id", "logical_links"."link_parent_id" FROM "logical_links" WHERE "logical_links"."link_parent_id" in (?) UNION ALL SELECT "logical_links"."id", "logical_links"."link_child_id", "logical_links"."link_parent_id" FROM "logical_links" INNER JOIN "logical_links__recursive" ON "logical_links__recursive"."link_child_id" = "logical_links"."link_parent_id" ) SELECT "logical_links__recursive".* FROM "logical_links__recursive") AS "logical_links__recursive")', element_or_scope.map(&:id))
       end
 
       def self.ancestors_of(element_or_scope)
         #FIXME: Also, removing the superfluous join of Assignment onto the recursive call is hugely beneficial to performance, but not supported
         # by hierarchical_query. Since this is a major performance pain point, generating raw SQL for now.
         element_or_scope = [*element_or_scope]
-        case element_or_scope.size
-        when 0
-          PolicyElement.none
-        when 1
-          PolicyElement.where('"policy_elements"."id" IN (SELECT logical_links__recursive.link_parent_id FROM (WITH RECURSIVE "logical_links__recursive" AS ( SELECT "logical_links"."id", "logical_links"."link_parent_id", "logical_links"."link_child_id" FROM "logical_links" WHERE "logical_links"."link_child_id" = ? UNION ALL SELECT "logical_links"."id", "logical_links"."link_parent_id", "logical_links"."link_child_id" FROM "logical_links" INNER JOIN "logical_links__recursive" ON "logical_links__recursive"."link_parent_id" = "logical_links"."link_child_id" ) SELECT "logical_links__recursive".* FROM "logical_links__recursive") AS "logical_links__recursive")', element_or_scope.first.id)
-        else
-          PolicyElement.where('"policy_elements"."id" IN (SELECT logical_links__recursive.link_parent_id FROM (WITH RECURSIVE "logical_links__recursive" AS ( SELECT "logical_links"."id", "logical_links"."link_parent_id", "logical_links"."link_child_id" FROM "logical_links" WHERE "logical_links"."link_child_id" in (?) UNION ALL SELECT "logical_links"."id", "logical_links"."link_parent_id", "logical_links"."link_child_id" FROM "logical_links" INNER JOIN "logical_links__recursive" ON "logical_links__recursive"."link_parent_id" = "logical_links"."link_child_id" ) SELECT "logical_links__recursive".* FROM "logical_links__recursive") AS "logical_links__recursive")', element_or_scope.map(&:id))
-        end
+        PolicyElement.where('"policy_elements"."id" IN (SELECT logical_links__recursive.link_parent_id FROM (WITH RECURSIVE "logical_links__recursive" AS ( SELECT "logical_links"."id", "logical_links"."link_parent_id", "logical_links"."link_child_id" FROM "logical_links" WHERE "logical_links"."link_child_id" in (?) UNION ALL SELECT "logical_links"."id", "logical_links"."link_parent_id", "logical_links"."link_child_id" FROM "logical_links" INNER JOIN "logical_links__recursive" ON "logical_links__recursive"."link_parent_id" = "logical_links"."link_child_id" ) SELECT "logical_links__recursive".* FROM "logical_links__recursive") AS "logical_links__recursive")', element_or_scope.map(&:id))
       end
     end
 
