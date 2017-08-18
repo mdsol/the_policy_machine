@@ -12,8 +12,8 @@ module PolicyMachineStorageAdapter
       end
 
       def self.descendants_of(element_or_scope)
-        PolicyElement.where('
-          id IN (
+        PolicyElement.where(
+          'id IN (
             WITH RECURSIVE assignments_recursive AS (
               (
                 SELECT child_id, parent_id
@@ -32,14 +32,15 @@ module PolicyMachineStorageAdapter
             SELECT assignments_recursive.child_id
             FROM assignments_recursive
           )',
-          [*element_or_scope].map(&:id))
+          [*element_or_scope].map(&:id)
+        )
       end
 
       def self.ancestors_of(element_or_scope)
         # FIXME: Removing the superfluous join of Assignment onto the recursive call is hugely beneficial to performance, but not supported
         # by hierarchical_query. Since this is a major performance pain point, generating raw SQL for now.
-        PolicyElement.where('
-          id IN (
+        PolicyElement.where(
+          'id IN (
             WITH RECURSIVE assignments_recursive AS (
               (
                 SELECT parent_id, child_id
@@ -58,7 +59,8 @@ module PolicyMachineStorageAdapter
             SELECT assignments_recursive.parent_id
             FROM assignments_recursive
           )',
-          [*element_or_scope].map(&:id))
+          [*element_or_scope].map(&:id)
+        )
       end
 
       # Returns the operation set IDs from the given list where the operation is
@@ -102,8 +104,8 @@ module PolicyMachineStorageAdapter
       end
 
       def self.descendants_of(element_or_scope)
-        PolicyElement.where('
-          id IN (
+        PolicyElement.where(
+          'id IN (
             WITH RECURSIVE logical_links_recursive AS (
               (
                 SELECT link_child_id, link_parent_id
@@ -122,14 +124,15 @@ module PolicyMachineStorageAdapter
             SELECT logical_links_recursive.link_child_id
             FROM logical_links_recursive
           )',
-          [*element_or_scope].map(&:id))
+          [*element_or_scope].map(&:id)
+        )
       end
 
       def self.ancestors_of(element_or_scope)
         # FIXME: Removing the superfluous join of Assignment onto the recursive call is hugely beneficial to performance, but not supported
         # by hierarchical_query. Since this is a major performance pain point, generating raw SQL for now.
-        PolicyElement.where('
-          id IN (
+        PolicyElement.where(
+          'id IN (
             WITH RECURSIVE logical_links_recursive AS (
               (
                 SELECT link_parent_id, link_child_id
@@ -148,7 +151,8 @@ module PolicyMachineStorageAdapter
             SELECT logical_links_recursive.link_parent_id
             FROM logical_links_recursive
           )',
-          [*element_or_scope].map(&:id))
+          [*element_or_scope].map(&:id)
+        )
       end
     end
 

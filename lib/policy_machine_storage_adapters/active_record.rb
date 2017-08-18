@@ -383,7 +383,7 @@ module PolicyMachineStorageAdapter
 
         # TODO: Look into moving this block into previous pagination conditional and test in consuming app
         unless all.respond_to? :total_entries
-          all.define_singleton_method(:total_entries) { all.count }
+          all.define_singleton_method(:total_entries) { all.size }
         end
 
         all
@@ -638,11 +638,11 @@ module PolicyMachineStorageAdapter
       policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
       operation_id = operation.try(:unique_identifier) || operation.to_s
 
-      if policy_classes_containing_object.count < 2
-        accessible_operations(user_or_attribute, object_or_attribute, operation_id).any?
+      if policy_classes_containing_object.size < 2
+        !accessible_operations(user_or_attribute, object_or_attribute, operation_id).empty?
       else
         policy_classes_containing_object.all? do |policy_class|
-          accessible_operations(user_or_attribute, object_or_attribute, operation_id).any?
+          !accessible_operations(user_or_attribute, object_or_attribute, operation_id).empty?
         end
       end
     end
@@ -653,7 +653,7 @@ module PolicyMachineStorageAdapter
       policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
 
       operations =
-        if policy_classes_containing_object.count < 2
+        if policy_classes_containing_object.size < 2
           accessible_operations(user_or_attribute, object_or_attribute)
         else
           policy_classes_containing_object.flat_map do |policy_class|
