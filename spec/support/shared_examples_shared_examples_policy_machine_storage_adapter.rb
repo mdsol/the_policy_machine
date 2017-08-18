@@ -253,13 +253,13 @@ shared_examples "a policy machine storage adapter" do
     it 'returns true' do
       policy_machine_storage_adapter.assign(@reader_writer, @r)
       policy_machine_storage_adapter.assign(@reader_writer, @w)
-      expect(policy_machine_storage_adapter.add_association(@ua, @reader_writer, @oa, 'some_policy_machine_uuid1')).to be_truthy
+      expect(policy_machine_storage_adapter.add_association(@ua, @reader_writer, @oa)).to be_truthy
     end
 
     it 'stores the association' do
       policy_machine_storage_adapter.assign(@reader_writer, @r)
       policy_machine_storage_adapter.assign(@reader_writer, @w)
-      policy_machine_storage_adapter.add_association(@ua, @reader_writer, @oa, 'some_policy_machine_uuid1')
+      policy_machine_storage_adapter.add_association(@ua, @reader_writer, @oa)
       assocs_with_r = policy_machine_storage_adapter.associations_with(@r)
       expect(assocs_with_r.size).to eq 1
       expect(assocs_with_r[0][0]).to eq @ua
@@ -277,8 +277,8 @@ shared_examples "a policy machine storage adapter" do
       policy_machine_storage_adapter.assign(@reader_writer, @r)
       policy_machine_storage_adapter.assign(@reader_writer, @w)
       policy_machine_storage_adapter.assign(@reader, @r)
-      policy_machine_storage_adapter.add_association(@ua, @reader_writer, @oa, 'some_policy_machine_uuid1')
-      policy_machine_storage_adapter.add_association(@ua, @reader, @oa, 'some_policy_machine_uuid1')
+      policy_machine_storage_adapter.add_association(@ua, @reader_writer, @oa)
+      policy_machine_storage_adapter.add_association(@ua, @reader, @oa)
       assocs_with_r = policy_machine_storage_adapter.associations_with(@r)
       assocs_with_r.size == 1
       expect(assocs_with_r[0][0]).to eq @ua
@@ -309,8 +309,8 @@ shared_examples "a policy machine storage adapter" do
       policy_machine_storage_adapter.assign(@writer, @w)
       policy_machine_storage_adapter.assign(@writer_editor, @w)
       policy_machine_storage_adapter.assign(@writer_editor, @e)
-      policy_machine_storage_adapter.add_association(@ua, @writer, @oa, 'some_policy_machine_uuid1')
-      policy_machine_storage_adapter.add_association(@ua2, @writer_editor, @oa, 'some_policy_machine_uuid1')
+      policy_machine_storage_adapter.add_association(@ua, @writer, @oa)
+      policy_machine_storage_adapter.add_association(@ua2, @writer_editor, @oa)
       assocs_with_w = policy_machine_storage_adapter.associations_with(@w)
 
       assocs_with_w.size == 2

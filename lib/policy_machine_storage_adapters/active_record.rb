@@ -244,7 +244,7 @@ module PolicyMachineStorageAdapter
       end
 
       def self.bulk_associate(associations, upsert_buffer)
-        associations.map! do |user_attribute, operation_set, object_attribute, policy_machine_uuid|
+        associations.map! do |user_attribute, operation_set, object_attribute|
           PolicyElementAssociation.new(
             user_attribute_id: user_attribute.id,
             object_attribute_id: object_attribute.id,
@@ -302,8 +302,11 @@ module PolicyMachineStorageAdapter
       belongs_to :object_attribute
       belongs_to :operation_set
 
-      def self.add_association(user_attribute, operation_set, object_attribute, policy_machine_uuid)
-        pea_args = {user_attribute_id: user_attribute.id, object_attribute_id: object_attribute.id, operation_set_id: operation_set.id}
+      def self.add_association(user_attribute, operation_set, object_attribute)
+        pea_args = {
+          user_attribute_id: user_attribute.id,
+          object_attribute_id: object_attribute.id,
+          operation_set_id: operation_set.id }
         association = new(pea_args)
 
         import([association], on_duplicate_key_update: DUPLICATE_KEY_UPDATE_PARAMS)
@@ -576,17 +579,17 @@ module PolicyMachineStorageAdapter
     # and object_attribute already exists, then replace it with that given in the arguments.
     # Returns true if the association was added and false otherwise.
     #
-    def add_association(user_attribute, operation_set, object_attribute, policy_machine_uuid)
+    def add_association(user_attribute, operation_set, object_attribute)
       if self.buffering?
-        associate_later(user_attribute, operation_set, object_attribute, policy_machine_uuid)
+        associate_later(user_attribute, operation_set, object_attribute)
       else
-        PolicyElementAssociation.add_association(user_attribute, operation_set, object_attribute, policy_machine_uuid)
+        PolicyElementAssociation.add_association(user_attribute, operation_set, object_attribute)
       end
     end
 
     #TODO PM uuid potentially useful for future optimization, currently unused
-    def associate_later(user_attribute, operation_set, object_attribute, policy_machine_uuid)
-      buffers[:associations] << [user_attribute, operation_set, object_attribute, policy_machine_uuid]
+    def associate_later(user_attribute, operation_set, object_attribute)
+      buffers[:associations] << [user_attribute, operation_set, object_attribute]
     end
 
     ##

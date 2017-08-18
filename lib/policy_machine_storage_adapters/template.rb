@@ -164,7 +164,7 @@ module PolicyMachineStorageAdapter
     # and object_attribute already exists, then replace it with that given in the arguments.
     # Returns true if the association was added and false otherwise.
     #
-    def add_association(user_attribute, object_attribute, policy_machine_uuid)
+    def add_association(user_attribute, object_attribute)
 
     end
 

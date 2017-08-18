@@ -48,8 +48,7 @@ module PM
       pm_storage_adapter.add_association(
         user_attribute_pe.stored_pe,
         operation_set.stored_pe,
-        object_attribute_pe.stored_pe,
-        policy_machine_uuid
+        object_attribute_pe.stored_pe
       )
     end
   end

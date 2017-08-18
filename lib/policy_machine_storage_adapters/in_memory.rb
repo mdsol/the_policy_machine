@@ -178,7 +178,7 @@ module PolicyMachineStorageAdapter
     ##
     # Add the given association to the policy map.  If an association between user_attribute
     # and object_attribute already exists, then replace it with that given in the arguments.
-    def add_association(user_attribute, operation_set, object_attribute, policy_machine_uuid)
+    def add_association(user_attribute, operation_set, object_attribute)
       # TODO:  scope by policy machine uuid
       associations[user_attribute.unique_identifier + object_attribute.unique_identifier] =
         [user_attribute, operation_set, object_attribute]
