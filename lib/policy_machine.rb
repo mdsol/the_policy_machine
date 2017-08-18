@@ -177,18 +177,16 @@ class PolicyMachine
   #
   # TODO:  might make privilege a class of its own
   def privileges
-    privileges = []
-    users.each do |user|
+    users.reduce([]) do |memo, user|
       operations.reject(&:prohibition?).each do |operation|
         objects.each do |object|
           if is_privilege?(user, operation, object)
-            privileges << [user, operation, object]
+            memo << [user, operation, object]
           end
         end
       end
+      memo
     end
-
-    privileges
   end
 
   ##

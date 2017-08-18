@@ -2,7 +2,6 @@ require 'active_record/hierarchical_query' # via gem activerecord-hierarchical_q
 
 module PolicyMachineStorageAdapter
   class ActiveRecord
-
     class Assignment < ::ActiveRecord::Base
       # needs parent_id, child_id columns
       belongs_to :parent, class_name: 'PolicyElement', foreign_key: :parent_id
@@ -154,7 +153,6 @@ module PolicyMachineStorageAdapter
     end
 
     class Adapter
-
       # Support substring searching and Postgres Array membership
       def self.apply_include_condition(scope: , key: , value: , klass: )
         if klass.columns_hash[key.to_s].array
