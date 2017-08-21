@@ -168,8 +168,6 @@ class PolicyMachine
     end
   end
 
-
-
   ##
   # Returns an array of all privileges encoded in this
   # policy machine.  Each privilege is of the form:
