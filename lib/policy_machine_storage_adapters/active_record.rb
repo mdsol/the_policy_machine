@@ -205,17 +205,19 @@ module PolicyMachineStorageAdapter
           memo
         end
 
-        PolicyElement.where(unique_identifier: elements.keys).delete_all
+        transaction do
+          ids = elements.values.flat_map(&:id)
+          Assignment.where(parent_id: ids).delete_all
+          Assignment.where(child_id: ids).delete_all
 
-        ids = elements.values.flat_map(&:id)
-        Assignment.where(parent_id: ids).delete_all
-        Assignment.where(child_id: ids).delete_all
+          LogicalLink.where(link_parent_id: ids).delete_all
+          LogicalLink.where(link_child_id: ids).delete_all
 
-        LogicalLink.where(link_parent_id: ids).delete_all
-        LogicalLink.where(link_child_id: ids).delete_all
+          PolicyElement.where(id: ids).delete_all
 
-        PolicyElementAssociation.where(user_attribute_id: id_groups[UserAttribute]).delete_all
-        PolicyElementAssociation.where(object_attribute_id: id_groups[ObjectAttribute]).delete_all
+          PolicyElementAssociation.where(user_attribute_id: id_groups[UserAttribute]).delete_all
+          PolicyElementAssociation.where(object_attribute_id: id_groups[ObjectAttribute]).delete_all
+        end
       end
 
       def self.bulk_assign(pairs_hash)
