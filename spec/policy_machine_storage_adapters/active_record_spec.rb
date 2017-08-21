@@ -53,7 +53,7 @@ describe 'ActiveRecord' do
 
         context 'pagination' do
           before do
-            10.times {|i| policy_machine_storage_adapter.add_object("uuid_#{i}", 'some_policy_machine_uuid1', color: 'red') }
+            73.times {|i| policy_machine_storage_adapter.add_object("uuid_#{i}", 'some_policy_machine_uuid1', color: 'red') }
           end
 
           it 'paginates the results based on page and per_page' do
@@ -87,6 +87,168 @@ describe 'ActiveRecord' do
         let(:user_attribute) { pm.create_user_attribute('user_attribute') }
         let(:object_attribute) { pm.create_object_attribute('object_attribute') }
         let(:object) { pm.create_object('object') }
+
+        context 'testing' do
+          it 'a-1' do
+            pm.add_assignment(user, user_attribute)
+            user_id = user.stored_pe.id
+            expect { user.delete }
+              .to change { PolicyMachineStorageAdapter::ActiveRecord::Assignment.where(parent_id: user_id).count }
+              .from(1)
+              .to(0)
+          end
+
+          it 'a-2' do
+            pm.add_assignment(user, user_attribute)
+            user_id = user.stored_pe.id
+            expect { user.destroy }
+              .to change { PolicyMachineStorageAdapter::ActiveRecord::Assignment.where(parent_id: user_id).count }
+              .from(1)
+              .to(0)
+          end
+
+          it 'a-3' do
+            pm.add_assignment(user, user_attribute)
+            user_attribute_id = user_attribute.stored_pe.id
+            expect { user_attribute.destroy }
+              .to change { PolicyMachineStorageAdapter::ActiveRecord::Assignment.where(child_id: user_attribute_id).count }
+              .from(1)
+              .to(0)
+          end
+
+          it 'a-4' do
+            pm.add_assignment(user, user_attribute)
+            user_attribute_id = user_attribute.stored_pe.id
+            expect { user_attribute.delete }
+              .to change { PolicyMachineStorageAdapter::ActiveRecord::Assignment.where(child_id: user_attribute_id).count }
+              .from(1)
+              .to(0)
+          end
+
+          it 'a-1-1' do
+            73.times do
+              ua = pm.create_user_attribute(SecureRandom.uuid)
+              pm.add_assignment(user, ua)
+            end
+            user_id = user.stored_pe.id
+            user.delete
+            expect(PolicyMachineStorageAdapter::ActiveRecord::Assignment.where(parent_id: user_id).count)
+              .to eq 0
+          end
+
+          it 'a-1-2' do
+            73.times do
+              ua = pm.create_user_attribute(SecureRandom.uuid)
+              pm.add_assignment(user, ua)
+            end
+            user_id = user.stored_pe.id
+            user.destroy
+            expect(PolicyMachineStorageAdapter::ActiveRecord::Assignment.where(parent_id: user_id).count)
+              .to eq 0
+          end
+
+          it 'a-1-3' do
+            73.times do
+              u = pm.create_user(SecureRandom.uuid)
+              pm.add_assignment(u, user_attribute)
+            end
+            user_attribute_id = user_attribute.stored_pe.id
+            user_attribute.delete
+            expect(PolicyMachineStorageAdapter::ActiveRecord::Assignment.where(child_id: user_attribute_id).count)
+              .to eq 0
+          end
+
+          it 'a-1-4' do
+            73.times do
+              u = pm.create_user(SecureRandom.uuid)
+              pm.add_assignment(u, user_attribute)
+            end
+            user_attribute_id = user_attribute.stored_pe.id
+            user_attribute.destroy
+            expect(PolicyMachineStorageAdapter::ActiveRecord::Assignment.where(child_id: user_attribute_id).count)
+              .to eq 0
+          end
+
+          it 'b-1' do
+            pm.add_assignment(user, user_attribute)
+            user_id = user.stored_pe.id
+            expect { pm.bulk_persist { user.delete } }
+              .to change { PolicyMachineStorageAdapter::ActiveRecord::Assignment.where(parent_id: user_id).count }
+              .from(1)
+              .to(0)
+          end
+
+          it 'b-2' do
+            pm.add_assignment(user, user_attribute)
+            user_id = user.stored_pe.id
+            expect { pm.bulk_persist { user.destroy } }
+              .to change { PolicyMachineStorageAdapter::ActiveRecord::Assignment.where(parent_id: user_id).count }
+              .from(1)
+              .to(0)
+          end
+
+          it 'b-3' do
+            pm.add_assignment(user, user_attribute)
+            user_attribute_id = user_attribute.stored_pe.id
+            expect { pm.bulk_persist { user_attribute.destroy } }
+              .to change { PolicyMachineStorageAdapter::ActiveRecord::Assignment.where(child_id: user_attribute_id).count }
+              .from(1)
+              .to(0)
+          end
+
+          it 'b-4' do
+            pm.add_assignment(user, user_attribute)
+            user_attribute_id = user_attribute.stored_pe.id
+            expect { pm.bulk_persist { user_attribute.delete } }
+              .to change { PolicyMachineStorageAdapter::ActiveRecord::Assignment.where(child_id: user_attribute_id).count }
+              .from(1)
+              .to(0)
+          end
+
+          it 'b-1-1' do
+            73.times do
+              ua = pm.create_user_attribute(SecureRandom.uuid)
+              pm.add_assignment(user, ua)
+            end
+            user_id = user.stored_pe.id
+            pm.bulk_persist { user.delete }
+            expect(PolicyMachineStorageAdapter::ActiveRecord::Assignment.where(parent_id: user_id).count)
+              .to eq 0
+          end
+
+          it 'b-1-2' do
+            73.times do
+              ua = pm.create_user_attribute(SecureRandom.uuid)
+              pm.add_assignment(user, ua)
+            end
+            user_id = user.stored_pe.id
+            pm.bulk_persist { user.destroy }
+            expect(PolicyMachineStorageAdapter::ActiveRecord::Assignment.where(parent_id: user_id).count)
+              .to eq 0
+          end
+
+          it 'b-1-3' do
+            73.times do
+              u = pm.create_user(SecureRandom.uuid)
+              pm.add_assignment(u, user_attribute)
+            end
+            user_attribute_id = user_attribute.stored_pe.id
+            pm.bulk_persist { user_attribute.delete }
+            expect(PolicyMachineStorageAdapter::ActiveRecord::Assignment.where(child_id: user_attribute_id).count)
+              .to eq 0
+          end
+
+          it 'b-1-4' do
+            73.times do
+              u = pm.create_user(SecureRandom.uuid)
+              pm.bulk_persist { pm.add_assignment(u, user_attribute) }
+            end
+            user_attribute_id = user_attribute.stored_pe.id
+            user_attribute.destroy
+            expect(PolicyMachineStorageAdapter::ActiveRecord::Assignment.where(child_id: user_attribute_id).count)
+              .to eq 0
+          end
+        end
 
         it 'deletes only those assignments that were on deleted elements' do
           pm.add_assignment(user, user_attribute)
