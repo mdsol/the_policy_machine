@@ -12,8 +12,8 @@ module PolicyMachineStorageAdapter
       end
 
       def self.descendants_of(element_or_scope)
-        PolicyElement.where(
-          'id IN (
+        query = <<~SQL
+          id IN (
             WITH RECURSIVE assignments_recursive AS (
               (
                 SELECT child_id, parent_id
@@ -31,14 +31,15 @@ module PolicyMachineStorageAdapter
 
             SELECT assignments_recursive.child_id
             FROM assignments_recursive
-          )',
-          [*element_or_scope].map(&:id)
-        )
+          )
+        SQL
+
+        PolicyElement.where(query, [*element_or_scope].map(&:id))
       end
 
       def self.ancestors_of(element_or_scope)
-        PolicyElement.where(
-          'id IN (
+        query = <<~SQL
+          id IN (
             WITH RECURSIVE assignments_recursive AS (
               (
                 SELECT parent_id, child_id
@@ -56,16 +57,17 @@ module PolicyMachineStorageAdapter
 
             SELECT assignments_recursive.parent_id
             FROM assignments_recursive
-          )',
-          [*element_or_scope].map(&:id)
-        )
+          )
+        SQL
+
+        PolicyElement.where(query, [*element_or_scope].map(&:id))
       end
 
       # Returns the operation set IDs from the given list where the operation is
       # a descendant of the operation set.
       # TODO: Generalize this so that we can arbitrarily filter recursive assignments calls.
       def self.filter_operation_set_list_by_assigned_operation(operation_set_ids, operation_id)
-        query = <<-SQL
+        query = <<~SQL
           WITH RECURSIVE assignments_recursive AS (
             (
               SELECT parent_id, child_id, ARRAY[parent_id] AS parents
@@ -102,8 +104,8 @@ module PolicyMachineStorageAdapter
       end
 
       def self.descendants_of(element_or_scope)
-        PolicyElement.where(
-          'id IN (
+        query = <<~SQL
+          id IN (
             WITH RECURSIVE logical_links_recursive AS (
               (
                 SELECT link_child_id, link_parent_id
@@ -121,14 +123,15 @@ module PolicyMachineStorageAdapter
 
             SELECT logical_links_recursive.link_child_id
             FROM logical_links_recursive
-          )',
-          [*element_or_scope].map(&:id)
-        )
+          )
+        SQL
+
+        PolicyElement.where(query, [*element_or_scope].map(&:id))
       end
 
       def self.ancestors_of(element_or_scope)
-        PolicyElement.where(
-          'id IN (
+        query = <<~SQL
+          id IN (
             WITH RECURSIVE logical_links_recursive AS (
               (
                 SELECT link_parent_id, link_child_id
@@ -146,9 +149,10 @@ module PolicyMachineStorageAdapter
 
             SELECT logical_links_recursive.link_parent_id
             FROM logical_links_recursive
-          )',
-          [*element_or_scope].map(&:id)
-        )
+          )
+        SQL
+
+        PolicyElement.where(query, [*element_or_scope].map(&:id))
       end
     end
 
