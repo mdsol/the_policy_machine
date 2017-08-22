@@ -37,8 +37,6 @@ module PolicyMachineStorageAdapter
       end
 
       def self.ancestors_of(element_or_scope)
-        # FIXME: Removing the superfluous join of Assignment onto the recursive call is hugely beneficial to performance, but not supported
-        # by hierarchical_query. Since this is a major performance pain point, generating raw SQL for now.
         PolicyElement.where(
           'id IN (
             WITH RECURSIVE assignments_recursive AS (
