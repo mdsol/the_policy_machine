@@ -2,7 +2,6 @@ require 'active_record/hierarchical_query' # via gem activerecord-hierarchical_q
 
 module PolicyMachineStorageAdapter
   class ActiveRecord
-
     class Assignment < ::ActiveRecord::Base
       # needs parent_id, child_id columns
       belongs_to :parent, class_name: 'PolicyElement', foreign_key: :parent_id
@@ -13,34 +12,87 @@ module PolicyMachineStorageAdapter
       end
 
       def self.descendants_of(element_or_scope)
-        #FIXME: Preloading with to_a seems to be necessary because putting complex sql in start_with can
-        # lead to degenerate performance (noticed in ancestors_of call in accessible_objects)
-        # Ideally, fix the SQL so it's both a single call and performant
-        element_or_scope = [*element_or_scope]
-        case element_or_scope.size
-        when 0
-          PolicyElement.none
-        when 1
-          PolicyElement.where('"policy_elements"."id" IN (SELECT assignments__recursive.child_id FROM (WITH RECURSIVE "assignments__recursive" AS ( SELECT "assignments"."id", "assignments"."child_id", "assignments"."parent_id" FROM "assignments" WHERE "assignments"."parent_id" = ? UNION ALL SELECT "assignments"."id", "assignments"."child_id", "assignments"."parent_id" FROM "assignments" INNER JOIN "assignments__recursive" ON "assignments__recursive"."child_id" = "assignments"."parent_id" ) SELECT "assignments__recursive".* FROM "assignments__recursive") AS "assignments__recursive")', element_or_scope.first.id)
-        else
-          PolicyElement.where('"policy_elements"."id" IN (SELECT assignments__recursive.child_id FROM (WITH RECURSIVE "assignments__recursive" AS ( SELECT "assignments"."id", "assignments"."child_id", "assignments"."parent_id" FROM "assignments" WHERE "assignments"."parent_id" in (?) UNION ALL SELECT "assignments"."id", "assignments"."child_id", "assignments"."parent_id" FROM "assignments" INNER JOIN "assignments__recursive" ON "assignments__recursive"."child_id" = "assignments"."parent_id" ) SELECT "assignments__recursive".* FROM "assignments__recursive") AS "assignments__recursive")', element_or_scope.map(&:id))
-        end
+        query = <<-SQL
+          id IN (
+            WITH RECURSIVE assignments_recursive AS (
+              (
+                SELECT child_id, parent_id
+                FROM assignments
+                WHERE parent_id in (?)
+              )
+              UNION ALL
+              (
+                SELECT assignments.child_id, assignments.parent_id
+                FROM assignments
+                INNER JOIN assignments_recursive
+                ON assignments_recursive.child_id = assignments.parent_id
+              )
+            )
+
+            SELECT assignments_recursive.child_id
+            FROM assignments_recursive
+          )
+        SQL
+
+        PolicyElement.where(query, [*element_or_scope].map(&:id))
       end
 
       def self.ancestors_of(element_or_scope)
-        #FIXME: Also, removing the superfluous join of Assignment onto the recursive call is hugely beneficial to performance, but not supported
-        # by hierarchical_query. Since this is a major performance pain point, generating raw SQL for now.
-        element_or_scope = [*element_or_scope]
-        case element_or_scope.size
-        when 0
-          PolicyElement.none
-        when 1
-          PolicyElement.where('"policy_elements"."id" IN (SELECT assignments__recursive.parent_id FROM (WITH RECURSIVE "assignments__recursive" AS ( SELECT "assignments"."id", "assignments"."parent_id", "assignments"."child_id" FROM "assignments" WHERE "assignments"."child_id" = ? UNION ALL SELECT "assignments"."id", "assignments"."parent_id", "assignments"."child_id" FROM "assignments" INNER JOIN "assignments__recursive" ON "assignments__recursive"."parent_id" = "assignments"."child_id" ) SELECT "assignments__recursive".* FROM "assignments__recursive") AS "assignments__recursive")', element_or_scope.first.id)
-        else
-          PolicyElement.where('"policy_elements"."id" IN (SELECT assignments__recursive.parent_id FROM (WITH RECURSIVE "assignments__recursive" AS ( SELECT "assignments"."id", "assignments"."parent_id", "assignments"."child_id" FROM "assignments" WHERE "assignments"."child_id" in (?) UNION ALL SELECT "assignments"."id", "assignments"."parent_id", "assignments"."child_id" FROM "assignments" INNER JOIN "assignments__recursive" ON "assignments__recursive"."parent_id" = "assignments"."child_id" ) SELECT "assignments__recursive".* FROM "assignments__recursive") AS "assignments__recursive")', element_or_scope.map(&:id))
-        end
+        query = <<-SQL
+          id IN (
+            WITH RECURSIVE assignments_recursive AS (
+              (
+                SELECT parent_id, child_id
+                FROM assignments
+                WHERE child_id IN (?)
+              )
+              UNION ALL
+              (
+                SELECT assignments.parent_id, assignments.child_id
+                FROM assignments
+                INNER JOIN assignments_recursive
+                ON assignments_recursive.parent_id = assignments.child_id
+              )
+            )
+
+            SELECT assignments_recursive.parent_id
+            FROM assignments_recursive
+          )
+        SQL
+
+        PolicyElement.where(query, [*element_or_scope].map(&:id))
       end
 
+      # Returns the operation set IDs from the given list where the operation is
+      # a descendant of the operation set.
+      # TODO: Generalize this so that we can arbitrarily filter recursive assignments calls.
+      def self.filter_operation_set_list_by_assigned_operation(operation_set_ids, operation_id)
+        query = <<-SQL
+          WITH RECURSIVE assignments_recursive AS (
+            (
+              SELECT parent_id, child_id, ARRAY[parent_id] AS parents
+              FROM assignments
+              WHERE #{sanitize_sql_for_conditions(["parent_id IN (:opset_ids)", opset_ids: operation_set_ids])}
+            )
+            UNION ALL
+            (
+              SELECT assignments.parent_id, assignments.child_id, assignments.parent_id || parents
+              FROM assignments
+              INNER JOIN assignments_recursive
+              ON assignments_recursive.child_id = assignments.parent_id
+            )
+          )
+
+          SELECT parents[1]
+          FROM assignments_recursive
+          JOIN policy_elements
+          ON policy_elements.id = assignments_recursive.child_id
+          WHERE #{sanitize_sql_for_conditions(["policy_elements.unique_identifier=:op_id", op_id: operation_id])}
+          AND type = 'PolicyMachineStorageAdapter::ActiveRecord::Operation'
+        SQL
+
+        PolicyElement.connection.exec_query(query).rows.flatten.map(&:to_i)
+      end
     end
 
     class LogicalLink < ::ActiveRecord::Base
@@ -53,38 +105,59 @@ module PolicyMachineStorageAdapter
       end
 
       def self.descendants_of(element_or_scope)
-        #FIXME: Preloading with to_a seems to be necessary because putting complex sql in start_with can
-        # lead to degenerate performance (noticed in ancestors_of call in accessible_objects)
-        # Ideally, fix the SQL so it's both a single call and performant
-        element_or_scope = [*element_or_scope]
-        case element_or_scope.size
-        when 0
-          PolicyElement.none
-        when 1
-          PolicyElement.where('"policy_elements"."id" IN (SELECT logical_links__recursive.link_child_id FROM (WITH RECURSIVE "logical_links__recursive" AS ( SELECT "logical_links"."id", "logical_links"."link_child_id", "logical_links"."link_parent_id" FROM "logical_links" WHERE "logical_links"."link_parent_id" = ? UNION ALL SELECT "logical_links"."id", "logical_links"."link_child_id", "logical_links"."link_parent_id" FROM "logical_links" INNER JOIN "logical_links__recursive" ON "logical_links__recursive"."link_child_id" = "logical_links"."link_parent_id" ) SELECT "logical_links__recursive".* FROM "logical_links__recursive") AS "logical_links__recursive")', element_or_scope.first.id)
-        else
-          PolicyElement.where('"policy_elements"."id" IN (SELECT logical_links__recursive.link_child_id FROM (WITH RECURSIVE "logical_links__recursive" AS ( SELECT "logical_links"."id", "logical_links"."link_child_id", "logical_links"."link_parent_id" FROM "logical_links" WHERE "logical_links"."link_parent_id" in (?) UNION ALL SELECT "logical_links"."id", "logical_links"."link_child_id", "logical_links"."link_parent_id" FROM "logical_links" INNER JOIN "logical_links__recursive" ON "logical_links__recursive"."link_child_id" = "logical_links"."link_parent_id" ) SELECT "logical_links__recursive".* FROM "logical_links__recursive") AS "logical_links__recursive")', element_or_scope.map(&:id))
-        end
+        query = <<-SQL
+          id IN (
+            WITH RECURSIVE logical_links_recursive AS (
+              (
+                SELECT link_child_id, link_parent_id
+                FROM logical_links
+                WHERE link_parent_id in (?)
+              )
+              UNION ALL
+              (
+                SELECT logical_links.link_child_id, logical_links.link_parent_id
+                FROM logical_links
+                INNER JOIN logical_links_recursive
+                ON logical_links_recursive.link_child_id = logical_links.link_parent_id
+              )
+            )
+
+            SELECT logical_links_recursive.link_child_id
+            FROM logical_links_recursive
+          )
+        SQL
+
+        PolicyElement.where(query, [*element_or_scope].map(&:id))
       end
 
       def self.ancestors_of(element_or_scope)
-        #FIXME: Also, removing the superfluous join of Assignment onto the recursive call is hugely beneficial to performance, but not supported
-        # by hierarchical_query. Since this is a major performance pain point, generating raw SQL for now.
-        element_or_scope = [*element_or_scope]
-        case element_or_scope.size
-        when 0
-          PolicyElement.none
-        when 1
-          PolicyElement.where('"policy_elements"."id" IN (SELECT logical_links__recursive.link_parent_id FROM (WITH RECURSIVE "logical_links__recursive" AS ( SELECT "logical_links"."id", "logical_links"."link_parent_id", "logical_links"."link_child_id" FROM "logical_links" WHERE "logical_links"."link_child_id" = ? UNION ALL SELECT "logical_links"."id", "logical_links"."link_parent_id", "logical_links"."link_child_id" FROM "logical_links" INNER JOIN "logical_links__recursive" ON "logical_links__recursive"."link_parent_id" = "logical_links"."link_child_id" ) SELECT "logical_links__recursive".* FROM "logical_links__recursive") AS "logical_links__recursive")', element_or_scope.first.id)
-        else
-          PolicyElement.where('"policy_elements"."id" IN (SELECT logical_links__recursive.link_parent_id FROM (WITH RECURSIVE "logical_links__recursive" AS ( SELECT "logical_links"."id", "logical_links"."link_parent_id", "logical_links"."link_child_id" FROM "logical_links" WHERE "logical_links"."link_child_id" in (?) UNION ALL SELECT "logical_links"."id", "logical_links"."link_parent_id", "logical_links"."link_child_id" FROM "logical_links" INNER JOIN "logical_links__recursive" ON "logical_links__recursive"."link_parent_id" = "logical_links"."link_child_id" ) SELECT "logical_links__recursive".* FROM "logical_links__recursive") AS "logical_links__recursive")', element_or_scope.map(&:id))
-        end
-      end
+        query = <<-SQL
+          id IN (
+            WITH RECURSIVE logical_links_recursive AS (
+              (
+                SELECT link_parent_id, link_child_id
+                FROM logical_links
+                WHERE link_child_id IN (?)
+              )
+              UNION ALL
+              (
+                SELECT logical_links.link_parent_id, logical_links.link_child_id
+                FROM logical_links
+                INNER JOIN logical_links_recursive
+                ON logical_links_recursive.link_parent_id = logical_links.link_child_id
+              )
+            )
 
+            SELECT logical_links_recursive.link_parent_id
+            FROM logical_links_recursive
+          )
+        SQL
+
+        PolicyElement.where(query, [*element_or_scope].map(&:id))
+      end
     end
 
     class Adapter
-
       # Support substring searching and Postgres Array membership
       def self.apply_include_condition(scope: , key: , value: , klass: )
         if klass.columns_hash[key.to_s].array
@@ -93,8 +166,6 @@ module PolicyMachineStorageAdapter
           scope.where("#{key} LIKE '%#{value.to_s.gsub(/([%_])/, '\\\\\0')}%'", )
         end
       end
-
     end
-
   end
 end

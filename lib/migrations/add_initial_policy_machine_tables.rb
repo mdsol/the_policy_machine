@@ -31,11 +31,5 @@ class AddInitialPolicyMachineTables < ActiveRecord::Migration
     add_index :assignments, [:parent_id, :child_id], unique: true
     add_index :assignments, [:child_id]
 
-    create_table :operations_policy_element_associations, id: false do |t|
-      t.integer :policy_element_association_id, null: false
-      t.integer :operation_id, null: false
-    end
-    add_index :operations_policy_element_associations, [:policy_element_association_id, :operation_id], unique: true, name: 'index_pe_assoc_os_on_assoc_and_o'
-
   end
 end

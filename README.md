@@ -58,6 +58,10 @@ projects = policy_machine.create_object_attribute('Projects')
 r = policy_machine.create_operation('read')
 w = policy_machine.create_operation('write')
 
+# Operation Sets
+reader_operation_set = policy_machine.create_operation_set('reader')
+writer_operation_set = policy_machine.create_operation_set('writer')
+
 # Assignments
 policy_machine.add_assignment(u1, group1)
 policy_machine.add_assignment(u2, group2)
@@ -69,11 +73,13 @@ policy_machine.add_assignment(o2, project1)
 policy_machine.add_assignment(o3, project2)
 policy_machine.add_assignment(project1, projects)
 policy_machine.add_assignment(project2, projects)
+policy_machine.add_assignment(reader_operation_set, r)
+policy_machine.add_assignment(writer_operation_set, w)
 
 # Associations
-policy_machine.add_association(group1, Set.new([w]), project1)
-policy_machine.add_association(group2, Set.new([w]), project2)
-policy_machine.add_association(division, Set.new([r]), projects)
+policy_machine.add_association(group1, writer_operation_set, project1)
+policy_machine.add_association(group2, writer_operation_set, project2)
+policy_machine.add_association(division, reader_operation_set, projects)
 
 # List all privileges encoded in the policy machine
 policy_machine.privileges

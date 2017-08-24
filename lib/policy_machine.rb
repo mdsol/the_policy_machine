@@ -70,16 +70,15 @@ class PolicyMachine
   end
 
   ##
-  # Add an association between a user_attribute, a set_of_operation_objects and an object_attribute
+  # Add an association between a user_attribute, an operation_set and an object_attribute
   # in this policy machine.
   #
-  def add_association(user_attribute_pe, set_of_operation_objects, operation_set, object_attribute_pe)
+  def add_association(user_attribute_pe, operation_set, object_attribute_pe)
     assert_policy_element_in_machine(user_attribute_pe)
-    set_of_operation_objects.each { |op| assert_policy_element_in_machine(op) }
     assert_policy_element_in_machine(object_attribute_pe)
     assert_policy_element_in_machine(operation_set)
 
-    PM::Association.create(user_attribute_pe, set_of_operation_objects, operation_set, object_attribute_pe, @uuid, @policy_machine_storage_adapter)
+    PM::Association.create(user_attribute_pe, operation_set, object_attribute_pe, @uuid, @policy_machine_storage_adapter)
   end
 
   ##
@@ -127,7 +126,9 @@ class PolicyMachine
       raise(ArgumentError, "options[:associations] cannot be empty") if associations.empty?
       raise(ArgumentError, "expected each element of options[:associations] to be a PM::Association") unless associations.all?{|a| a.is_a?(PM::Association)}
 
-      associations.keep_if{ |assoc| assoc.includes_operation?(operation) }
+      associations.keep_if do |association|
+        association.operation_set.connected?(operation)
+      end
       return false if associations.empty?
     else
       associations = operation.associations
@@ -167,8 +168,6 @@ class PolicyMachine
     end
   end
 
-
-
   ##
   # Returns an array of all privileges encoded in this
   # policy machine.  Each privilege is of the form:
@@ -176,19 +175,16 @@ class PolicyMachine
   #
   # TODO:  might make privilege a class of its own
   def privileges
-    privileges = []
-
-    users.each do |user|
+    users.reduce([]) do |memo, user|
       operations.reject(&:prohibition?).each do |operation|
         objects.each do |object|
           if is_privilege?(user, operation, object)
-            privileges << [user, operation, object]
+            memo << [user, operation, object]
           end
         end
       end
+      memo
     end
-
-    privileges
   end
 
   ##
