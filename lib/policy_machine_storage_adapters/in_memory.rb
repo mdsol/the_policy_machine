@@ -178,10 +178,10 @@ module PolicyMachineStorageAdapter
     ##
     # Add the given association to the policy map.  If an association between user_attribute
     # and object_attribute already exists, then replace it with that given in the arguments.
-    def add_association(user_attribute, set_of_operation_objects, operation_set, object_attribute, policy_machine_uuid)
+    def add_association(user_attribute, operation_set, object_attribute)
       # TODO:  scope by policy machine uuid
-     associations[user_attribute.unique_identifier + object_attribute.unique_identifier] =
-        [user_attribute, set_of_operation_objects, operation_set, object_attribute]
+      associations[user_attribute.unique_identifier + object_attribute.unique_identifier] =
+        [user_attribute, operation_set, object_attribute]
 
       true
     end
@@ -189,13 +189,23 @@ module PolicyMachineStorageAdapter
     ##
     # Return all associations in which the given operation is included
     # Returns an array of arrays.  Each sub-array is of the form
-    # [user_attribute, set_of_operation_objects, object_attribute]
+    # [user_attribute, object_attribute]
     def associations_with(operation)
-      matching = associations.values.select do |assoc|
-        assoc[1].include?(operation)
+      associations.values.select do |_, operation_set, _|
+        stored_pe =
+          if operation_set.is_a?(PersistedPolicyElement)
+            operation_set
+          else
+            operation_set.stored_pe
+          end
+        connected?(stored_pe, operation)
       end
+    end
 
-      matching.map { |m| [m[0], m[1], m[2], m[3]] }
+    ##
+    # Return all assigments for the given source
+    def assignments_with(src)
+      assignments.select { |assignment| assignment[0] == src }
     end
 
     ##

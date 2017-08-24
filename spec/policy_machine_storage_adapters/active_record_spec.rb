@@ -90,7 +90,8 @@ describe 'ActiveRecord' do
 
         it 'deletes only those assignments that were on deleted elements' do
           pm.add_assignment(user, user_attribute)
-          pm.add_association(user_attribute, Set.new([operation]), op_set, object_attribute)
+          pm.add_assignment(op_set, operation)
+          pm.add_association(user_attribute, op_set, object_attribute)
           pm.add_assignment(object, object_attribute)
 
           expect(pm.is_privilege?(user, operation, object)).to be
@@ -223,25 +224,6 @@ describe 'ActiveRecord' do
             expect(user.connected?(caffeinated)).to be true
             expect(user.connected?(decaffeinated)).to be false
           end
-
-        end
-
-        describe 'describe policy element association behavior' do
-          let(:cup) { pm.create_object('cup') }
-
-          context 'with duplicate prohibitions on new operations' do
-            it 'creates the appropriate associations' do
-              pm.bulk_persist do
-                operation = pm.create_operation('drink')
-                operations = [operation, PM::Prohibition.on(operation), PM::Prohibition.on(operation)]
-                op_set = pm.create_operation_set('new_op_set')
-                pm.add_association(caffeinated, Set.new(operations), op_set, cup)
-              end
-
-              associated_operation_strings = pm.policy_machine_storage_adapter.associations_with(caffeinated.stored_pe).first.second.to_a.map(&:unique_identifier)
-              expect(associated_operation_strings).to match_array ['drink', '~drink']
-            end
-          end
         end
 
         describe 'link behavior' do
@@ -344,6 +326,15 @@ describe 'ActiveRecord' do
         expect(@o1.foo).to eq 'bar'
       end
 
+      it 'gives precedence to the column accessor' do
+        @o1.color = 'Color via column'
+        @o1.extra_attributes = { color: 'Color via extra_attributes' }
+        @o1.save
+
+        expect(@o1.color).to eq 'Color via column'
+        expect(policy_machine_storage_adapter.find_all_of_type_object(color: 'Color via column')).to contain_exactly(@o1)
+        expect(policy_machine_storage_adapter.find_all_of_type_object(color: 'Color via extra_attributes')).to be_empty
+      end
     end
 
     context 'when there is a lot of data' do
@@ -357,7 +348,8 @@ describe 'ActiveRecord' do
         @object_attributes = (1..n).map { |i| @pm.create_object_attribute("oa#{i}") }
         @objects = (1..n).map { |i| @pm.create_object("o#{i}") }
         @user_attributes.each { |ua| @pm.add_assignment(@u1, ua) }
-        @object_attributes.product(@user_attributes) { |oa, ua| @pm.add_association(ua, Set.new([@op]), @op_set, oa) }
+        @pm.add_assignment(@op_set, @op)
+        @object_attributes.product(@user_attributes) { |oa, ua| @pm.add_association(ua, @op_set, oa) }
         @object_attributes.zip(@objects) { |oa, o| @pm.add_assignment(o, oa) }
       end
 
@@ -391,7 +383,8 @@ describe 'ActiveRecord' do
       @pm3_user_attribute = @pm3.create_user_attribute('pm3_user_attribute')
 
       @user_attributes.each { |ua| @pm.add_assignment(@u1, ua) }
-      @object_attributes.product(@user_attributes) { |oa, ua| @pm.add_association(ua, Set.new([@op]), @op_set, oa) }
+      @pm.add_assignment(@op_set, @op)
+      @object_attributes.product(@user_attributes) { |oa, ua| @pm.add_association(ua, @op_set, oa) }
       @object_attributes.zip(@objects) { |oa, o| @pm.add_assignment(o, oa) }
       @pm.add_assignment(@user_attributes.first, @user_attributes.second)
 
