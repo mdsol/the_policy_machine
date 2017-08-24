@@ -244,26 +244,14 @@ module PolicyMachineStorageAdapter
       end
 
       def self.bulk_associate(associations, upsert_buffer)
-        associations.map! do |user_attribute, set_of_operation_objects, operation_set, object_attribute, policy_machine_uuid|
-          [PolicyElementAssociation.new(user_attribute_id: user_attribute.id,
-                                        object_attribute_id: object_attribute.id,
-                                        operation_set_id: operation_set.id),
-           set_of_operation_objects]
+        associations.map! do |user_attribute, operation_set, object_attribute|
+          PolicyElementAssociation.new(
+            user_attribute_id: user_attribute.id,
+            object_attribute_id: object_attribute.id,
+            operation_set_id: operation_set.id)
         end
 
-        PolicyElementAssociation.import(associations.map(&:first),
-                                        on_duplicate_key_update: PolicyElementAssociation::DUPLICATE_KEY_UPDATE_PARAMS)
-
-        #TODO: This should be a bulk upsert too but, among other things, AR doesn't understand nested arrays so deleting where a tuple
-        # isn't in a list of tuples seems to require raw SQL
-        # NB: operations= is a persistence method
-        associations.each do |association, set_of_operation_objects|
-          set_of_operation_objects.map! do |operation|
-            operation.id ? operation : upsert_buffer[operation.unique_identifier]
-          end
-
-          association.operations = set_of_operation_objects
-        end
+        PolicyElementAssociation.import(associations, on_duplicate_key_update: PolicyElementAssociation::DUPLICATE_KEY_UPDATE_PARAMS)
       end
 
       private
@@ -290,11 +278,14 @@ module PolicyMachineStorageAdapter
     end
 
     class Operation < PolicyElement
-      has_and_belongs_to_many :policy_element_associations, class_name: 'PolicyMachineStorageAdapter::ActiveRecord::PolicyElementAssociation', join_table: 'operations_policy_element_associations'
     end
 
     class OperationSet < PolicyElement
       has_many :policy_element_associations, dependent: :destroy
+
+      def operations
+        Assignment.descendants_of(self).where(type: PolicyMachineStorageAdapter::ActiveRecord::Operation.to_s)
+      end
     end
 
     class PolicyClass < PolicyElement
@@ -307,44 +298,23 @@ module PolicyMachineStorageAdapter
                                       columns: [:user_attribute_id, :object_attribute_id, :operation_set_id]
                                     }
 
-
-      # requires a join table (should be indexed!)
-      has_and_belongs_to_many :operations, class_name: "PolicyMachineStorageAdapter::ActiveRecord::Operation", join_table: 'operations_policy_element_associations'
-
       belongs_to :user_attribute
       belongs_to :object_attribute
       belongs_to :operation_set
 
-      #TODO: ActiveRecord's generated operations= method is inefficient, makes 1 query for each op added or removed even though there's no hooks
-      # Awkward manual implementation for now, but in the future change this to an hstore or something in the postgres adapter,
-      # and/or fix Rails.
-      def operations=(updated_operations_objects)
-        updated_set_of_operation_objects = Set.new(updated_operations_objects)
-        current_set_of_operation_objects = Set.new(self.operations)
-        new_operation_objects = updated_set_of_operation_objects - current_set_of_operation_objects
-        removed_operation_objects = current_set_of_operation_objects - updated_set_of_operation_objects
-        transaction do
-          OperationsPolicyElementAssociation.where(policy_element_association_id: self.id)
-                                            .where(operation_id: removed_operation_objects.map(&:id))
-                                            .delete_all
-          OperationsPolicyElementAssociation.import([:policy_element_association_id, :operation_id],
-                                                     new_operation_objects.map { |op| [self.id, op.id] },
-                                                     validate: false)
-        end
-        self.clear_association_cache
-      end
-
-      def self.add_association(user_attribute, set_of_operation_objects, operation_set, object_attribute, policy_machine_uuid)
-        pea_args = {user_attribute_id: user_attribute.id, object_attribute_id: object_attribute.id, operation_set_id: operation_set.id}
+      def self.add_association(user_attribute, operation_set, object_attribute)
+        pea_args = {
+          user_attribute_id: user_attribute.id,
+          object_attribute_id: object_attribute.id,
+          operation_set_id: operation_set.id }
         association = new(pea_args)
 
         import([association], on_duplicate_key_update: DUPLICATE_KEY_UPDATE_PARAMS)
-
-        association.operations = set_of_operation_objects.to_a
       end
-    end
 
-    class OperationsPolicyElementAssociation < ::ActiveRecord::Base
+      def operations
+        operation_set.operations
+      end
     end
 
     POLICY_ELEMENT_TYPES = %w(user user_attribute object object_attribute operation operation_set policy_class)
@@ -413,7 +383,7 @@ module PolicyMachineStorageAdapter
 
         # TODO: Look into moving this block into previous pagination conditional and test in consuming app
         unless all.respond_to? :total_entries
-          all.define_singleton_method(:total_entries) { all.count }
+          all.define_singleton_method(:total_entries) { all.size }
         end
 
         all
@@ -609,17 +579,17 @@ module PolicyMachineStorageAdapter
     # and object_attribute already exists, then replace it with that given in the arguments.
     # Returns true if the association was added and false otherwise.
     #
-    def add_association(user_attribute, set_of_operation_objects, operation_set, object_attribute, policy_machine_uuid)
+    def add_association(user_attribute, operation_set, object_attribute)
       if self.buffering?
-        associate_later(user_attribute, set_of_operation_objects, operation_set, object_attribute, policy_machine_uuid)
+        associate_later(user_attribute, operation_set, object_attribute)
       else
-        PolicyElementAssociation.add_association(user_attribute, set_of_operation_objects, operation_set, object_attribute, policy_machine_uuid)
+        PolicyElementAssociation.add_association(user_attribute, operation_set, object_attribute)
       end
     end
 
     #TODO PM uuid potentially useful for future optimization, currently unused
-    def associate_later(user_attribute, set_of_operation_objects, operation_set, object_attribute, policy_machine_uuid)
-      buffers[:associations] << [user_attribute, set_of_operation_objects, operation_set, object_attribute, policy_machine_uuid]
+    def associate_later(user_attribute, operation_set, object_attribute)
+      buffers[:associations] << [user_attribute, operation_set, object_attribute]
     end
 
     ##
@@ -631,10 +601,13 @@ module PolicyMachineStorageAdapter
     # If no associations are found then the empty array should be returned.
     #
     def associations_with(operation)
-      assocs = operation.policy_element_associations(true).includes(:user_attribute, :operations, :operation_set, :object_attribute).all
+      params = { type: PolicyMachineStorageAdapter::ActiveRecord::OperationSet.to_s }
+      operation_sets = Assignment.ancestors_of(operation).where(params)
+      assocs = PolicyElementAssociation.where(operation_set_id: operation_sets.pluck(:id))
+
       assocs.map do |assoc|
         assoc.clear_association_cache #TODO Either do this better (touch through HABTM on bulk insert?) or dont do this?
-        [assoc.user_attribute, Set.new(assoc.operations), assoc.operation_set, assoc.object_attribute]
+        [assoc.user_attribute, assoc.operation_set, assoc.object_attribute]
       end
     end
 
@@ -663,10 +636,14 @@ module PolicyMachineStorageAdapter
     # Returns true if the user has the operation on the object
     def is_privilege?(user_or_attribute, operation, object_or_attribute)
       policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
-      if policy_classes_containing_object.count < 2
-        is_privilege_single_policy_class(user_or_attribute, operation, object_or_attribute)
+      operation_id = operation.try(:unique_identifier) || operation.to_s
+
+      if policy_classes_containing_object.size < 2
+        !accessible_operations(user_or_attribute, object_or_attribute, operation_id).empty?
       else
-        is_privilege_multiple_policy_classes(user_or_attribute, operation, object_or_attribute, policy_classes_containing_object)
+        policy_classes_containing_object.all? do |policy_class|
+          !accessible_operations(user_or_attribute, object_or_attribute, operation_id).empty?
+        end
       end
     end
 
@@ -674,11 +651,17 @@ module PolicyMachineStorageAdapter
     # Returns all operations the user has on the object
     def scoped_privileges(user_or_attribute, object_or_attribute, options = {})
       policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
-      if policy_classes_containing_object.count < 2
-        scoped_privileges_single_policy_class(user_or_attribute, object_or_attribute, options)
-      else
-        scoped_privileges_multiple_policy_classes(user_or_attribute, object_or_attribute, policy_classes_containing_object, options)
-      end
+
+      operations =
+        if policy_classes_containing_object.size < 2
+          accessible_operations(user_or_attribute, object_or_attribute)
+        else
+          policy_classes_containing_object.flat_map do |policy_class|
+            accessible_operations(user_or_attribute, policy_class.ancestors)
+          end
+        end
+
+      options[:order] ? operations.sort : operations
     end
 
     def batch_find(policy_object, query = {}, config = {}, &blk)
@@ -696,18 +679,31 @@ module PolicyMachineStorageAdapter
     # Returns all objects the user has the given operation on
     # TODO: Support multiple policy classes here
     def accessible_objects(user_or_attribute, operation, options = {})
-      operation = class_for_type('operation').find_by_unique_identifier!(operation.to_s) unless operation.is_a?(class_for_type('operation'))
-      permitting_oas = PolicyElement.where(id: operation.policy_element_associations.where(
-        user_attribute_id: user_or_attribute.descendants | [user_or_attribute],
-      ).select(:object_attribute_id))
+      operation_id = operation.try(:unique_identifier) || operation.to_s
+
+      user_attributes = user_or_attribute.descendants | [user_or_attribute]
+      associations = PolicyElementAssociation.where(user_attribute_id: user_attributes)
+      operation_set_ids = associations.pluck(:operation_set_id)
+
+      filtered_operation_set_ids = Assignment.filter_operation_set_list_by_assigned_operation(operation_set_ids, operation_id)
+      filtered_associations =
+        associations.select do |association|
+          filtered_operation_set_ids.include?(association.operation_set_id)
+        end
+
+      permitting_oas = PolicyElement.where(id: filtered_associations.map(&:object_attribute_id))
+
       direct_scope = permitting_oas.where(type: class_for_type('object'))
       indirect_scope = Assignment.ancestors_of(permitting_oas).where(type: class_for_type('object'))
+
       if inclusion = options[:includes]
         direct_scope = Adapter.apply_include_condition(scope: direct_scope, key: options[:key], value: inclusion, klass: class_for_type('object'))
         indirect_scope = Adapter.apply_include_condition(scope: indirect_scope, key: options[:key], value: inclusion, klass: class_for_type('object'))
       end
+
       candidates = direct_scope | indirect_scope
-      if options[:ignore_prohibitions] || !(prohibition = class_for_type('operation').find_by_unique_identifier("~#{operation.unique_identifier}"))
+
+      if options[:ignore_prohibitions] || !(prohibition = prohibition_for(operation_id))
         candidates
       else
         candidates - accessible_objects(user_or_attribute, prohibition, options.merge(ignore_prohibitions: true))
@@ -716,65 +712,27 @@ module PolicyMachineStorageAdapter
 
     private
 
-    def relevant_associations(user_or_attribute, operation, object_or_attribute)
-      if operation.is_a?(class_for_type('operation'))
-        associations_between(user_or_attribute, object_or_attribute).where(id: operation.policy_element_associations)
-      else
-        associations_between(user_or_attribute, object_or_attribute).joins(:operations).where(policy_elements: {unique_identifier: operation})
-      end
+    def prohibition_for(operation)
+      operation_id = operation.try(:unique_identifier) || operation.to_s
+      PolicyMachineStorageAdapter::ActiveRecord::Operation.find_by_unique_identifier("~#{operation_id}")
     end
 
-    def is_privilege_single_policy_class(user_or_attribute, operation, object_or_attribute)
+    def accessible_operations(user_or_attribute, object_or_attribute, operation_id = nil)
       transaction_without_mergejoin do
-        relevant_associations(user_or_attribute, operation, object_or_attribute).exists?
-      end
-    end
+        user_attribute_ids = Assignment.descendants_of(user_or_attribute).pluck(:id) | [user_or_attribute.id]
+        object_attribute_ids = Assignment.descendants_of(object_or_attribute).pluck(:id) | [object_or_attribute.id]
 
-    def is_privilege_multiple_policy_classes(user_or_attribute, operation, object_or_attribute, policy_classes_containing_object)
-      transaction_without_mergejoin do
-        #Outstanding active record sql adapter prevents chaining an additional where using the association.
-        # TODO: fix when active record is fixed
-        policy_classes_containing_object.all? do |pc|
-          if operation.is_a?(class_for_type('operation'))
-            associations_between(user_or_attribute, object_or_attribute).where(id: operation.policy_element_associations.to_a, object_attribute_id: pc.ancestors).any?
-          else
-            associations_between(user_or_attribute, object_or_attribute).joins(:operations).where(policy_elements: {unique_identifier: operation}, object_attribute_id: pc.ancestors).any?
-          end
-        end
-      end
-    end
+        associations =
+          PolicyElementAssociation.where(
+            user_attribute_id: user_attribute_ids,
+            object_attribute_id: object_attribute_ids
+          )
 
-    # Pass in options to allow forced row ordering by id in results
-    def scoped_privileges_single_policy_class(user_or_attribute, object_or_attribute, options = {})
-      transaction_without_mergejoin do
-        associations = associations_between(user_or_attribute, object_or_attribute).includes(:operations)
-        operations = associations.flat_map do |assoc|
-          assoc.clear_association_cache
-          assoc.operations
-        end.uniq
-        options[:order] ? operations.sort : operations
-      end
-    end
+        prms = { type: PolicyMachineStorageAdapter::ActiveRecord::Operation.to_s }
+        prms.merge!(unique_identifier: operation_id) if operation_id
 
-    def scoped_privileges_multiple_policy_classes(user_or_attribute, object_or_attribute, policy_classes_containing_object, options = {})
-      transaction_without_mergejoin do
-        base_scope = associations_between(user_or_attribute, object_or_attribute)
-        operations_for_policy_classes = policy_classes_containing_object.map do |pc|
-          associations = base_scope.where(object_attribute_id: pc.ancestors).includes(:operations)
-          associations.flat_map do |assoc|
-            assoc.clear_association_cache
-            assoc.operations
-          end.uniq
-        end
-        operations_for_policy_classes.reduce(:&) || []
+        Assignment.descendants_of(associations.map(&:operation_set)).where(prms)
       end
-    end
-
-    def associations_between(user_or_attribute, object_or_attribute)
-      class_for_type('policy_element_association').where(
-        object_attribute_id: Assignment.descendants_of(object_or_attribute).pluck(:id) << object_or_attribute.id,
-        user_attribute_id: Assignment.descendants_of(user_or_attribute).pluck(:id) << user_or_attribute.id
-      )
     end
 
     def assert_persisted_policy_element(*arguments)
