@@ -12,7 +12,7 @@ module PolicyMachineStorageAdapter
       end
 
       def self.descendants_of(element_or_scope)
-        query = <<~SQL
+        query = <<-SQL
           id IN (
             WITH RECURSIVE assignments_recursive AS (
               (
@@ -38,7 +38,7 @@ module PolicyMachineStorageAdapter
       end
 
       def self.ancestors_of(element_or_scope)
-        query = <<~SQL
+        query = <<-SQL
           id IN (
             WITH RECURSIVE assignments_recursive AS (
               (
@@ -67,12 +67,12 @@ module PolicyMachineStorageAdapter
       # a descendant of the operation set.
       # TODO: Generalize this so that we can arbitrarily filter recursive assignments calls.
       def self.filter_operation_set_list_by_assigned_operation(operation_set_ids, operation_id)
-        query = <<~SQL
+        query = <<-SQL
           WITH RECURSIVE assignments_recursive AS (
             (
               SELECT parent_id, child_id, ARRAY[parent_id] AS parents
               FROM assignments
-              WHERE parent_id IN (#{operation_set_ids.join(',')})
+              # WHERE #{sanitize_sql_for_conditions(["parent_id IN (:opset_ids)", opset_ids: operation_set_ids])}
             )
             UNION ALL
             (
@@ -87,9 +87,10 @@ module PolicyMachineStorageAdapter
           FROM assignments_recursive
           JOIN policy_elements
           ON policy_elements.id = assignments_recursive.child_id
-          WHERE policy_elements.unique_identifier = '#{operation_id}'
+          # WHERE #{sanitize_sql_for_conditions(["policy_elements.unique_identifier=:op_id", op_id: operation_id])}
           AND type = 'PolicyMachineStorageAdapter::ActiveRecord::Operation'
         SQL
+
         PolicyElement.connection.exec_query(query).rows.flatten.map(&:to_i)
       end
     end
@@ -104,7 +105,7 @@ module PolicyMachineStorageAdapter
       end
 
       def self.descendants_of(element_or_scope)
-        query = <<~SQL
+        query = <<-SQL
           id IN (
             WITH RECURSIVE logical_links_recursive AS (
               (
@@ -130,7 +131,7 @@ module PolicyMachineStorageAdapter
       end
 
       def self.ancestors_of(element_or_scope)
-        query = <<~SQL
+        query = <<-SQL
           id IN (
             WITH RECURSIVE logical_links_recursive AS (
               (
