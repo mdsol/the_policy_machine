@@ -1,3 +1,3 @@
-module PolicyMachine
+class PolicyMachine
   VERSION = "1.5.4"
 end
