@@ -682,7 +682,7 @@ module PolicyMachineStorageAdapter
       operation_id = operation.try(:unique_identifier) || operation.to_s
 
       user_attributes = user_or_attribute.descendants | [user_or_attribute]
-      associations = PolicyElementAssociation.where(user_attribute_id: user_attributes)
+      associations = PolicyElementAssociation.where(user_attribute_id: user_attributes.map(&:id))
       operation_set_ids = associations.pluck(:operation_set_id)
 
       filtered_operation_set_ids = Assignment.filter_operation_set_list_by_assigned_operation(operation_set_ids, operation_id)
