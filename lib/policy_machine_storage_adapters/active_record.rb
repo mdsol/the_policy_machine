@@ -684,12 +684,13 @@ module PolicyMachineStorageAdapter
       user_attributes = user_or_attribute.descendants | [user_or_attribute]
       associations = PolicyElementAssociation.where(user_attribute_id: user_attributes.map(&:id))
       operation_set_ids = associations.pluck(:operation_set_id)
-      operation_sets = PolicyElement.where(id: operation_set_ids.uniq)
-      all_operation_set_ids = operation_sets.flat_map do |operation_set|
-        operation_set.descendants.select { |d| d.type == 'PolicyMachineStorageAdapter::ActiveRecord::OperationSet' }.map(&:id) | [operation_set.id]
-      end
+      operation_sets = PolicyElement.where(id: operation_set_ids)
 
-      filtered_operation_set_ids = Assignment.filter_operation_set_list_by_assigned_operation(all_operation_set_ids, operation_id)
+      filtered_operation_set_ids = operation_sets.select do |operation_set|
+        self_and_descendant_ids = operation_set.descendants.select { |d| d.type == 'PolicyMachineStorageAdapter::ActiveRecord::OperationSet' }.map(&:id) | [operation_set.id]
+        !Assignment.filter_operation_set_list_by_assigned_operation(self_and_descendant_ids, operation_id).empty?
+      end.map(&:id)
+
       filtered_associations =
         associations.select do |association|
           filtered_operation_set_ids.include?(association.operation_set_id)
