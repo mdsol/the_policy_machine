@@ -76,7 +76,7 @@ module PolicyMachineStorageAdapter
             )
             UNION ALL
             (
-              SELECT assignments.parent_id, assignments.child_id, parents || assignments.parent_id
+              SELECT assignments.parent_id, assignments.child_id, (parents || assignments.parent_id)
               FROM assignments
               INNER JOIN assignments_recursive
               ON assignments_recursive.child_id = assignments.parent_id
