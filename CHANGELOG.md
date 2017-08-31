@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.6.1
+* Fix a bug in the active record adapter's accessible_objects method preventing it from returing the correct operation set ids.
+
 ## 1.6.0
 * Give precedence to column attribute accessors instead of extra_attributes during store_attributes memoization.
 * Update `is_privilege` and `accessible_objects` to use the assignments join table instead of the operations policy elements associations table.
