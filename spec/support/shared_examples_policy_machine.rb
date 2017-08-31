@@ -1097,6 +1097,28 @@ shared_examples "a policy machine" do
       expect( policy_machine.accessible_objects(@u1, @read, includes: 'one', key: :unique_identifier).map(&:unique_identifier) ).to match_array(['one:fish','red:one'])
     end
 
+    context 'cascading operation sets' do
+      before do
+        @speed_read = policy_machine.create_operation('speed_read')
+        speed_reader = policy_machine.create_operation_set('speed_reader')
+        policy_machine.add_assignment(speed_reader, @speed_read)
+        policy_machine.add_assignment(@reader, speed_reader)
+
+        @speediest_read = policy_machine.create_operation('speediest_read')
+        speediest_reader = policy_machine.create_operation_set('speediest_reader')
+        policy_machine.add_assignment(speediest_reader, @speediest_read)
+        policy_machine.add_assignment(speed_reader, speediest_reader)
+      end
+
+      it 'lists all objects with the given privilege for the given user 1 operation set deep' do
+        expect(policy_machine.accessible_objects(@u1, @speed_read, key: :unique_identifier).map(&:unique_identifier) ).to include('one:fish','two:fish','red:one')
+      end
+
+      it 'lists all objects with the given privilege for the given user 2 operation sets deep' do
+        expect(policy_machine.accessible_objects(@u1, @speediest_read, key: :unique_identifier).map(&:unique_identifier) ).to include('one:fish','two:fish','red:one')
+      end
+    end
+
     context 'with prohibitions' do
       before do
         @oa2 = policy_machine.create_object_attribute('oa2')
