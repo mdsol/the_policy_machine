@@ -178,6 +178,30 @@ module PolicyMachineStorageAdapter
         unfiltered_link_children.where(filters)
       end
 
+      def pluck_from_descendants(filters: {}, fields:)
+        assert_valid_filters!(filters)
+
+        plucked_values = Assignment.descendants_of(self).where(filters).pluck(*fields.map(&:to_sym))
+
+        if fields.size > 1
+          plucked_values.map { |val| Hash[fields.zip(val)] }
+        else
+          plucked_values.map { |val| { fields.first.to_sym => val } }
+        end
+      end
+
+      def pluck_from_ancestors(filters: {}, fields:)
+        assert_valid_filters!(filters)
+
+        plucked_values = Assignment.ancestors_of(self).where(filters).pluck(*fields.map(&:to_sym))
+
+        if fields.size > 1
+          plucked_values.map { |val| Hash[fields.zip(val)] }
+        else
+          plucked_values.map { |val| { fields.first.to_sym => val } }
+        end
+      end
+
       def self.serialize(store:, name:, serializer: nil)
         active_record_serialize store, serializer
 
