@@ -182,7 +182,7 @@ module PolicyMachineStorageAdapter
       # fields from an element's relatives; returns an array of { attribute => value } hashes.
       %w(
         descendants
-        ancestors
+        
         parents
         children
         link_descendants
@@ -203,6 +203,12 @@ module PolicyMachineStorageAdapter
             plucked_values.map { |value| { sym_fields.first => value } }
           end
         end
+      end
+
+      def pluck_from_ancestors(filters: {}, fields:)
+        binding.pry
+        Assignment.select_ancestor_tree_with_attributes(id, filters, *fields)
+        # Assignment.filter_operation_set_list_by_assigned_operation(operation_set_ids, operation_id)
       end
 
       def self.serialize(store:, name:, serializer: nil)

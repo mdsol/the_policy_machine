@@ -93,6 +93,35 @@ module PolicyMachineStorageAdapter
 
         PolicyElement.connection.exec_query(query).rows.flatten.map(&:to_i)
       end
+
+      def self.select_ancestor_tree_with_attributes(root_elements_ids, filters_to_apply, fields_to_pluck)
+        query = <<-SQL
+          WITH RECURSIVE assignments_recursive AS (
+            (
+              SELECT parent_id, child_id, ARRAY[parent_id] AS parents
+              FROM assignments
+              WHERE #{sanitize_sql_for_conditions(["child_id IN (:root_ids)", root_ids: root_elements_ids])}
+            )
+            UNION ALL
+            (
+              SELECT assignments.parent_id, assignments.child_id, (parents || assignments.parent_id)
+              FROM assignments
+              INNER JOIN assignments_recursive
+              ON assignments_recursive.child_id = assignments.parent_id
+            )
+          )
+      
+          SELECT id, #{fields_to_pluck}, parents
+          FROM assignments_recursive
+          JOIN policy_elements
+          ON policy_elements.id = assignments_recursive.child_id
+
+          # needs a reference to the policy_elements table for these filters
+          WHERE #{sanitize_sql_for_conditions(filters_to_apply)}
+        SQL
+
+        PolicyElement.connection.exec_query(query).rows.flatten
+      end
     end
 
     class LogicalLink < ::ActiveRecord::Base
