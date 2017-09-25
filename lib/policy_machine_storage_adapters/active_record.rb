@@ -178,27 +178,30 @@ module PolicyMachineStorageAdapter
         unfiltered_link_children.where(filters)
       end
 
-      def pluck_from_descendants(filters: {}, fields:)
-        assert_valid_filters!(filters)
+      # A series of methods of the form "pluck_from_graph_traversal" which pluck the specified
+      # fields from an element's relatives; returns an array of { attribute => value } hashes.
+      %w(
+        descendants
+        ancestors
+        parents
+        children
+        link_descendants
+        link_ancestors
+        link_parents
+        link_children
+      ).each do |graph_method|
+        pluck_method_name = "pluck_from_#{graph_method}"
+        define_method(pluck_method_name) do |filters: {}, fields:|
+          sym_fields = fields.map(&:to_sym)
+          plucked_values = public_send(graph_method, filters).pluck(*sym_fields)
 
-        plucked_values = Assignment.descendants_of(self).where(filters).pluck(*fields.map(&:to_sym))
-
-        if fields.size > 1
-          plucked_values.map { |val| Hash[fields.zip(val)] }
-        else
-          plucked_values.map { |val| { fields.first.to_sym => val } }
-        end
-      end
-
-      def pluck_from_ancestors(filters: {}, fields:)
-        assert_valid_filters!(filters)
-
-        plucked_values = Assignment.ancestors_of(self).where(filters).pluck(*fields.map(&:to_sym))
-
-        if fields.size > 1
-          plucked_values.map { |val| Hash[fields.zip(val)] }
-        else
-          plucked_values.map { |val| { fields.first.to_sym => val } }
+          if sym_fields.size > 1
+            # Matches an array of plucked values ['my_name', 'my_uuid'] with the fields plucked
+            # e.g. [{ name: 'my_name', uuid: 'my_uuid' }]
+            plucked_values.map { |value| Hash[sym_fields.zip(value)] }
+          else
+            plucked_values.map { |value| { sym_fields.first => value } }
+          end
         end
       end
 
