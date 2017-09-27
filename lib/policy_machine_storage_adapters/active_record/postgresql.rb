@@ -111,16 +111,18 @@ module PolicyMachineStorageAdapter
             )
           )
       
-          SELECT id, #{fields_to_pluck}, parents
+          SELECT id, #{fields_to_pluck.join(',')}, parents
           FROM assignments_recursive
           JOIN policy_elements
           ON policy_elements.id = assignments_recursive.child_id
-
-          # needs a reference to the policy_elements table for these filters
-          WHERE #{sanitize_sql_for_conditions(filters_to_apply)}
         SQL
 
-        PolicyElement.connection.exec_query(query).rows.flatten
+        if filters_to_apply.present?
+          query += "WHERE #{sanitize_sql_for_conditions(filters_to_apply, 'policy_elements')}"
+        end
+
+        result = PolicyElement.connection.exec_query(query)
+        result.rows.map { |row| Hash[result.columns.zip(row)] }
       end
     end
 

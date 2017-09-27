@@ -207,8 +207,7 @@ module PolicyMachineStorageAdapter
 
       def pluck_from_ancestors(filters: {}, fields:)
         binding.pry
-        Assignment.select_ancestor_tree_with_attributes(id, filters, *fields)
-        # Assignment.filter_operation_set_list_by_assigned_operation(operation_set_ids, operation_id)
+        Assignment.select_ancestor_tree_with_attributes(id, filters, fields)
       end
 
       def self.serialize(store:, name:, serializer: nil)
