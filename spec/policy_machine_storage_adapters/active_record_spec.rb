@@ -486,12 +486,11 @@ describe 'ActiveRecord' do
           expect(@ua1.ancestors(color: 'taupe')).to be_empty
           expect { @ua1.ancestors(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
         end
-
-        it 'pluck_from_ancestors' do
-          result = @ua1.pluck_from_ancestors(filters: { color: 'blue' }, fields: [:unique_identifier])
-          expect(result).to contain_exactly({ unique_identifier: "u1" }, { unique_identifier: "u2" })
-        end
       end
+    end
+
+    describe '#pluck_from_ancestors' do
+      
     end
 
     describe '#link_ancestors' do

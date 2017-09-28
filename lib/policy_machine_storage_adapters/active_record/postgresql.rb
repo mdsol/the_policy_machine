@@ -63,67 +63,105 @@ module PolicyMachineStorageAdapter
         PolicyElement.where(query, [*element_or_scope].map(&:id))
       end
 
-      # Returns the operation set IDs from the given list where the operation is
-      # a descendant of the operation set.
-      # TODO: Generalize this so that we can arbitrarily filter recursive assignments calls.
-      def self.filter_operation_set_list_by_assigned_operation(operation_set_ids, operation_id)
+      def self.select_descendant_tree_with_attributes(root_element_ids, filters_to_apply, fields_to_pluck)
         query = <<-SQL
           WITH RECURSIVE assignments_recursive AS (
             (
-              SELECT parent_id, child_id, ARRAY[parent_id] AS parents
+              SELECT child_id, parent_id, ARRAY[child_id] AS children
               FROM assignments
-              WHERE #{sanitize_sql_for_conditions(["parent_id IN (:opset_ids)", opset_ids: operation_set_ids])}
+              WHERE #{sanitize_sql_for_conditions(["parent_id IN (:root_ids)", root_ids: root_element_ids])}
             )
             UNION ALL
             (
-              SELECT assignments.parent_id, assignments.child_id, (parents || assignments.parent_id)
+              SELECT assignments.child_id, assignments.parent_id, (children || assignments.child_id)
               FROM assignments
               INNER JOIN assignments_recursive
               ON assignments_recursive.child_id = assignments.parent_id
             )
           )
 
-          SELECT parents[1]
-          FROM assignments_recursive
-          JOIN policy_elements
-          ON policy_elements.id = assignments_recursive.child_id
-          WHERE #{sanitize_sql_for_conditions(["policy_elements.unique_identifier=:op_id", op_id: operation_id])}
-          AND type = 'PolicyMachineStorageAdapter::ActiveRecord::Operation'
-        SQL
-
-        PolicyElement.connection.exec_query(query).rows.flatten.map(&:to_i)
-      end
-
-      def self.select_ancestor_tree_with_attributes(root_elements_ids, filters_to_apply, fields_to_pluck)
-        query = <<-SQL
-          WITH RECURSIVE assignments_recursive AS (
-            (
-              SELECT parent_id, child_id, ARRAY[parent_id] AS parents
-              FROM assignments
-              WHERE #{sanitize_sql_for_conditions(["child_id IN (:root_ids)", root_ids: root_elements_ids])}
-            )
-            UNION ALL
-            (
-              SELECT assignments.parent_id, assignments.child_id, (parents || assignments.parent_id)
-              FROM assignments
-              INNER JOIN assignments_recursive
-              ON assignments_recursive.child_id = assignments.parent_id
-            )
-          )
-      
-          SELECT id, #{fields_to_pluck.join(',')}, parents
+          # Fields to pluck are non-optional, since the unspecified case is just 'ancestors'
+          SELECT id, #{fields_to_pluck.join(',')}, children
           FROM assignments_recursive
           JOIN policy_elements
           ON policy_elements.id = assignments_recursive.child_id
         SQL
 
+        # Filters are optional, but will be applied on the final result set even if the filter is on
+        # non-plucked fields
         if filters_to_apply.present?
-          query += "WHERE #{sanitize_sql_for_conditions(filters_to_apply, 'policy_elements')}"
+          query += " WHERE #{sanitize_sql_for_conditions(filters_to_apply, 'policy_elements')}"
         end
 
         result = PolicyElement.connection.exec_query(query)
         result.rows.map { |row| Hash[result.columns.zip(row)] }
       end
+    end
+
+      def self.select_ancestor_tree_with_attributes(root_element_ids, filters_to_apply, fields_to_pluck)
+        query = <<-SQL
+          WITH RECURSIVE assignments_recursive AS (
+            (
+              SELECT parent_id, child_id, ARRAY[parent_id] AS parents
+              FROM assignments
+              WHERE #{sanitize_sql_for_conditions(["child_id IN (:root_ids)", root_ids: root_element_ids])}
+            )
+            UNION ALL
+            (
+              SELECT assignments.parent_id, assignments.child_id, (parents || assignments.parent_id)
+              FROM assignments
+              INNER JOIN assignments_recursive
+              ON assignments_recursive.parent_id = assignments.child_id
+            )
+          )
+
+          # Fields to pluck are non-optional, since the unspecified case is just 'ancestors'
+          SELECT id, #{fields_to_pluck.join(',')}, parents
+          FROM assignments_recursive
+          JOIN policy_elements
+          ON policy_elements.id = assignments_recursive.parent_id
+        SQL
+
+        # Filters are optional, but will be applied on the final result set even if the filter is on
+        # non-plucked fields
+        if filters_to_apply.present?
+          query += " WHERE #{sanitize_sql_for_conditions(filters_to_apply, 'policy_elements')}"
+        end
+
+        result = PolicyElement.connection.exec_query(query)
+        result.rows.map { |row| Hash[result.columns.zip(row)] }
+      end
+    end
+
+    # Returns the operation set IDs from the given list where the operation is
+    # a descendant of the operation set.
+    # TODO: Generalize this so that we can arbitrarily filter recursive assignments calls.
+    def self.filter_operation_set_list_by_assigned_operation(operation_set_ids, operation_id)
+      query = <<-SQL
+        WITH RECURSIVE assignments_recursive AS (
+          (
+            SELECT parent_id, child_id, ARRAY[parent_id] AS parents
+            FROM assignments
+            WHERE #{sanitize_sql_for_conditions(["parent_id IN (:opset_ids)", opset_ids: operation_set_ids])}
+          )
+          UNION ALL
+          (
+            SELECT assignments.parent_id, assignments.child_id, (parents || assignments.parent_id)
+            FROM assignments
+            INNER JOIN assignments_recursive
+            ON assignments_recursive.child_id = assignments.parent_id
+          )
+        )
+
+        SELECT parents[1]
+        FROM assignments_recursive
+        JOIN policy_elements
+        ON policy_elements.id = assignments_recursive.child_id
+        WHERE #{sanitize_sql_for_conditions(["policy_elements.unique_identifier=:op_id", op_id: operation_id])}
+        AND type = 'PolicyMachineStorageAdapter::ActiveRecord::Operation'
+      SQL
+
+      PolicyElement.connection.exec_query(query).rows.flatten.map(&:to_i)
     end
 
     class LogicalLink < ::ActiveRecord::Base

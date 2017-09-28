@@ -181,8 +181,6 @@ module PolicyMachineStorageAdapter
       # A series of methods of the form "pluck_from_graph_traversal" which pluck the specified
       # fields from an element's relatives; returns an array of { attribute => value } hashes.
       %w(
-        descendants
-        
         parents
         children
         link_descendants
@@ -206,8 +204,15 @@ module PolicyMachineStorageAdapter
       end
 
       def pluck_from_ancestors(filters: {}, fields:)
-        binding.pry
+        assert_valid_filters!(filters)
+        assert_valid_filters!(fields)
         Assignment.select_ancestor_tree_with_attributes(id, filters, fields)
+      end
+
+      def pluck_from_decendants(filters: {}, fields:)
+        assert_valid_filters!(filters)
+        assert_valid_filters!(fields)
+        Assignment.select_descendant_tree_with_attributes(id, filters, fields)
       end
 
       def self.serialize(store:, name:, serializer: nil)
