@@ -80,18 +80,17 @@ module PolicyMachineStorageAdapter
             )
           )
 
-          # Fields to pluck are non-optional, since the unspecified case is equivalent to 'ancestors'
-          SELECT id, #{fields_to_pluck.join(',')}, children
+          SELECT id, #{fields_to_pluck.join(',')}
           FROM assignments_recursive
           JOIN policy_elements
           ON policy_elements.id = assignments_recursive.child_id
         SQL
 
-        # Filters are optional, but will be applied on the final result set even if the filter is on
-        # non-plucked fields
         if filters_to_apply.present?
-          query += " WHERE #{sanitize_sql_for_conditions(filters_to_apply, 'policy_elements')}"
+          query += "WHERE #{sanitize_sql_for_conditions(filters_to_apply, 'policy_elements')} "
         end
+
+        query += "GROUP BY policy_elements.id"
 
         result = PolicyElement.connection.exec_query(query)
         result.rows.map { |row| Hash[result.columns.zip(row)] }
@@ -114,15 +113,12 @@ module PolicyMachineStorageAdapter
             )
           )
 
-          # Fields to pluck are non-optional, since the unspecified case is just 'ancestors'
           SELECT id, #{fields_to_pluck.join(',')}, parents
           FROM assignments_recursive
           JOIN policy_elements
           ON policy_elements.id = assignments_recursive.parent_id
         SQL
 
-        # Filters are optional, but will be applied on the final result set even if the filter is on
-        # non-plucked fields
         if filters_to_apply.present?
           query += " WHERE #{sanitize_sql_for_conditions(filters_to_apply, 'policy_elements')}"
         end

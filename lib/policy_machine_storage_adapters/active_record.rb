@@ -139,46 +139,46 @@ module PolicyMachineStorageAdapter
       end
 
       def descendants(filters = {})
-        assert_valid_filters!(filters)
+        assert_valid_attributes!(filters.keys)
         Assignment.descendants_of(self).where(filters)
       end
 
       def ancestors(filters = {})
-        assert_valid_filters!(filters)
+        assert_valid_attributes!(filters.keys)
         Assignment.ancestors_of(self).where(filters)
       end
 
       def parents(filters = {})
-        assert_valid_filters!(filters)
+        assert_valid_attributes!(filters.keys)
         unfiltered_parents.where(filters)
       end
 
       def children(filters = {})
-        assert_valid_filters!(filters)
+        assert_valid_attributes!(filters.keys)
         unfiltered_children.where(filters)
       end
 
       def link_descendants(filters = {})
-        assert_valid_filters!(filters)
+        assert_valid_attributes!(filters.keys)
         LogicalLink.descendants_of(self).where(filters)
       end
 
       def link_ancestors(filters = {})
-        assert_valid_filters!(filters)
+        assert_valid_attributes!(filters.keys)
         LogicalLink.ancestors_of(self).where(filters)
       end
 
       def link_parents(filters = {})
-        assert_valid_filters!(filters)
+        assert_valid_attributes!(filters.keys)
         unfiltered_link_parents.where(filters)
       end
 
       def link_children(filters = {})
-        assert_valid_filters!(filters)
+        assert_valid_attributes!(filters.keys)
         unfiltered_link_children.where(filters)
       end
 
-      # A series of methods of the form "pluck_from_graph_traversal" which pluck the specified
+      # A series of methods of the form "graph_traversal" which pluck the specified
       # fields from an element's relatives; returns an array of { attribute => value } hashes.
       # %w(
       #   parents
@@ -204,15 +204,25 @@ module PolicyMachineStorageAdapter
       # end
 
       def pluck_from_ancestors(filters: {}, fields:)
-        assert_valid_filters!(filters)
-        assert_valid_filters!(fields)
-        Assignment.select_ancestor_tree_with_attributes(id, filters, fields)
+        assert_valid_attributes!(filters.keys)
+        assert_valid_attributes!(fields)
+
+        Assignment.select_ancestor_tree_with_attributes(id, filters, fields).map do |result|
+          result.with_indifferent_access.except(:id)
+        end
       end
 
-      def pluck_from_decendants(filters: {}, fields:)
-        assert_valid_filters!(filters)
-        assert_valid_filters!(fields)
-        Assignment.select_descendant_tree_with_attributes(id, filters, fields)
+      def pluck_from_descendants(filters: {}, fields:)
+        assert_valid_attributes!(filters.keys)
+        assert_valid_attributes!(fields)
+
+        # [
+        #  { "id"=>"4", "unique_identifier"=>"user_attr_1", "color"=>"green" },
+        #  { "id"=>"5", "unique_identifier"=>"user_attr_2", "color"=>"green" }
+        # ]
+        Assignment.select_descendant_tree_with_attributes(id, filters, fields).map do |result|
+          result.with_indifferent_access.except(:id)
+        end
       end
 
       def self.serialize(store:, name:, serializer: nil)
@@ -293,8 +303,8 @@ module PolicyMachineStorageAdapter
 
       private
 
-      def assert_valid_filters!(filters)
-        unless (filters.keys - PolicyElement.column_names.map(&:to_sym)).empty?
+      def assert_valid_attributes!(attributes)
+        unless (attributes.map(&:to_sym) - PolicyElement.column_names.map(&:to_sym)).empty?
           raise ArgumentError, "Provided argument contains invalid keys, valid keys are #{PolicyElement.column_names}"
         end
       end
