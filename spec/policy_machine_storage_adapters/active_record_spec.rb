@@ -565,7 +565,6 @@ describe 'ActiveRecord' do
 
       context 'a filter is applied' do
         it 'applies a single filter if one is supplied' do
-          # green_children = [user_attributes]
           expect(user_1.children(color: 'green')).to match_array(user_attributes.map(&:stored_pe))
         end
 
