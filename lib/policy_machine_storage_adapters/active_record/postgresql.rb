@@ -80,12 +80,16 @@ module PolicyMachineStorageAdapter
             )
           )
 
-          SELECT id, #{fields_to_pluck.join(',')}
+          SELECT id, #{fields_to_pluck.join(',')}, array_agg(children)
           FROM assignments_recursive
           JOIN policy_elements
           ON policy_elements.id = assignments_recursive.child_id
         SQL
-
+          # This is equivalent to just adding .pluck() to the end of .ancestors()
+          # The 'id' and 'children' selections enable a fuller look at the relationships
+          # within the returned structure.
+          # Perhaps pluck the same attributes from the PEs referenced in the 'children' list
+          # 
         if filters_to_apply.present?
           query += "WHERE #{sanitize_sql_for_conditions(filters_to_apply, 'policy_elements')} "
         end

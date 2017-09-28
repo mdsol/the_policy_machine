@@ -207,9 +207,7 @@ module PolicyMachineStorageAdapter
         assert_valid_attributes!(filters.keys)
         assert_valid_attributes!(fields)
 
-        Assignment.select_ancestor_tree_with_attributes(id, filters, fields).map do |result|
-          result.with_indifferent_access.except(:id)
-        end
+        Assignment.select_ancestor_tree_with_attributes(id, filters, fields).map(&:with_indifferent_access)
       end
 
       def pluck_from_descendants(filters: {}, fields:)
@@ -220,9 +218,9 @@ module PolicyMachineStorageAdapter
         #  { "id"=>"4", "unique_identifier"=>"user_attr_1", "color"=>"green" },
         #  { "id"=>"5", "unique_identifier"=>"user_attr_2", "color"=>"green" }
         # ]
-        Assignment.select_descendant_tree_with_attributes(id, filters, fields).map do |result|
-          result.with_indifferent_access.except(:id)
-        end
+        result = Assignment.select_descendant_tree_with_attributes(id, filters, fields).map(&:with_indifferent_access)
+        binding.pry
+        result
       end
 
       def self.serialize(store:, name:, serializer: nil)
