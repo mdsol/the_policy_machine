@@ -504,10 +504,6 @@ describe 'ActiveRecord' do
       end
     end
 
-    describe '#pluck_from_ancestors' do
-      
-    end
-
     describe '#link_ancestors' do
       context 'no filter is applied' do
         it 'returns appropriate cross ancestors one level deep' do
