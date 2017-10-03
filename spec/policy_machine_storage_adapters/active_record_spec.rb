@@ -451,6 +451,45 @@ describe 'ActiveRecord' do
       end
     end
 
+    describe '#pluck_from_descendants' do
+      context 'no filter is applied' do
+        it 'returns appropriate descendants and the specified attribute' do
+          plucked_results = [{ color: 'green' }, { color: 'green' }, { color: 'green' }]
+          expect(user_1.pluck_from_descendants(fields: [:color])).to match_array(plucked_results)
+        end
+
+        it 'returns appropriate descendants and multiple specified attributes' do
+          plucked_results = [
+            { unique_identifier: 'user_attr_1', color: 'green' },
+            { unique_identifier: 'user_attr_2', color: 'green' },
+            { unique_identifier: 'user_attr_3', color: 'green' }]
+          expect(user_1.pluck_from_descendants(fields: [:unique_identifier, :color])).to match_array(plucked_results)
+        end
+
+        it 'errors appropriately when nonexistent attributes are specified' do
+          expect { expect(user_1.pluck_from_descendants(fields: ['favorite_mountain'])) }
+            .to raise_error(ArgumentError)
+        end
+      end
+
+      context 'a filter is applied' do
+        it 'applies a single filter if one is supplied' do
+          plucked_results = [{ color: 'green' }, { color: 'green' }, { color: 'green' }]
+          expect(user_1.pluck_from_descendants(fields: [:color], filters: { color: 'green' }))
+            .to match_array(plucked_results)
+        end
+
+        it 'applies multiple filters if they are supplied' do
+          args = { fields: [:unique_identifier], filters: { unique_identifier: 'user_attr_1', color: 'green' } }
+          expect(user_1.pluck_from_descendants(args)).to contain_exactly({ unique_identifier: 'user_attr_1' })
+        end
+
+        it 'returns appropriate results when filters apply to no descendants' do
+          expect(user_1.pluck_from_descendants(fields: [:unique_identifier], filters: { color: 'red' })).to be_empty
+        end
+      end
+    end
+
     describe '#link_descendants' do
       context 'no filter is applied' do
         it 'returns appropriate cross descendants one level deep' do
@@ -500,11 +539,6 @@ describe 'ActiveRecord' do
         it 'returns appropriate results when filters apply to no ancestors' do
           expect(user_attr_1.ancestors(color: 'taupe')).to be_empty
           expect { user_attr_1.ancestors(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
-        end
-
-        it 'pluck_from_ancestors' do
-          result = @ua1.pluck_from_ancestors(filters: { color: 'blue' }, fields: [:unique_identifier])
-          expect(result).to contain_exactly({ unique_identifier: "u1" }, { unique_identifier: "u2" })
         end
       end
     end

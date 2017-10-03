@@ -139,42 +139,42 @@ module PolicyMachineStorageAdapter
       end
 
       def descendants(filters = {})
-        assert_valid_filters!(filters)
+        assert_valid_attributes!(filters.keys)
         Assignment.descendants_of(self).where(filters)
       end
 
       def ancestors(filters = {})
-        assert_valid_filters!(filters)
+        assert_valid_attributes!(filters.keys)
         Assignment.ancestors_of(self).where(filters)
       end
 
       def parents(filters = {})
-        assert_valid_filters!(filters)
+        assert_valid_attributes!(filters.keys)
         unfiltered_parents.where(filters)
       end
 
       def children(filters = {})
-        assert_valid_filters!(filters)
+        assert_valid_attributes!(filters.keys)
         unfiltered_children.where(filters)
       end
 
       def link_descendants(filters = {})
-        assert_valid_filters!(filters)
+        assert_valid_attributes!(filters.keys)
         LogicalLink.descendants_of(self).where(filters)
       end
 
       def link_ancestors(filters = {})
-        assert_valid_filters!(filters)
+        assert_valid_attributes!(filters.keys)
         LogicalLink.ancestors_of(self).where(filters)
       end
 
       def link_parents(filters = {})
-        assert_valid_filters!(filters)
+        assert_valid_attributes!(filters.keys)
         unfiltered_link_parents.where(filters)
       end
 
       def link_children(filters = {})
-        assert_valid_filters!(filters)
+        assert_valid_attributes!(filters.keys)
         unfiltered_link_children.where(filters)
       end
 
@@ -190,17 +190,17 @@ module PolicyMachineStorageAdapter
         link_parents
         link_children
       ).each do |graph_method|
-        pluck_method_name = "pluck_from_#{graph_method}"
-        define_method(pluck_method_name) do |filters: {}, fields:|
-          sym_fields = fields.map(&:to_sym)
-          plucked_values = public_send(graph_method, filters).pluck(*sym_fields)
+        define_method("pluck_from_#{graph_method}") do |filters: {}, fields:|
+          assert_valid_attributes!(filters.keys)
+          assert_valid_attributes!(fields)
 
-          if sym_fields.size > 1
-            # Matches an array of plucked values ['my_name', 'my_uuid'] with the fields plucked
-            # e.g. [{ name: 'my_name', uuid: 'my_uuid' }]
-            plucked_values.map { |value| Hash[sym_fields.zip(value)] }
+          plucked_values = public_send(graph_method, filters).pluck(*fields)
+
+          if fields.size > 1
+            plucked_values.map { |values| HashWithIndifferentAccess[fields.zip(values)] }
           else
-            plucked_values.map { |value| { sym_fields.first => value } }
+            field = fields.first
+            plucked_values.map { |value| HashWithIndifferentAccess[field, value] }
           end
         end
       end
@@ -283,8 +283,8 @@ module PolicyMachineStorageAdapter
 
       private
 
-      def assert_valid_filters!(filters)
-        unless (filters.keys - PolicyElement.column_names.map(&:to_sym)).empty?
+      def assert_valid_attributes!(attributes)
+        unless (attributes.map(&:to_sym) - PolicyElement.column_names.map(&:to_sym)).empty?
           raise ArgumentError, "Provided argument contains invalid keys, valid keys are #{PolicyElement.column_names}"
         end
       end
