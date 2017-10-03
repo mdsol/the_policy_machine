@@ -63,7 +63,11 @@ module PolicyMachineStorageAdapter
         PolicyElement.where(query, [*element_or_scope].map(&:id))
       end
 
-      def self.select_descendant_tree_with_attributes(root_element_ids, filters_to_apply, fields_to_pluck)
+      def self.pluck_from_descendants(root_element_ids, attribute_filters, fields_to_pluck)
+        if attribute_filters.present?
+          optional_policy_element_filters = "WHERE #{sanitize_sql_for_conditions(attribute_filters, 'policy_elements')}"
+        end
+
         query = <<-SQL
           WITH RECURSIVE assignments_recursive AS (
             (
@@ -80,27 +84,22 @@ module PolicyMachineStorageAdapter
             )
           )
 
-          SELECT id, #{fields_to_pluck.join(',')}, array_agg(children)
+          SELECT #{fields_to_pluck.join(',')}
           FROM assignments_recursive
           JOIN policy_elements
           ON policy_elements.id = assignments_recursive.child_id
+          #{optional_policy_element_filters}
+          GROUP BY policy_elements.id
         SQL
-          # This is equivalent to just adding .pluck() to the end of .ancestors()
-          # The 'id' and 'children' selections enable a fuller look at the relationships
-          # within the returned structure.
-          # Perhaps pluck the same attributes from the PEs referenced in the 'children' list
-          # 
-        if filters_to_apply.present?
-          query += "WHERE #{sanitize_sql_for_conditions(filters_to_apply, 'policy_elements')} "
-        end
 
-        query += "GROUP BY policy_elements.id"
-
-        result = PolicyElement.connection.exec_query(query)
-        result.rows.map { |row| Hash[result.columns.zip(row)] }
+        PolicyElement.connection.exec_query(query)
       end
 
-      def self.select_ancestor_tree_with_attributes(root_element_ids, filters_to_apply, fields_to_pluck)
+      def self.pluck_from_ancestors(root_element_ids, attribute_filters, fields_to_pluck)
+        if attribute_filters.present?
+          optional_policy_element_filters = "WHERE #{sanitize_sql_for_conditions(attribute_filters, 'policy_elements')}"
+        end
+
         query = <<-SQL
           WITH RECURSIVE assignments_recursive AS (
             (
@@ -117,18 +116,15 @@ module PolicyMachineStorageAdapter
             )
           )
 
-          SELECT id, #{fields_to_pluck.join(',')}, parents
+          SELECT #{fields_to_pluck.join(',')}
           FROM assignments_recursive
           JOIN policy_elements
           ON policy_elements.id = assignments_recursive.parent_id
+          #{optional_policy_element_filters}
+          GROUP BY policy_elements.id
         SQL
 
-        if filters_to_apply.present?
-          query += " WHERE #{sanitize_sql_for_conditions(filters_to_apply, 'policy_elements')}"
-        end
-
-        result = PolicyElement.connection.exec_query(query)
-        result.rows.map { |row| Hash[result.columns.zip(row)] }
+        PolicyElement.connection.exec_query(query)
       end
 
       # Returns the operation set IDs from the given list where the operation is
