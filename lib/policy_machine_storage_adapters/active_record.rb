@@ -191,6 +191,8 @@ module PolicyMachineStorageAdapter
         link_children
       ).each do |graph_method|
         define_method("pluck_from_#{graph_method}") do |filters: {}, fields:|
+          raise(ArgumentError.new("Must provide at least one field to pluck")) unless fields.present?
+
           assert_valid_attributes!(filters.keys)
           assert_valid_attributes!(fields)
 

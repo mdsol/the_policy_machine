@@ -470,6 +470,10 @@ describe 'ActiveRecord' do
           expect { expect(user_1.pluck_from_descendants(fields: ['favorite_mountain'])) }
             .to raise_error(ArgumentError)
         end
+
+        it 'errors appropriately when no attributes are specified' do
+          expect { expect(user_1.pluck_from_descendants(fields: [])) }.to raise_error(ArgumentError)
+        end
       end
 
       context 'a filter is applied' do
@@ -562,6 +566,10 @@ describe 'ActiveRecord' do
           expect { expect(user_attr_1.pluck_from_ancestors(fields: ['favorite_mountain'])) }
             .to raise_error(ArgumentError)
         end
+
+        it 'errors appropriately when no attributes are specified' do
+          expect { expect(user_attr_1.pluck_from_ancestors(fields: [])) }.to raise_error(ArgumentError)
+        end
       end
 
       context 'a filter is applied' do
@@ -573,7 +581,7 @@ describe 'ActiveRecord' do
 
         it 'applies multiple filters if they are supplied' do
           args = { fields: [:unique_identifier], filters: { unique_identifier: 'user_1', color: 'blue' } }
-          expect(user_attr_1.pluck_from_ancestors(args)).to contain_exactly({ unique_identifier: 'user_1' })
+          expect(user_attr_1.pluck_from_ancestors(args)).to contain_exactly(unique_identifier: 'user_1')
         end
 
         it 'returns appropriate results when filters apply to no ancestors' do
@@ -653,6 +661,10 @@ describe 'ActiveRecord' do
           expect { expect(user_attr_1.pluck_from_parents(fields: ['favorite_mountain'])) }
             .to raise_error(ArgumentError)
         end
+
+        it 'errors appropriately when no attributes are specified' do
+          expect { expect(user_attr_1.pluck_from_parents(fields: [])) }.to raise_error(ArgumentError)
+        end
       end
 
       context 'a filter is applied' do
@@ -714,6 +726,10 @@ describe 'ActiveRecord' do
         it 'errors appropriately when nonexistent attributes are specified' do
           expect { expect(user_1.pluck_from_children(fields: ['favorite_mountain'])) }
             .to raise_error(ArgumentError)
+        end
+
+        it 'errors appropriately when no attributes are specified' do
+          expect { expect(user_1.pluck_from_children(fields: [])) }.to raise_error(ArgumentError)
         end
       end
 
@@ -778,6 +794,10 @@ describe 'ActiveRecord' do
         it 'errors appropriately when nonexistent attributes are specified' do
           expect { expect(pm3_user_attr.pluck_from_link_parents(fields: ['favorite_mountain'])) }
             .to raise_error(ArgumentError)
+        end
+
+        it 'errors appropriately when no attributes are specified' do
+          expect { expect(pm3_user_attr.pluck_from_link_parents(fields: [])) }.to raise_error(ArgumentError)
         end
       end
 
@@ -844,6 +864,10 @@ describe 'ActiveRecord' do
         it 'errors appropriately when nonexistent attributes are specified' do
           expect { expect(user_1.pluck_from_link_children(fields: ['favorite_mountain'])) }
             .to raise_error(ArgumentError)
+        end
+
+        it 'errors appropriately when no attributes are specified' do
+          expect { expect(user_1.pluck_from_link_children(fields: [])) }.to raise_error(ArgumentError)
         end
       end
 
