@@ -396,6 +396,15 @@ describe 'ActiveRecord' do
     let(:pm2_operation_2) { pm2.create_operation('pm2_operation_2') }
     let(:pm3_user_attr) { pm3.create_user_attribute('pm3_user_attr') }
 
+    # For specs that require more attribute differentiation for filtering
+    let(:darken_colors) do
+      ->{
+        user_2.update(color: 'navy_blue')
+        user_attr_2.update(color: 'forest_green')
+        pm2_operation_2.update(color: 'crimson')
+      }
+    end
+
     before do
       user_attributes.each { |ua| pm1.add_assignment(user_1, ua) }
       pm1.add_assignment(user_attr_1, user_attr_2)
@@ -452,16 +461,18 @@ describe 'ActiveRecord' do
     end
 
     describe '#pluck_from_descendants' do
+      before { darken_colors.call }
+
       context 'no filter is applied' do
         it 'returns appropriate descendants and the specified attribute' do
-          plucked_results = [{ color: 'green' }, { color: 'green' }, { color: 'green' }]
+          plucked_results = [{ color: 'green' }, { color: 'forest_green' }, { color: 'green' }]
           expect(user_1.pluck_from_descendants(fields: [:color])).to match_array(plucked_results)
         end
 
         it 'returns appropriate descendants and multiple specified attributes' do
           plucked_results = [
             { unique_identifier: 'user_attr_1', color: 'green' },
-            { unique_identifier: 'user_attr_2', color: 'green' },
+            { unique_identifier: 'user_attr_2', color: 'forest_green' },
             { unique_identifier: 'user_attr_3', color: 'green' }]
           expect(user_1.pluck_from_descendants(fields: [:unique_identifier, :color])).to match_array(plucked_results)
         end
@@ -478,7 +489,7 @@ describe 'ActiveRecord' do
 
       context 'a filter is applied' do
         it 'applies a single filter if one is supplied' do
-          plucked_results = [{ color: 'green' }, { color: 'green' }, { color: 'green' }]
+          plucked_results = [{ color: 'green' }, { color: 'green' }]
           expect(user_1.pluck_from_descendants(fields: [:color], filters: { color: 'green' }))
             .to match_array(plucked_results)
         end
@@ -548,16 +559,18 @@ describe 'ActiveRecord' do
     end
 
     describe '#pluck_from_ancestors' do
+      before { darken_colors.call }
+
       context 'no filter is applied' do
         it 'returns appropriate ancestors and the specified attribute' do
-          plucked_results = [{ color: 'blue' }, { color: 'blue' }, { color: 'blue' }]
+          plucked_results = [{ color: 'blue' }, { color: 'navy_blue' }, { color: 'blue' }]
           expect(user_attr_1.pluck_from_ancestors(fields: [:color])).to match_array(plucked_results)
         end
 
         it 'returns appropriate ancestors and multiple specified attributes' do
           plucked_results = [
             { unique_identifier: 'user_1', color: 'blue' },
-            { unique_identifier: 'user_2', color: 'blue' },
+            { unique_identifier: 'user_2', color: 'navy_blue' },
             { unique_identifier: 'user_3', color: 'blue' }]
           expect(user_attr_1.pluck_from_ancestors(fields: [:unique_identifier, :color])).to match_array(plucked_results)
         end
@@ -574,7 +587,7 @@ describe 'ActiveRecord' do
 
       context 'a filter is applied' do
         it 'applies a single filter if one is supplied' do
-          plucked_results = [{ color: 'blue' }, { color: 'blue' }, { color: 'blue' }]
+          plucked_results = [{ color: 'blue' }, { color: 'blue' }]
           expect(user_attr_1.pluck_from_ancestors(fields: [:color], filters: { color: 'blue' }))
             .to match_array(plucked_results)
         end
@@ -643,16 +656,18 @@ describe 'ActiveRecord' do
     end
 
     describe '#pluck_from_parents' do
+      before { darken_colors.call }
+
       context 'no filter is applied' do
         it 'returns appropriate parents and the specified attribute' do
-          plucked_results = [{ color: 'blue' }, { color: 'blue' }, { color: 'blue' }]
+          plucked_results = [{ color: 'blue' }, { color: 'navy_blue' }, { color: 'blue' }]
           expect(user_attr_1.pluck_from_parents(fields: [:color])).to match_array(plucked_results)
         end
 
         it 'returns appropriate parents and multiple specified attributes' do
           plucked_results = [
             { unique_identifier: 'user_1', color: 'blue' },
-            { unique_identifier: 'user_2', color: 'blue' },
+            { unique_identifier: 'user_2', color: 'navy_blue' },
             { unique_identifier: 'user_3', color: 'blue' }]
           expect(user_attr_1.pluck_from_parents(fields: [:unique_identifier, :color])).to match_array(plucked_results)
         end
@@ -669,7 +684,7 @@ describe 'ActiveRecord' do
 
       context 'a filter is applied' do
         it 'applies a single filter if one is supplied' do
-          plucked_results = [{ color: 'blue' }, { color: 'blue' }, { color: 'blue' }]
+          plucked_results = [{ color: 'blue' }, { color: 'blue' }]
           expect(user_attr_1.pluck_from_parents(fields: [:color], filters: { color: 'blue' }))
             .to match_array(plucked_results)
         end
@@ -709,16 +724,18 @@ describe 'ActiveRecord' do
     end
 
     describe '#pluck_from_children' do
+      before { darken_colors.call }
+
       context 'no filter is applied' do
         it 'returns appropriate children and the specified attribute' do
-          plucked_results = [{ color: 'green' }, { color: 'green' }, { color: 'green' }]
+          plucked_results = [{ color: 'green' }, { color: 'forest_green' }, { color: 'green' }]
           expect(user_1.pluck_from_children(fields: [:color])).to match_array(plucked_results)
         end
 
         it 'returns appropriate children and multiple specified attributes' do
           plucked_results = [
             { unique_identifier: 'user_attr_1', color: 'green' },
-            { unique_identifier: 'user_attr_2', color: 'green' },
+            { unique_identifier: 'user_attr_2', color: 'forest_green' },
             { unique_identifier: 'user_attr_3', color: 'green' }]
           expect(user_1.pluck_from_children(fields: [:unique_identifier, :color])).to match_array(plucked_results)
         end
@@ -735,7 +752,7 @@ describe 'ActiveRecord' do
 
       context 'a filter is applied' do
         it 'applies a single filter if one is supplied' do
-          plucked_results = [{ color: 'green' }, { color: 'green' }, { color: 'green' }]
+          plucked_results = [{ color: 'green' }, { color: 'green' }]
           expect(user_1.pluck_from_children(fields: [:color], filters: { color: 'green' }))
             .to match_array(plucked_results)
         end
@@ -778,16 +795,18 @@ describe 'ActiveRecord' do
     end
 
     describe '#pluck_from_link_parents' do
+      before { darken_colors.call }
+
       context 'no filter is applied' do
         it 'returns appropriate link_parents and the specified attribute' do
-          plucked_results = [{ color: 'red' }, { color: 'red' }]
+          plucked_results = [{ color: 'red' }, { color: 'crimson' }]
           expect(pm3_user_attr.pluck_from_link_parents(fields: [:color])).to match_array(plucked_results)
         end
 
         it 'returns appropriate link_parents and multiple specified attributes' do
           plucked_results = [
             { unique_identifier: 'pm2_operation_1', color: 'red' },
-            { unique_identifier: 'pm2_operation_2', color: 'red' }]
+            { unique_identifier: 'pm2_operation_2', color: 'crimson' }]
           expect(pm3_user_attr.pluck_from_link_parents(fields: [:unique_identifier, :color])).to match_array(plucked_results)
         end
 
@@ -803,7 +822,7 @@ describe 'ActiveRecord' do
 
       context 'a filter is applied' do
         it 'applies a single filter if one is supplied' do
-          plucked_results = [{ color: 'red' }, { color: 'red' }]
+          plucked_results = [{ color: 'red' }]
           expect(pm3_user_attr.pluck_from_link_parents(fields: [:color], filters: { color: 'red' }))
             .to match_array(plucked_results)
         end
@@ -846,9 +865,11 @@ describe 'ActiveRecord' do
     end
 
     describe '#pluck_from_link_children' do
+      before { darken_colors.call }
+
       context 'no filter is applied' do
         it 'returns appropriate link_children and the specified attribute' do
-          plucked_results = [{ color: 'blue' }, { color: 'red' }, { color: 'red' }, { color: 'green' }]
+          plucked_results = [{ color: 'blue' }, { color: 'red' }, { color: 'crimson' }, { color: 'green' }]
           expect(user_1.pluck_from_link_children(fields: [:color])).to match_array(plucked_results)
         end
 
@@ -856,7 +877,7 @@ describe 'ActiveRecord' do
           plucked_results = [
             { unique_identifier: 'pm2_user', color: 'blue' },
             { unique_identifier: 'pm2_operation_1', color: 'red' },
-            { unique_identifier: 'pm2_operation_2', color: 'red' },
+            { unique_identifier: 'pm2_operation_2', color: 'crimson' },
             { unique_identifier: 'pm2_user_attr', color: 'green' }]
           expect(user_1.pluck_from_link_children(fields: [:unique_identifier, :color])).to match_array(plucked_results)
         end
