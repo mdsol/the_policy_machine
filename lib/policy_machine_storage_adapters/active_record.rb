@@ -205,6 +205,9 @@ module PolicyMachineStorageAdapter
 
       def pluck_from_ancestors(filters: {}, fields:)
         assert_valid_attributes!(filters.keys)
+        
+        # Always add unique_identifier to plucks for use with in-memory filtering
+        fields |= [:unique_identifier]
         assert_valid_attributes!(fields)
 
         Assignment.select_ancestor_tree_with_attributes(id, filters, fields).map(&:with_indifferent_access)
