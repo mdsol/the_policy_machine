@@ -64,36 +64,32 @@ module PolicyMachineStorageAdapter
       end
 
       def self.select_descendant_tree_with_attributes(root_element_ids, filters_to_apply, fields_to_pluck)
-        query = <<-SQL
+        query = <<~SQL
           WITH RECURSIVE assignments_recursive AS (
             (
-              SELECT child_id, parent_id, ARRAY[child_id] AS children
+              SELECT child_id, parent_id
               FROM assignments
               WHERE #{sanitize_sql_for_conditions(["parent_id IN (:root_ids)", root_ids: root_element_ids])}
             )
             UNION ALL
             (
-              SELECT assignments.child_id, assignments.parent_id, (children || assignments.child_id)
+              SELECT assignments.child_id, assignments.parent_id
               FROM assignments
               INNER JOIN assignments_recursive
               ON assignments_recursive.child_id = assignments.parent_id
             )
           )
 
-          SELECT policy_elements.id, #{fields_to_pluck.join(',')}, children
+          SELECT policy_elements.id, #{fields_to_pluck.join(',')}, array_agg(assignments_recursive.child_id) as descendants
           FROM assignments_recursive
           JOIN policy_elements
           ON policy_elements.id = assignments_recursive.parent_id
         SQL
 
-        if filters_to_apply.present?
-          query += "WHERE #{sanitize_sql_for_conditions(filters_to_apply, 'policy_elements')} "
-        end
+        query += "WHERE #{sanitize_sql_for_conditions(filters_to_apply, 'policy_elements')} " if filters_to_apply.present?
+        query += "GROUP BY policy_elements.id"
 
-        # query += "GROUP BY policy_elements.id"
-
-        result = PolicyElement.connection.exec_query(query)
-        result.rows.map { |row| Hash[result.columns.zip(row)] }
+        PolicyElement.connection.exec_query(query)
       end
 
       def self.select_ancestor_tree_with_attributes(root_element_ids, filters_to_apply, fields_to_pluck)

@@ -212,15 +212,16 @@ module PolicyMachineStorageAdapter
 
       def pluck_from_descendants(filters: {}, fields:)
         assert_valid_attributes!(filters.keys)
+
+        # Always add unique_identifier to plucks for use with in-memory filtering
+        fields |= [:unique_identifier]
         assert_valid_attributes!(fields)
 
         # [
-        #  { "id"=>"4", "unique_identifier"=>"user_attr_1", "color"=>"green" },
-        #  { "id"=>"5", "unique_identifier"=>"user_attr_2", "color"=>"green" }
+        #  { "id"=>"1", "unique_identifier"=>"user_attr_1", "color"=>"green", "descendants"=>"{4,5,6}" },
+        #  { "id"=>"4", "unique_identifier"=>"user_attr_2", "color"=>"green", "descendants"=>"{5}" }
         # ]
-        result = Assignment.select_descendant_tree_with_attributes(id, filters, fields).map(&:with_indifferent_access)
-        binding.pry
-        result
+        Assignment.select_descendant_tree_with_attributes(id, filters, fields).map(&:with_indifferent_access)
       end
 
       def self.serialize(store:, name:, serializer: nil)
