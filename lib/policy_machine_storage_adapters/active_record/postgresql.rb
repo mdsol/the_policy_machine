@@ -96,31 +96,29 @@ module PolicyMachineStorageAdapter
         query = <<-SQL
           WITH RECURSIVE assignments_recursive AS (
             (
-              SELECT parent_id, child_id, ARRAY[parent_id] AS parents
+              SELECT parent_id, child_id
               FROM assignments
               WHERE #{sanitize_sql_for_conditions(["child_id IN (:root_ids)", root_ids: root_element_ids])}
             )
             UNION ALL
             (
-              SELECT assignments.parent_id, assignments.child_id, (parents || assignments.parent_id)
+              SELECT assignments.parent_id, assignments.child_id
               FROM assignments
               INNER JOIN assignments_recursive
               ON assignments_recursive.parent_id = assignments.child_id
             )
           )
 
-          SELECT id, #{fields_to_pluck.join(',')}, parents
+          SELECT policy_elements.id, , #{fields_to_pluck.join(',')}, array_agg(assignments_recursive.parent_id) as ancestors
           FROM assignments_recursive
           JOIN policy_elements
           ON policy_elements.id = assignments_recursive.child_id
         SQL
 
-        if filters_to_apply.present?
-          query += " WHERE #{sanitize_sql_for_conditions(filters_to_apply, 'policy_elements')}"
-        end
+        query += "WHERE #{sanitize_sql_for_conditions(filters_to_apply, 'policy_elements')} " if filters_to_apply.present?
+        query += "GROUP BY policy_elements.id"
 
-        result = PolicyElement.connection.exec_query(query)
-        result.rows.map { |row| Hash[result.columns.zip(row)] }
+        PolicyElement.connection.exec_query(query)
       end
 
       # Returns the operation set IDs from the given list where the operation is
