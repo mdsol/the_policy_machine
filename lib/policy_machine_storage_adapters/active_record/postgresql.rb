@@ -11,32 +11,6 @@ module PolicyMachineStorageAdapter
         descendants_of(ancestor).include?(descendant)
       end
 
-      def self.descendants_of(element_or_scope)
-        query = <<-SQL
-          id IN (
-            WITH RECURSIVE assignments_recursive AS (
-              (
-                SELECT child_id, parent_id
-                FROM assignments
-                WHERE parent_id in (?)
-              )
-              UNION ALL
-              (
-                SELECT assignments.child_id, assignments.parent_id
-                FROM assignments
-                INNER JOIN assignments_recursive
-                ON assignments_recursive.child_id = assignments.parent_id
-              )
-            )
-
-            SELECT assignments_recursive.child_id
-            FROM assignments_recursive
-          )
-        SQL
-
-        PolicyElement.where(query, [*element_or_scope].map(&:id))
-      end
-
       def self.ancestors_of(element_or_scope)
         query = <<-SQL
           id IN (
@@ -56,6 +30,32 @@ module PolicyMachineStorageAdapter
             )
 
             SELECT assignments_recursive.parent_id
+            FROM assignments_recursive
+          )
+        SQL
+
+        PolicyElement.where(query, [*element_or_scope].map(&:id))
+      end
+
+      def self.descendants_of(element_or_scope)
+        query = <<-SQL
+          id IN (
+            WITH RECURSIVE assignments_recursive AS (
+              (
+                SELECT child_id, parent_id
+                FROM assignments
+                WHERE parent_id in (?)
+              )
+              UNION ALL
+              (
+                SELECT assignments.child_id, assignments.parent_id
+                FROM assignments
+                INNER JOIN assignments_recursive
+                ON assignments_recursive.child_id = assignments.parent_id
+              )
+            )
+
+            SELECT assignments_recursive.child_id
             FROM assignments_recursive
           )
         SQL
