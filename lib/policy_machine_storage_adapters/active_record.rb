@@ -211,6 +211,19 @@ module PolicyMachineStorageAdapter
         assert_valid_attributes!(fields)
 
         Assignment.select_ancestor_tree_with_attributes(id, filters, fields).map(&:with_indifferent_access)
+
+        ancestor_ids = tree.reduce(Set.new) do |memo, row|
+          row['ancestors'] = row['ancestors'].tr('{}','').split(',')
+          memo.merge(row['ancestors'])
+        end
+
+        ancestor_uuids = PolicyElement.where(id: ancestor_ids.to_a).pluck(:unique_identifier)
+        ids_to_uuids = Hash[ancestor_ids.zip(ancestor_uuids)]
+
+        tree.each do |row|
+          row['ancestors'] = row['ancestors'].map { |id| ids_to_uuids[id] }
+          row.delete('id')
+        end
       end
 
       def pluck_from_descendants(filters: {}, fields:)
@@ -224,13 +237,13 @@ module PolicyMachineStorageAdapter
         #  { "id"=>"1", "unique_identifier"=>"user_attr_1", "color"=>"green", "descendants"=>"{4,5,6}" },
         #  { "id"=>"4", "unique_identifier"=>"user_attr_2", "color"=>"green", "descendants"=>"{5}" }
         # ]
-        tree = Assignment.select_descendant_tree_with_attributes(id, filters, fields).map(&:with_indifferent_access)        
+        tree = Assignment.select_descendant_tree_with_attributes(id, filters, fields).map(&:with_indifferent_access)
         descendant_ids = tree.reduce(Set.new) do |memo, row|
           row['descendants'] = row['descendants'].tr('{}','').split(',')
           memo.merge(row['descendants'])
         end
 
-        descendant_uuids = PolicyElement.where(id: descendant_ids.to_a).map(&:unique_identifier)
+        descendant_uuids = PolicyElement.where(id: descendant_ids.to_a).pluck(:unique_identifier)
         ids_to_uuids = Hash[descendant_ids.zip(descendant_uuids)]
 
         tree.each do |row|
