@@ -210,8 +210,7 @@ module PolicyMachineStorageAdapter
         fields |= [:unique_identifier]
         assert_valid_attributes!(fields)
 
-        Assignment.select_ancestor_tree_with_attributes(id, filters, fields).map(&:with_indifferent_access)
-
+        tree = Assignment.select_ancestor_tree_with_attributes(id, filters, fields).map(&:with_indifferent_access)
         ancestor_ids = tree.reduce(Set.new) do |memo, row|
           row['ancestors'] = row['ancestors'].tr('{}','').split(',')
           memo.merge(row['ancestors'])
