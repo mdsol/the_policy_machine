@@ -109,7 +109,7 @@ module PolicyMachineStorageAdapter
             )
           )
 
-          SELECT policy_elements.id, , #{fields_to_pluck.join(',')}, array_agg(assignments_recursive.parent_id) as ancestors
+          SELECT policy_elements.id, #{fields_to_pluck.join(',')}, array_agg(assignments_recursive.parent_id) as ancestors
           FROM assignments_recursive
           JOIN policy_elements
           ON policy_elements.id = assignments_recursive.child_id
