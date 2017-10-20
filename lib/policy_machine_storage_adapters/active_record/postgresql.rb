@@ -112,7 +112,7 @@ module PolicyMachineStorageAdapter
           SELECT policy_elements.id, #{fields_to_pluck.join(',')}, array_agg(assignments_recursive.parent_id) as ancestors
           FROM assignments_recursive
           JOIN policy_elements
-          ON policy_elements.id = assignments_recursive.child_id
+          ON policy_elements.id = assignments_recursive.parent_id
         SQL
 
         query += "WHERE #{sanitize_sql_for_conditions(filters_to_apply, 'policy_elements')} " if filters_to_apply.present?
