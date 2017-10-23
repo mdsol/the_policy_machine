@@ -207,41 +207,95 @@ module PolicyMachineStorageAdapter
         assert_valid_attributes!(filters.keys)
         assert_valid_attributes!(fields)
 
-        Assignment.select_ancestor_tree(id, filters, fields)
+        # Result:
+        # { "1" => ["2", "3"],
+        #   "2" => ["4"]
+        # }
+        id_tree = Assignment.select_ancestor_ids([id]).each_with_object({}) do |row, memo|
+          ancestor_array = row['ancestor_ids'].tr('{}','').split(',')
+          # Add each ancestor as a first-level hash key, initialized to an empty array
+          ancestor_array.each { |ancestor_id| memo[ancestor_id] ||= [] }
+          # If already added to the hash, ensure the ancestor ids are tracked
+          memo[row['id']] = ancestor_array
+        end
+
+        id_tree.delete(id.to_s)
+
+        fields_to_pluck = [:id, :unique_identifier] | fields
+
+        # Select the ancestors that satisfy the filters, and pluck the specified fields from them
+        pes = PolicyElement.where(id: id_tree.keys).where(filters).pluck(*fields_to_pluck)
+        fields_except_id = fields_to_pluck - [:id]
+
+        pes.each do |pe|
+          pe_id = pe[0].to_s
+          id_tree[pe_id] = { ancestor_ids: id_tree[pe_id] }.merge!(Hash[fields_except_id.zip(pe.drop(1))])
+        end
+
+        id_tree.each do |pe_id, pe_attrs|
+          if pe_attrs.empty?
+            id_tree.delete(pe_id)
+          else
+            pe_attrs[:ancestor_attributes] = pe_attrs[:ancestor_ids].map do |ancestor_id|
+              if id_tree[ancestor_id]
+                id_tree[ancestor_id].except(:ancestor_ids)
+              else
+                {}
+              end
+            end
+            pe_attrs.delete(:ancestor_ids)
+          end
+        end
+
+        id_tree.values
       end
 
       def pluck_from_descendants(filters: {}, fields:)
         assert_valid_attributes!(filters.keys)
         assert_valid_attributes!(fields)
 
-        Assignment.select_descendant_tree(id, filters, fields)
+        # Result:
+        # { "1" => ["2", "3"],
+        #   "2" => ["4"]
+        # }
+        id_tree = Assignment.select_descendant_ids([id]).each_with_object({}) do |row, memo|
+          descendant_array = row['descendant_ids'].tr('{}','').split(',')
+          # Add each descendant as a first-level hash key, initialized to an empty array
+          descendant_array.each { |descendant_id| memo[descendant_id] ||= [] }
+          # If already added to the hash, ensure the descendant ids are tracked
+          memo[row['id']] = descendant_array
+        end
+
+        id_tree.delete(id.to_s)
+
+        fields_to_pluck = [:id, :unique_identifier] | fields
+
+        # Select the descendants that satisfy the filters, and pluck the specified fields from them
+        pes = PolicyElement.where(id: id_tree.keys).where(filters).pluck(*fields_to_pluck)
+        fields_except_id = fields_to_pluck - [:id]
+
+        pes.each do |pe|
+          pe_id = pe[0].to_s
+          id_tree[pe_id] = { descendant_ids: id_tree[pe_id] }.merge!(Hash[fields_except_id.zip(pe.drop(1))])
+        end
+
+        id_tree.each do |pe_id, pe_attrs|
+          if pe_attrs.empty?
+            id_tree.delete(pe_id)
+          else
+            pe_attrs[:descendant_attributes] = pe_attrs[:descendant_ids].map do |descendant_id|
+              if id_tree[descendant_id]
+                id_tree[descendant_id].except(:descendant_ids)
+              else
+                {}
+              end
+            end
+            pe_attrs.delete(:descendant_ids)
+          end
+        end
+
+        id_tree.values
       end
-
-      # def pluck_from_descendants(filters: {}, fields:)
-      #   assert_valid_attributes!(filters.keys)
-
-      #   # Always add unique_identifier to plucks for use with in-memory filtering
-      #   fields |= [:unique_identifier]
-      #   assert_valid_attributes!(fields)
-
-      #   # [
-      #   #  { "id"=>"1", "unique_identifier"=>"user_attr_1", "color"=>"green", "descendants"=>"{4,5,6}" },
-      #   #  { "id"=>"4", "unique_identifier"=>"user_attr_2", "color"=>"green", "descendants"=>"{5}" }
-      #   # ]
-      #   tree = Assignment.select_descendant_tree_with_attributes(id, filters, fields).map(&:with_indifferent_access)
-      #   descendant_ids = tree.reduce(Set.new) do |memo, row|
-      #     row['descendants'] = row['descendants'].tr('{}','').split(',')
-      #     memo.merge(row['descendants'])
-      #   end
-
-      #   descendant_uuids = PolicyElement.where(id: descendant_ids.to_a).pluck(:unique_identifier)
-      #   ids_to_uuids = Hash[descendant_ids.zip(descendant_uuids)]
-
-      #   tree.each do |row|
-      #     row['descendants'] = row['descendants'].map { |id| ids_to_uuids[id] }
-      #     row.delete('id')
-      #   end
-      # end
 
       def self.serialize(store:, name:, serializer: nil)
         active_record_serialize store, serializer

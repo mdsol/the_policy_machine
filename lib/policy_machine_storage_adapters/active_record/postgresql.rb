@@ -82,59 +82,12 @@ module PolicyMachineStorageAdapter
             )
           )
 
-          SELECT policy_elements.id, array_agg(assignments_recursive.child_id) as descendant_ids
+          SELECT parent_id as id, array_agg(child_id) as descendant_ids
           FROM assignments_recursive
-          JOIN policy_elements
-          ON policy_elements.id = assignments_recursive.parent_id
-          GROUP BY policy_elements.id
+          GROUP BY parent_id
         SQL
 
         PolicyElement.connection.exec_query(query)
-      end
-
-      def self.select_descendant_tree(root_element_ids, filters, fields)
-        id_tree = select_descendant_ids(root_element_ids)
-
-        unique_ids = id_tree.reduce(Set.new) do |unique_ids, row|
-          # Modify the 'descendant_ids' to be an array of ids rather than a string
-          row['descendant_ids'] = row['descendant_ids'].tr('{}','').split(',')
-          unique_ids.add(row['id'])
-          unique_ids.merge(row['descendant_ids'])
-          unique_ids
-        end
-
-        fields_to_pluck = [:id, :unique_identifier] | fields
-
-        bulk_pe_pull = PolicyElement.where(id: unique_ids.to_a).where(filters).pluck(*fields_to_pluck)
-        fields_to_pluck.delete(:id)
-        pe_attributes = bulk_pe_pull.reduce({}) do |memo, pe|
-          memo[pe.shift.to_s] = HashWithIndifferentAccess[fields_to_pluck.zip(pe)]
-          memo
-        end
-
-        if pe_attributes.present?
-          result = id_tree.reduce([]) do |memo, row|
-            if pe_attributes[row['id'].to_s]
-              matching_row = pe_attributes[row['id'].to_s]
-
-              row_to_return = matching_row
-              row_to_return[:descendant_attributes] = row['descendant_ids'].reduce([]) do |memo, descendant_id|
-                if desc_attr = pe_attributes.try(:[], descendant_id.to_s)
-                  memo << desc_attr
-                end
-
-                memo
-              end
-              memo << row_to_return
-            else
-              memo
-            end
-          end
-
-          result
-        else
-          []
-        end
       end
 
       # Return an ActiveRecord::Relation containing the ids of all ancestors and the
@@ -156,118 +109,13 @@ module PolicyMachineStorageAdapter
             )
           )
 
-          SELECT policy_elements.id, array_agg(assignments_recursive.parent_id) as ancestor_ids
+          SELECT child_id as id, array_agg(parent_id) as ancestor_ids
           FROM assignments_recursive
-          JOIN policy_elements
-          ON policy_elements.id = assignments_recursive.child_id
-          GROUP BY policy_elements.id
+          GROUP BY child_id
         SQL
 
         PolicyElement.connection.exec_query(query)
       end
-
-      def self.select_ancestor_tree(root_element_ids, filters, fields)
-        id_tree = select_ancestor_ids(root_element_ids)
-
-        unique_ids = id_tree.reduce(Set.new) do |unique_ids, row|
-          # Modify the 'ancestor_ids' to be an array of ids rather than a string
-          row['ancestor_ids'] = row['ancestor_ids'].tr('{}','').split(',')
-          unique_ids.add(row['id'])
-          unique_ids.merge(row['ancestor_ids'])
-          unique_ids
-        end
-
-        fields_to_pluck = [:id, :unique_identifier] | fields
-
-        bulk_pe_pull = PolicyElement.where(id: unique_ids.to_a).where(filters).pluck(*fields_to_pluck)
-        fields_to_pluck.delete(:id)
-        pe_attributes = bulk_pe_pull.reduce({}) do |memo, pe|
-          memo[pe.shift.to_s] = HashWithIndifferentAccess[fields_to_pluck.zip(pe)]
-          memo
-        end
-
-        if pe_attributes.present?
-          result = id_tree.reduce([]) do |memo, row|
-            if pe_attributes[row['id'].to_s]
-              matching_row = pe_attributes[row['id'].to_s]
-
-              row_to_return = matching_row
-              row_to_return[:ancestor_attributes] = row['ancestor_ids'].reduce([]) do |memo, ancestor_id|
-                if desc_attr = pe_attributes.try(:[], ancestor_id.to_s)
-                  memo << desc_attr
-                end
-
-                memo
-              end
-              memo << row_to_return
-            else
-              memo
-            end
-          end
-
-          result
-        else
-          []
-        end
-      end
-
-      # def self.select_descendant_tree_with_attributes(root_element_ids, filters_to_apply, fields_to_pluck)
-      #   query = <<~SQL
-      #     WITH RECURSIVE assignments_recursive AS (
-      #       (
-      #         SELECT child_id, parent_id
-      #         FROM assignments
-      #         WHERE #{sanitize_sql_for_conditions(["parent_id IN (:root_ids)", root_ids: root_element_ids])}
-      #       )
-      #       UNION ALL
-      #       (
-      #         SELECT assignments.child_id, assignments.parent_id
-      #         FROM assignments
-      #         INNER JOIN assignments_recursive
-      #         ON assignments_recursive.child_id = assignments.parent_id
-      #       )
-      #     )
-
-      #     SELECT policy_elements.id, #{fields_to_pluck.join(',')}, array_agg(assignments_recursive.child_id) as descendants
-      #     FROM assignments_recursive
-      #     JOIN policy_elements
-      #     ON policy_elements.id = assignments_recursive.parent_id
-      #   SQL
-
-      #   query += "WHERE #{sanitize_sql_for_conditions(filters_to_apply, 'policy_elements')} " if filters_to_apply.present?
-      #   query += "GROUP BY policy_elements.id"
-
-      #   PolicyElement.connection.exec_query(query)
-      # end
-
-      # def self.select_ancestor_tree_with_attributes(root_element_ids, filters_to_apply, fields_to_pluck)
-      #   query = <<-SQL
-      #     WITH RECURSIVE assignments_recursive AS (
-      #       (
-      #         SELECT parent_id, child_id
-      #         FROM assignments
-      #         WHERE #{sanitize_sql_for_conditions(["child_id IN (:root_ids)", root_ids: root_element_ids])}
-      #       )
-      #       UNION ALL
-      #       (
-      #         SELECT assignments.parent_id, assignments.child_id
-      #         FROM assignments
-      #         INNER JOIN assignments_recursive
-      #         ON assignments_recursive.parent_id = assignments.child_id
-      #       )
-      #     )
-
-      #     SELECT policy_elements.id, #{fields_to_pluck.join(',')}, array_agg(assignments_recursive.parent_id) as ancestors
-      #     FROM assignments_recursive
-      #     JOIN policy_elements
-      #     ON policy_elements.id = assignments_recursive.parent_id
-      #   SQL
-
-      #   query += "WHERE #{sanitize_sql_for_conditions(filters_to_apply, 'policy_elements')} " if filters_to_apply.present?
-      #   query += "GROUP BY policy_elements.id"
-
-      #   PolicyElement.connection.exec_query(query)
-      # end
 
       # Returns the operation set IDs from the given list where the operation is
       # a descendant of the operation set.
