@@ -205,27 +205,15 @@ module PolicyMachineStorageAdapter
 
       def pluck_from_ancestors(filters: {}, fields:)
         assert_valid_attributes!(filters.keys)
-        
-        # Always add unique_identifier to plucks for use with in-memory filtering
-        fields |= [:unique_identifier]
         assert_valid_attributes!(fields)
 
-        tree = Assignment.select_ancestor_tree_with_attributes(id, filters, fields).map(&:with_indifferent_access)
-        ancestor_ids = tree.reduce(Set.new) do |memo, row|
-          row['ancestors'] = row['ancestors'].tr('{}','').split(',')
-          memo.merge(row['ancestors'])
-        end
-
-        ancestor_uuids = PolicyElement.where(id: ancestor_ids.to_a).pluck(:unique_identifier)
-        ids_to_uuids = Hash[ancestor_ids.zip(ancestor_uuids)]
-
-        tree.each do |row|
-          row['ancestors'] = row['ancestors'].map { |id| ids_to_uuids[id] }
-          row.delete('id')
-        end
+        Assignment.select_ancestor_tree(id, filters, fields)
       end
 
       def pluck_from_descendants(filters: {}, fields:)
+        assert_valid_attributes!(filters.keys)
+        assert_valid_attributes!(fields)
+
         Assignment.select_descendant_tree(id, filters, fields)
       end
 
