@@ -63,6 +63,60 @@ module PolicyMachineStorageAdapter
         PolicyElement.where(query, [*element_or_scope].map(&:id))
       end
 
+      # Return an ActiveRecord::Relation containing the ids of all descendants and the
+      # interstitial relationships, as a string of descendant_ids
+      def self.select_descendant_ids(root_element_ids)
+        query = <<-SQL
+          WITH RECURSIVE assignments_recursive AS (
+            (
+              SELECT child_id, parent_id
+              FROM assignments
+              WHERE #{sanitize_sql_for_conditions(["parent_id IN (:root_ids)", root_ids: root_element_ids])}
+            )
+            UNION ALL
+            (
+              SELECT assignments.child_id, assignments.parent_id
+              FROM assignments
+              INNER JOIN assignments_recursive
+              ON assignments_recursive.child_id = assignments.parent_id
+            )
+          )
+
+          SELECT parent_id as id, array_agg(child_id) as descendant_ids
+          FROM assignments_recursive
+          GROUP BY parent_id
+        SQL
+
+        PolicyElement.connection.exec_query(query)
+      end
+
+      # Return an ActiveRecord::Relation containing the ids of all ancestors and the
+      # interstitial relationships, as a string of ancestor_ids
+      def self.select_ancestor_ids(root_element_ids)
+        query = <<-SQL
+          WITH RECURSIVE assignments_recursive AS (
+            (
+              SELECT parent_id, child_id
+              FROM assignments
+              WHERE #{sanitize_sql_for_conditions(["child_id IN (:root_ids)", root_ids: root_element_ids])}
+            )
+            UNION ALL
+            (
+              SELECT assignments.parent_id, assignments.child_id
+              FROM assignments
+              INNER JOIN assignments_recursive
+              ON assignments_recursive.parent_id = assignments.child_id
+            )
+          )
+
+          SELECT child_id as id, array_agg(parent_id) as ancestor_ids
+          FROM assignments_recursive
+          GROUP BY child_id
+        SQL
+
+        PolicyElement.connection.exec_query(query)
+      end
+
       # Returns the operation set IDs from the given list where the operation is
       # a descendant of the operation set.
       # TODO: Generalize this so that we can arbitrarily filter recursive assignments calls.
