@@ -211,31 +211,52 @@ module PolicyMachineStorageAdapter
         assert_valid_attributes!(filters.keys)
         assert_valid_attributes!(fields)
 
+        root_id = id.to_s
+
+        # 1. Database call #1: obtain the edges of the ancestor 'subtree', represented as a
+        #    hash where each ancestor's id is the key, and the value is an array of _its_ ancestors
         id_tree = Assignment.select_ancestor_ids([id]).each_with_object({}) do |row, memo|
           ancestor_array = row['ancestor_ids'].tr('{}','').split(',')
           ancestor_array.each { |ancestor_id| memo[ancestor_id] ||= [] }
           memo[row['id']] = ancestor_array
         end
 
-        id_tree.delete(id.to_s)
-
+        # 2. add :id and :unique_identifier fields to all plucks
+        #    remove the root node's id from the ids-to-pluck, as it may not pass the filter
         fields_to_pluck = [:id, :unique_identifier] | fields
-        pes = PolicyElement.where(id: id_tree.keys).where(filters).pluck(*fields_to_pluck)
-        fields_except_id = fields_to_pluck - [:id]
+        ids_to_pluck = id_tree.keys - [root_id]
 
-        pes.each do |pe|
-          pe_id = pe[0].to_s
-          # Transmute [1, "blue", "user_1"] into { color: "blue", uuid: "user_1" }
-          attribute_hash = HashWithIndifferentAccess[fields_except_id.zip(pe.drop(1))]
+        # 3. Database call #2: add :id and :unique_identifier fields to all plucks; the id will be
+        #    used to parse the previously obtained id subtree, and the unique_identifier will
+        #    be the final identifier
+        policy_element_attrs = PolicyElement.where(id: ids_to_pluck).where(filters).pluck(*fields_to_pluck)
+        attribute_fields = fields_to_pluck - [:id]
+
+        # 4. Convert the plucked attributes into an attribute hash and merge it into the id subtree
+        policy_element_attrs.each do |policy_element|
+          pe_id = policy_element[0].to_s
+          # Convert [1, "blue", "user_1"] into { color: "blue", uuid: "user_1" }
+          attribute_hash = HashWithIndifferentAccess[attribute_fields.zip(policy_element.drop(1))]
           id_tree[pe_id] = { ancestor_ids: id_tree[pe_id] }.merge(attribute_hash).with_indifferent_access
         end
 
-        id_tree.each_with_object({}) do |(pe_id, pe_attrs), memo|
-          if pe_attrs.present?
-            memo[pe_attrs[:unique_identifier]] =
-              pe_attrs[:ancestor_ids].map do |ancestor_id|
-                id_tree[ancestor_id] ? id_tree[ancestor_id].except(:ancestor_ids) : {}
-              end
+        id_tree[root_id] = { ancestor_ids: id_tree[root_id] }.with_indifferent_access
+
+        puts "ancestral id_tree: #{id_tree}"
+
+        # 5. For each ancestor, convert its id top-level key to its unique_identifier
+        #    and each of its ancestor ids to the appropriate ancestor attributes
+        id_tree.each_with_object({}) do |(policy_element_id, policy_element_attrs), memo|
+          if policy_element_id == root_id
+            ancestral_attributes = policy_element_attrs[:ancestor_ids].map do |ancestor_id|
+              id_tree[ancestor_id] ? id_tree[ancestor_id].except(:ancestor_ids) : {}
+            end
+            memo[unique_identifier] = ancestral_attributes
+          elsif policy_element_attrs.is_a?(Hash)
+            ancestral_attributes = policy_element_attrs[:ancestor_ids].map do |ancestor_id|
+              id_tree[ancestor_id] ? id_tree[ancestor_id].except(:ancestor_ids) : {}
+            end
+            memo[policy_element_attrs[:unique_identifier]] = ancestral_attributes
           end
         end
       end
@@ -250,25 +271,29 @@ module PolicyMachineStorageAdapter
           memo[row['id']] = descendant_array
         end
 
-        id_tree.delete(id.to_s)
-
         fields_to_pluck = [:id, :unique_identifier] | fields
-        pes = PolicyElement.where(id: id_tree.keys).where(filters).pluck(*fields_to_pluck)
-        fields_except_id = fields_to_pluck - [:id]
+        ids_to_pluck = id_tree.keys - [id]
 
-        pes.each do |pe|
-          pe_id = pe[0].to_s
-          # Transmute [1, "blue", "user_1"] into { color: "blue", uuid: "user_1" }
-          attribute_hash = HashWithIndifferentAccess[fields_except_id.zip(pe.drop(1))]
+        policy_element_attrs = PolicyElement.where(id: ids_to_pluck).where(filters).pluck(*fields_to_pluck)
+        attribute_fields = fields_to_pluck - [:id]
+
+        policy_element_attrs.each do |policy_element|
+          pe_id = policy_element[0].to_s
+          attribute_hash = HashWithIndifferentAccess[attribute_fields.zip(policy_element.drop(1))]
           id_tree[pe_id] = { descendant_ids: id_tree[pe_id] }.merge(attribute_hash).with_indifferent_access
         end
 
-        id_tree.each_with_object({}) do |(pe_id, pe_attrs), memo|
-          if pe_attrs.present?
-            memo[pe_attrs[:unique_identifier]] =
-              pe_attrs[:descendant_ids].map do |descendant_id|
-                id_tree[descendant_id] ? id_tree[descendant_id].except(:descendant_ids) : {}
-              end
+        id_tree.each_with_object({}) do |(policy_element_id, policy_element_attrs), memo|
+          if policy_element_attrs.present?
+            descendant_attributes = policy_element_attrs[:descendant_ids].map do |descendant_id|
+              id_tree[descendant_id] ? id_tree[descendant_id].except(:descendant_ids) : {}
+            end
+            memo[policy_element_attrs[:unique_identifier]] = descendant_attributes
+          elsif policy_element_id == id
+            descendant_attributes = policy_element_attrs[:descendant_ids].map do |descendant_id|
+              id_tree[descendant_id] ? id_tree[descendant_id].except(:descendant_ids) : {}
+            end
+            memo[unique_identifier] = descendant_attributes
           end
         end
       end
