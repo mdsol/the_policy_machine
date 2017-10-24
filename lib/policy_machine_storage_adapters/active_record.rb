@@ -221,8 +221,8 @@ module PolicyMachineStorageAdapter
           memo[row['id']] = ancestor_array
         end
 
-        # (2) Add :id and :unique_identifier fields to all plucks
-        #     remove the root node's id from the ids-to-pluck, as it may not pass the filter
+        # (2) Add :id and :unique_identifier fields to the pluck; and remove the root node's id
+        #     from the ids-to-pluck, as it may not satisfy the filter
         id_tree.delete(id.to_s)
         fields_to_pluck = [:id, :unique_identifier] | fields
 
