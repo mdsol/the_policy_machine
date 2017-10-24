@@ -606,17 +606,52 @@ describe 'ActiveRecord' do
     describe '#pluck_ancestor_attributes_from_ancestors' do
       before { darken_colors.call }
 
+      let(:user_attr_4) { pm1.create_user_attribute('user_attr_4') }
+      let(:user_attr_5) { pm1.create_user_attribute('user_attr_5') }
+      let(:user_attr_6) { pm1.create_user_attribute('user_attr_6') }
+      let!(:single_ancestors) { [user_attr_4, user_attr_5, user_attr_6] }
+
+      let(:user_attr_7) { pm1.create_user_attribute('user_attr_7') }
+      let(:user_attr_8) { pm1.create_user_attribute('user_attr_8') }
+      let(:user_attr_9) { pm1.create_user_attribute('user_attr_9') }
+      let!(:double_ancestors) { [user_attr_7, user_attr_8, user_attr_9] }
+
       context 'no filter is applied' do
-        xit 'returns appropriate ancestors and the specified attribute' do
+        before do
+          single_ancestors.each { |ancestor| ancestor.update(color: 'gold' ) }
+          double_ancestors.each { |ancestor| ancestor.update(color: 'silver' ) }
+          pm1.add_assignment(user_attr_4, user_attr_1)
+          pm1.add_assignment(user_attr_5, user_attr_1)
+          pm1.add_assignment(user_attr_6, user_attr_1)
+
+          pm1.add_assignment(user_attr_7, user_attr_4)
+          pm1.add_assignment(user_attr_8, user_attr_5)
+          pm1.add_assignment(user_attr_9, user_attr_6)
         end
 
-        xit 'returns appropriate ancestors and multiple specified attributes' do
+        it 'returns appropriate ancestors and the specified attribute' do
         end
 
-        xit 'errors appropriately when nonexistent attributes are specified' do
+        it 'returns appropriate ancestors and multiple specified attributes' do
+          plucked_results = {
+            'user_1' => [],
+            'user_2' => [],
+            'user_3' => [],
+            'user_attr_4' => [{ unique_identifier: 'user_attr_7', color: 'silver' }],
+            'user_attr_5' => [{ unique_identifier: 'user_attr_8', color: 'silver' }],
+            'user_attr_6' => [{ unique_identifier: 'user_attr_9', color: 'silver' }],
+            'user_attr_7' => [],
+            'user_attr_8' => [],
+            'user_attr_9' => []
+          }
+          expect(user_attr_1.pluck_ancestor_attributes_from_ancestors(fields: [:unique_identifier, :color]))
+            .to match_array(plucked_results)
         end
 
-        xit 'errors appropriately when no attributes are specified' do
+        it 'errors appropriately when nonexistent attributes are specified' do
+        end
+
+        it 'errors appropriately when no attributes are specified' do
         end
       end
 
