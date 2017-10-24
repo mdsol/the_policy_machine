@@ -239,23 +239,24 @@ module PolicyMachineStorageAdapter
           attribute_hash = HashWithIndifferentAccess[attribute_fields.zip(policy_element.drop(1))]
           id_tree[pe_id] = { ancestor_ids: id_tree[pe_id] }.merge(attribute_hash).with_indifferent_access
         end
-
         id_tree[root_id] = { ancestor_ids: id_tree[root_id] }.with_indifferent_access
-
-        puts "ancestral id_tree: #{id_tree}"
 
         # 5. For each ancestor, convert its id top-level key to its unique_identifier
         #    and each of its ancestor ids to the appropriate ancestor attributes
         id_tree.each_with_object({}) do |(policy_element_id, policy_element_attrs), memo|
           if policy_element_id == root_id
             ancestral_attributes = policy_element_attrs[:ancestor_ids].map do |ancestor_id|
-              id_tree[ancestor_id] ? id_tree[ancestor_id].except(:ancestor_ids) : {}
-            end
+              if id_tree[ancestor_id].present?
+                id_tree[ancestor_id].try(:except, :ancestor_ids)
+              end
+            end.compact
             memo[unique_identifier] = ancestral_attributes
           elsif policy_element_attrs.is_a?(Hash)
             ancestral_attributes = policy_element_attrs[:ancestor_ids].map do |ancestor_id|
-              id_tree[ancestor_id] ? id_tree[ancestor_id].except(:ancestor_ids) : {}
-            end
+              if id_tree[ancestor_id].present?
+                id_tree[ancestor_id].try(:except, :ancestor_ids)
+              end
+            end.compact
             memo[policy_element_attrs[:unique_identifier]] = ancestral_attributes
           end
         end
@@ -265,6 +266,8 @@ module PolicyMachineStorageAdapter
         assert_valid_attributes!(filters.keys)
         assert_valid_attributes!(fields)
 
+        root_id = id.to_s
+
         id_tree = Assignment.select_descendant_ids([id]).each_with_object({}) do |row, memo|
           descendant_array = row['descendant_ids'].tr('{}','').split(',')
           descendant_array.each { |descendant_id| memo[descendant_id] ||= [] }
@@ -272,7 +275,7 @@ module PolicyMachineStorageAdapter
         end
 
         fields_to_pluck = [:id, :unique_identifier] | fields
-        ids_to_pluck = id_tree.keys - [id]
+        ids_to_pluck = id_tree.keys - [root_id]
 
         policy_element_attrs = PolicyElement.where(id: ids_to_pluck).where(filters).pluck(*fields_to_pluck)
         attribute_fields = fields_to_pluck - [:id]
@@ -282,18 +285,23 @@ module PolicyMachineStorageAdapter
           attribute_hash = HashWithIndifferentAccess[attribute_fields.zip(policy_element.drop(1))]
           id_tree[pe_id] = { descendant_ids: id_tree[pe_id] }.merge(attribute_hash).with_indifferent_access
         end
+        id_tree[root_id] = { descendant_ids: id_tree[root_id] }.with_indifferent_access
 
         id_tree.each_with_object({}) do |(policy_element_id, policy_element_attrs), memo|
-          if policy_element_attrs.present?
+          if policy_element_id == root_id
             descendant_attributes = policy_element_attrs[:descendant_ids].map do |descendant_id|
-              id_tree[descendant_id] ? id_tree[descendant_id].except(:descendant_ids) : {}
-            end
-            memo[policy_element_attrs[:unique_identifier]] = descendant_attributes
-          elsif policy_element_id == id
-            descendant_attributes = policy_element_attrs[:descendant_ids].map do |descendant_id|
-              id_tree[descendant_id] ? id_tree[descendant_id].except(:descendant_ids) : {}
-            end
+              if id_tree[descendant_id].present?
+                id_tree[descendant_id].try(:except, :descendant_ids)
+              end
+            end.compact
             memo[unique_identifier] = descendant_attributes
+          elsif policy_element_attrs.is_a?(Hash)
+            descendant_attributes = policy_element_attrs[:descendant_ids].map do |descendant_id|
+              if id_tree[descendant_id].present?
+                id_tree[descendant_id].try(:except, :descendant_ids)
+              end
+            end.compact
+            memo[policy_element_attrs[:unique_identifier]] = descendant_attributes
           end
         end
       end
