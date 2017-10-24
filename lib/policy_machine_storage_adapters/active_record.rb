@@ -227,26 +227,17 @@ module PolicyMachineStorageAdapter
           pe_id = pe[0].to_s
           # Transmute [1, "blue", "user_1"] into { color: "blue", uuid: "user_1" }
           attribute_hash = HashWithIndifferentAccess[fields_except_id.zip(pe.drop(1))]
-          id_tree[pe_id] = { ancestor_ids: id_tree[pe_id] }.merge(attribute_hash)
+          id_tree[pe_id] = { ancestor_ids: id_tree[pe_id] }.merge(attribute_hash).with_indifferent_access
         end
 
-        id_tree.each do |pe_id, pe_attrs|
-          if pe_attrs.empty?
-            id_tree.delete(pe_id)
-          else
-            pe_attrs[:ancestor_attributes] =
+        id_tree.each_with_object({}) do |(pe_id, pe_attrs), memo|
+          if pe_attrs.present?
+            memo[pe_attrs[:unique_identifier]] =
               pe_attrs[:ancestor_ids].map do |ancestor_id|
-                if id_tree[ancestor_id]
-                  id_tree[ancestor_id].except(:ancestor_ids)
-                else
-                  {}
-                end
+                id_tree[ancestor_id] ? id_tree[ancestor_id].except(:ancestor_ids) : {}
               end
-            pe_attrs.delete_if { |key,_| [:unique_identifier, :ancestor_attributes].exclude?(key) }
           end
         end
-
-        id_tree.values
       end
 
       def pluck_attributes_from_descendants(filters: {}, fields:)
@@ -269,26 +260,17 @@ module PolicyMachineStorageAdapter
           pe_id = pe[0].to_s
           # Transmute [1, "blue", "user_1"] into { color: "blue", uuid: "user_1" }
           attribute_hash = HashWithIndifferentAccess[fields_except_id.zip(pe.drop(1))]
-          id_tree[pe_id] = { descendant_ids: id_tree[pe_id] }.merge(attribute_hash)
+          id_tree[pe_id] = { descendant_ids: id_tree[pe_id] }.merge(attribute_hash).with_indifferent_access
         end
 
-        id_tree.each do |pe_id, pe_attrs|
-          if pe_attrs.empty?
-            id_tree.delete(pe_id)
-          else
-            pe_attrs[:descendant_attributes] =
+        id_tree.each_with_object({}) do |(pe_id, pe_attrs), memo|
+          if pe_attrs.present?
+            memo[pe_attrs[:unique_identifier]] =
               pe_attrs[:descendant_ids].map do |descendant_id|
-                if id_tree[descendant_id]
-                  id_tree[descendant_id].except(:descendant_ids)
-                else
-                  {}
-                end
+                id_tree[descendant_id] ? id_tree[descendant_id].except(:descendant_ids) : {}
               end
-            pe_attrs.delete_if { |key,_| [:unique_identifier, :descendant_attributes].exclude?(key) }
           end
         end
-
-        id_tree.values
       end
 
       def self.serialize(store:, name:, serializer: nil)
