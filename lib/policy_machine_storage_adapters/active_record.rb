@@ -227,11 +227,11 @@ module PolicyMachineStorageAdapter
         fields_to_pluck = [:id, :unique_identifier] | fields
 
         # (3) Database call number 2: pluck the specified fields from the root node's ancestors
-        policy_element_attrs = PolicyElement.where(id: id_tree.keys).where(filters).pluck(*fields_to_pluck)
-        attribute_fields = fields_to_pluck - [:id]
+        plucked_policy_elements = PolicyElement.where(id: id_tree.keys).where(filters).pluck(*fields_to_pluck)
 
         # (4) Convert the plucked attributes into an attribute hash and merge it into the id subtree
-        policy_element_attrs.each do |policy_element|
+        attribute_fields = fields_to_pluck - [:id]
+        plucked_policy_elements.each do |policy_element|
           pe_id = policy_element[0].to_s
           # Convert [1, "blue", "user_1"] into { color: "blue", uuid: "user_1" }
           attribute_hash = HashWithIndifferentAccess[attribute_fields.zip(policy_element.drop(1))]
