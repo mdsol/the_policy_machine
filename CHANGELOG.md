@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.6.2
+* Add pluck_from method family to the ActiveRecord storage adapter.
+
 ## 1.6.1
 * Fix a bug in the active record adapter's accessible_objects method preventing it from returing the correct operation set ids.
 
