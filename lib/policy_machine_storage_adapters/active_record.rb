@@ -139,43 +139,72 @@ module PolicyMachineStorageAdapter
       end
 
       def descendants(filters = {})
-        assert_valid_filters!(filters)
+        assert_valid_attributes!(filters.keys)
         Assignment.descendants_of(self).where(filters)
       end
 
       def ancestors(filters = {})
-        assert_valid_filters!(filters)
+        assert_valid_attributes!(filters.keys)
         Assignment.ancestors_of(self).where(filters)
       end
 
       def parents(filters = {})
-        assert_valid_filters!(filters)
+        assert_valid_attributes!(filters.keys)
         unfiltered_parents.where(filters)
       end
 
       def children(filters = {})
-        assert_valid_filters!(filters)
+        assert_valid_attributes!(filters.keys)
         unfiltered_children.where(filters)
       end
 
       def link_descendants(filters = {})
-        assert_valid_filters!(filters)
+        assert_valid_attributes!(filters.keys)
         LogicalLink.descendants_of(self).where(filters)
       end
 
       def link_ancestors(filters = {})
-        assert_valid_filters!(filters)
+        assert_valid_attributes!(filters.keys)
         LogicalLink.ancestors_of(self).where(filters)
       end
 
       def link_parents(filters = {})
-        assert_valid_filters!(filters)
+        assert_valid_attributes!(filters.keys)
         unfiltered_link_parents.where(filters)
       end
 
       def link_children(filters = {})
-        assert_valid_filters!(filters)
+        assert_valid_attributes!(filters.keys)
         unfiltered_link_children.where(filters)
+      end
+
+      # A series of methods of the form "pluck_from_graph_traversal" which pluck the specified
+      # fields from an element's relatives; returns an array of { attribute => value } hashes.
+      %w(
+        descendants
+        ancestors
+        parents
+        children
+        link_descendants
+        link_ancestors
+        link_parents
+        link_children
+      ).each do |graph_method|
+        define_method("pluck_from_#{graph_method}") do |filters: {}, fields:|
+          raise(ArgumentError.new("Must provide at least one field to pluck")) unless fields.present?
+
+          assert_valid_attributes!(filters.keys)
+          assert_valid_attributes!(fields)
+
+          plucked_values = public_send(graph_method, filters).pluck(*fields)
+
+          if fields.size > 1
+            plucked_values.map { |values| HashWithIndifferentAccess[fields.zip(values)] }
+          else
+            field = fields.first
+            plucked_values.map { |value| HashWithIndifferentAccess[field, value] }
+          end
+        end
       end
 
       def self.serialize(store:, name:, serializer: nil)
@@ -256,8 +285,8 @@ module PolicyMachineStorageAdapter
 
       private
 
-      def assert_valid_filters!(filters)
-        unless (filters.keys - PolicyElement.column_names.map(&:to_sym)).empty?
+      def assert_valid_attributes!(attributes)
+        unless (attributes.map(&:to_sym) - PolicyElement.column_names.map(&:to_sym)).empty?
           raise ArgumentError, "Provided argument contains invalid keys, valid keys are #{PolicyElement.column_names}"
         end
       end

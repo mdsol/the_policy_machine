@@ -362,66 +362,145 @@ describe 'ActiveRecord' do
   end
 
   describe 'relationships' do
+    let(:pm1) { PolicyMachine.new(name: 'AR PM 1', storage_adapter: PolicyMachineStorageAdapter::ActiveRecord) }
+    let(:pm2) { PolicyMachine.new(name: 'AR PM 2', storage_adapter: PolicyMachineStorageAdapter::ActiveRecord) }
+    let(:pm3) { PolicyMachine.new(name: 'AR PM 3', storage_adapter: PolicyMachineStorageAdapter::ActiveRecord) }
+
+    let(:user_1) { pm1.create_user('user_1') }
+    let(:user_2) { pm1.create_user('user_2') }
+    let(:user_3) { pm1.create_user('user_3') }
+    let!(:users) { [user_1, user_2, user_3] }
+
+    let(:operation_1) { pm1.create_operation('operation_1') }
+
+    let(:opset_1) { pm1.create_operation_set('operation_set_1') }
+
+    let(:user_attr_1) { pm1.create_user_attribute('user_attr_1') }
+    let(:user_attr_2) { pm1.create_user_attribute('user_attr_2') }
+    let(:user_attr_3) { pm1.create_user_attribute('user_attr_3') }
+    let(:user_attributes) { [user_attr_1, user_attr_2, user_attr_3] }
+
+    let(:object_attr_1) { pm1.create_object_attribute('object_attr_1') }
+    let(:object_attr_2) { pm1.create_object_attribute('object_attr_2') }
+    let(:object_attr_3) { pm1.create_object_attribute('object_attr_3') }
+    let(:object_attributes) { [object_attr_1, object_attr_2, object_attr_3] }
+
+    let(:object_1) { pm1.create_object('object_1') }
+    let(:object_2) { pm1.create_object('object_2') }
+    let(:object_3) { pm1.create_object('object_3') }
+    let(:objects) { [object_1, object_2, object_3] }
+
+    let(:pm2_user) { pm2.create_user('pm2_user') }
+    let(:pm2_user_attr) { pm2.create_user_attribute('pm2_user_attr') }
+    let(:pm2_operation_1) { pm2.create_operation('pm2_operation_1') }
+    let(:pm2_operation_2) { pm2.create_operation('pm2_operation_2') }
+    let(:pm3_user_attr) { pm3.create_user_attribute('pm3_user_attr') }
+
+    # For specs that require more attribute differentiation for filtering
+    let(:darken_colors) do
+      ->{
+        user_2.update(color: 'navy_blue')
+        user_attr_2.update(color: 'forest_green')
+        pm2_operation_2.update(color: 'crimson')
+      }
+    end
+
     before do
-      n = 2
-      @pm = PolicyMachine.new(name: 'ActiveRecord PM', storage_adapter: PolicyMachineStorageAdapter::ActiveRecord)
-      @pm2 = PolicyMachine.new(name: '2nd ActiveRecord PM', storage_adapter: PolicyMachineStorageAdapter::ActiveRecord)
-      @pm3 = PolicyMachine.new(name: '3rd ActiveRecord PM', storage_adapter: PolicyMachineStorageAdapter::ActiveRecord)
+      user_attributes.each { |ua| pm1.add_assignment(user_1, ua) }
+      pm1.add_assignment(user_attr_1, user_attr_2)
+      pm1.add_assignment(opset_1, operation_1)
+      pm1.add_assignment(user_2, user_attr_1)
+      pm1.add_assignment(user_3, user_attr_1)
 
-      @u1 = @pm.create_user('u1')
-      @pm2_u1 = @pm2.create_user('pm2 u1')
+      object_attributes.product(user_attributes) { |oa, ua| pm1.add_association(ua, opset_1, oa) }
+      object_attributes.zip(objects) { |oa, obj| pm1.add_assignment(obj, oa) }
 
-      @op = @pm.create_operation('own')
-      @op_set = @pm.create_operation_set('owner')
-      @pm2_op = @pm2.create_operation('pm2 op')
+      # Depth 1 connections from user_1 to the other policy machines
+      pm1.add_link(user_1, pm2_user)
+      pm1.add_link(user_1, pm2_operation_1)
+      pm1.add_link(user_1, pm2_operation_2)
+      pm1.add_link(user_1, pm2_user_attr)
+      # Depth + connections from user_1 to the other policy machines
+      pm2.add_link(pm2_operation_1, pm3_user_attr)
+      pm2.add_link(pm2_operation_2, pm3_user_attr)
 
-      @user_attributes = (1..n).map { |i| @pm.create_user_attribute("ua#{i}") }
-      @ua1 = @user_attributes.first
-
-      @object_attributes = (1..n).map { |i| @pm.create_object_attribute("oa#{i}") }
-      @objects = (1..n).map { |i| @pm.create_object("o#{i}") }
-      @pm3_user_attribute = @pm3.create_user_attribute('pm3_user_attribute')
-
-      @user_attributes.each { |ua| @pm.add_assignment(@u1, ua) }
-      @pm.add_assignment(@op_set, @op)
-      @object_attributes.product(@user_attributes) { |oa, ua| @pm.add_association(ua, @op_set, oa) }
-      @object_attributes.zip(@objects) { |oa, o| @pm.add_assignment(o, oa) }
-      @pm.add_assignment(@user_attributes.first, @user_attributes.second)
-
-      @pm.add_link(@u1, @pm2_u1)
-      @pm.add_link(@u1, @pm2_op)
-      @pm.add_link(@pm2_op, @pm3_user_attribute)
+      # Users are blue, UAs are green, operations are red
+      users.each { |user| user.update(color: 'blue') }
+      pm2_user.update(color: 'blue')
+      user_attributes.each { |ua| ua.update(color: 'green') }
+      pm2_user_attr.update(color: 'green')
+      pm3_user_attr.update(color: 'green')
+      pm2_operation_1.update(color: 'red')
+      pm2_operation_2.update(color: 'red')
     end
 
     describe '#descendants' do
       context 'no filter is applied' do
         # TODO normalize return value types
         it 'returns appropriate descendants' do
-          expect(@u1.descendants).to match_array @user_attributes.map(&:stored_pe)
+          expect(user_1.descendants).to match_array(user_attributes.map(&:stored_pe))
         end
       end
 
       context 'a filter is applied' do
-        before do
-          @ua1.update(color: 'green')
-          @new_ua = @pm.create_user_attribute('new_ua')
-          @new_ua.update(color: 'green')
-          @pm.add_assignment(@u1, @new_ua)
-        end
-
         it 'applies a single filter if one is supplied' do
-          green_descendants = @u1.descendants(color: 'green')
-          expect(green_descendants).to contain_exactly(@ua1.stored_pe, @new_ua.stored_pe)
+          green_descendants = user_1.descendants(color: 'green')
+          expect(green_descendants).to match_array(user_attributes.map(&:stored_pe))
         end
 
         it 'applies multiple filters if they are supplied' do
-          green_descendants = @u1.descendants(color: 'green', unique_identifier: 'new_ua')
-          expect(green_descendants).to contain_exactly(@new_ua.stored_pe)
+          green_descendants = user_1.descendants(color: 'green', unique_identifier: 'user_attr_3')
+          expect(green_descendants).to contain_exactly(user_attr_3.stored_pe)
         end
 
         it 'returns appropriate results when filters apply to no descendants' do
-          expect(@u1.descendants(color: 'taupe')).to be_empty
-          expect { @u1.descendants(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
+          expect(user_1.descendants(color: 'taupe')).to be_empty
+          expect { user_1.descendants(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
+        end
+      end
+    end
+
+    describe '#pluck_from_descendants' do
+      before { darken_colors.call }
+
+      context 'no filter is applied' do
+        it 'returns appropriate descendants and the specified attribute' do
+          plucked_results = [{ color: 'green' }, { color: 'forest_green' }, { color: 'green' }]
+          expect(user_1.pluck_from_descendants(fields: [:color])).to match_array(plucked_results)
+        end
+
+        it 'returns appropriate descendants and multiple specified attributes' do
+          plucked_results = [
+            { unique_identifier: 'user_attr_1', color: 'green' },
+            { unique_identifier: 'user_attr_2', color: 'forest_green' },
+            { unique_identifier: 'user_attr_3', color: 'green' }]
+          expect(user_1.pluck_from_descendants(fields: [:unique_identifier, :color])).to match_array(plucked_results)
+        end
+
+        it 'errors appropriately when nonexistent attributes are specified' do
+          expect { expect(user_1.pluck_from_descendants(fields: ['favorite_mountain'])) }
+            .to raise_error(ArgumentError)
+        end
+
+        it 'errors appropriately when no attributes are specified' do
+          expect { expect(user_1.pluck_from_descendants(fields: [])) }.to raise_error(ArgumentError)
+        end
+      end
+
+      context 'a filter is applied' do
+        it 'applies a single filter if one is supplied' do
+          plucked_results = [{ color: 'green' }, { color: 'green' }]
+          expect(user_1.pluck_from_descendants(fields: [:color], filters: { color: 'green' }))
+            .to match_array(plucked_results)
+        end
+
+        it 'applies multiple filters if they are supplied' do
+          args = { fields: [:unique_identifier], filters: { unique_identifier: 'user_attr_1', color: 'green' } }
+          expect(user_1.pluck_from_descendants(args)).to contain_exactly({ unique_identifier: 'user_attr_1' })
+        end
+
+        it 'returns appropriate results when filters apply to no descendants' do
+          expect(user_1.pluck_from_descendants(fields: [:unique_identifier], filters: { color: 'red' })).to be_empty
         end
       end
     end
@@ -429,32 +508,29 @@ describe 'ActiveRecord' do
     describe '#link_descendants' do
       context 'no filter is applied' do
         it 'returns appropriate cross descendants one level deep' do
-          expect(@pm2_op.link_descendants).to contain_exactly(@pm3_user_attribute.stored_pe)
+          expect(pm2_operation_1.link_descendants).to contain_exactly(pm3_user_attr.stored_pe)
         end
 
         it 'returns appropriate cross descendants multiple levels deep' do
-          desc = [@pm2_u1.stored_pe, @pm2_op.stored_pe, @pm3_user_attribute.stored_pe]
-          expect(@u1.link_descendants).to match_array desc
+          link_descendants = [pm2_user, pm2_operation_1, pm2_operation_2, pm2_user_attr, pm3_user_attr]
+          expect(user_1.link_descendants).to match_array(link_descendants.map(&:stored_pe))
         end
       end
 
       context 'a filter is applied' do
-        before do
-          @pm2_u1.update(color: 'blue')
-          @pm2_op.update(color: 'blue')
-        end
-
         it 'applies a single filter if one is supplied' do
-          expect(@u1.link_descendants(color: 'blue')).to contain_exactly(@pm2_u1.stored_pe, @pm2_op.stored_pe)
+          link_descendants = [pm2_user_attr, pm3_user_attr]
+          expect(user_1.link_descendants(color: 'green')).to match_array(link_descendants.map(&:stored_pe))
         end
 
         it 'applies multiple filters if they are supplied' do
-          expect(@u1.link_descendants(color: 'blue', unique_identifier: 'pm2 op')).to contain_exactly(@pm2_op.stored_pe)
+          expect(user_1.link_descendants(color: 'green', unique_identifier: 'pm2_user_attr'))
+            .to contain_exactly(pm2_user_attr.stored_pe)
         end
 
         it 'returns appropriate results when filters apply to no link_descendants' do
-          expect(@u1.link_descendants(color: 'taupe')).to be_empty
-          expect { @u1.link_descendants(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
+          expect(user_1.link_descendants(color: 'taupe')).to be_empty
+          expect { user_1.link_descendants(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
         end
       end
     end
@@ -462,29 +538,67 @@ describe 'ActiveRecord' do
     describe '#ancestors' do
       context 'no filter is applied' do
         it 'returns appropriate ancestors' do
-          expect(@ua1.ancestors).to contain_exactly(@u1.stored_pe)
+          expect(user_attr_1.ancestors).to match_array(users.map(&:stored_pe))
         end
       end
 
       context 'a filter is applied' do
-        before do
-          @u1.update(color: 'blue')
-          @u2 = @pm.create_user('u2')
-          @u2.update(color: 'blue')
-          @pm.add_assignment(@u2, @ua1)
-        end
-
         it 'applies a single filter if one is supplied' do
-          expect(@ua1.ancestors(color: 'blue')).to contain_exactly(@u1.stored_pe, @u2.stored_pe)
+          expect(user_attr_1.ancestors(color: 'blue')).to match_array(users.map(&:stored_pe))
         end
 
         it 'applies multiple filters if they are supplied' do
-          expect(@ua1.ancestors(color: 'blue', unique_identifier: 'u2')).to contain_exactly(@u2.stored_pe)
+          expect(user_attr_1.ancestors(color: 'blue', unique_identifier: 'user_2')).to contain_exactly(user_2.stored_pe)
         end
 
         it 'returns appropriate results when filters apply to no ancestors' do
-          expect(@ua1.ancestors(color: 'taupe')).to be_empty
-          expect { @ua1.ancestors(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
+          expect(user_attr_1.ancestors(color: 'taupe')).to be_empty
+          expect { user_attr_1.ancestors(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
+        end
+      end
+    end
+
+    describe '#pluck_from_ancestors' do
+      before { darken_colors.call }
+
+      context 'no filter is applied' do
+        it 'returns appropriate ancestors and the specified attribute' do
+          plucked_results = [{ color: 'blue' }, { color: 'navy_blue' }, { color: 'blue' }]
+          expect(user_attr_1.pluck_from_ancestors(fields: [:color])).to match_array(plucked_results)
+        end
+
+        it 'returns appropriate ancestors and multiple specified attributes' do
+          plucked_results = [
+            { unique_identifier: 'user_1', color: 'blue' },
+            { unique_identifier: 'user_2', color: 'navy_blue' },
+            { unique_identifier: 'user_3', color: 'blue' }]
+          expect(user_attr_1.pluck_from_ancestors(fields: [:unique_identifier, :color])).to match_array(plucked_results)
+        end
+
+        it 'errors appropriately when nonexistent attributes are specified' do
+          expect { expect(user_attr_1.pluck_from_ancestors(fields: ['favorite_mountain'])) }
+            .to raise_error(ArgumentError)
+        end
+
+        it 'errors appropriately when no attributes are specified' do
+          expect { expect(user_attr_1.pluck_from_ancestors(fields: [])) }.to raise_error(ArgumentError)
+        end
+      end
+
+      context 'a filter is applied' do
+        it 'applies a single filter if one is supplied' do
+          plucked_results = [{ color: 'blue' }, { color: 'blue' }]
+          expect(user_attr_1.pluck_from_ancestors(fields: [:color], filters: { color: 'blue' }))
+            .to match_array(plucked_results)
+        end
+
+        it 'applies multiple filters if they are supplied' do
+          args = { fields: [:unique_identifier], filters: { unique_identifier: 'user_1', color: 'blue' } }
+          expect(user_attr_1.pluck_from_ancestors(args)).to contain_exactly(unique_identifier: 'user_1')
+        end
+
+        it 'returns appropriate results when filters apply to no ancestors' do
+          expect(user_attr_1.pluck_from_ancestors(fields: [:unique_identifier], filters: { color: 'red' })).to be_empty
         end
       end
     end
@@ -492,31 +606,28 @@ describe 'ActiveRecord' do
     describe '#link_ancestors' do
       context 'no filter is applied' do
         it 'returns appropriate cross ancestors one level deep' do
-          expect(@pm2_u1.link_ancestors).to match_array [@u1.stored_pe]
+          expect(pm2_user.link_ancestors).to contain_exactly(user_1.stored_pe)
         end
 
         it 'returns appropriate cross ancestors multiple levels deep' do
-          expect(@pm3_user_attribute.link_ancestors).to match_array [@pm2_op.stored_pe, @u1.stored_pe]
+          link_ancestors = [pm2_operation_1, pm2_operation_2, user_1]
+          expect(pm3_user_attr.link_ancestors).to match_array(link_ancestors.map(&:stored_pe))
         end
       end
 
       context 'a filter is applied' do
-        before do
-          @u1.update(color: 'blue')
-          @pm2_op.update(color: 'blue')
-        end
-
         it 'applies a single filter if one is supplied' do
-          expect(@pm3_user_attribute.link_ancestors(color: 'blue')).to contain_exactly(@u1.stored_pe, @pm2_op.stored_pe)
+          expect(pm3_user_attr.link_ancestors(color: 'blue')).to contain_exactly(user_1.stored_pe)
         end
 
         it 'applies multiple filters if they are supplied' do
-          expect(@pm3_user_attribute.link_ancestors(color: 'blue', unique_identifier: 'pm2 op')).to contain_exactly(@pm2_op.stored_pe)
+          expect(pm3_user_attr.link_ancestors(color: 'red', unique_identifier: 'pm2_operation_1'))
+            .to contain_exactly(pm2_operation_1.stored_pe)
         end
 
         it 'returns appropriate results when filters apply to no link_ancestors' do
-          expect(@pm3_user_attribute.link_ancestors(color: 'taupe')).to be_empty
-          expect { @pm3_user_attribute.link_ancestors(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
+          expect(pm3_user_attr.link_ancestors(color: 'taupe')).to be_empty
+          expect { pm3_user_attr.link_ancestors(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
         end
       end
     end
@@ -524,31 +635,67 @@ describe 'ActiveRecord' do
     describe '#parents' do
       context 'no filter is applied' do
         it 'returns appropriate parents' do
-          expect(@user_attributes.second.parents).to match_array [@user_attributes.first.stored_pe, @u1.stored_pe]
+          expect(user_attr_2.parents).to contain_exactly(user_attr_1.stored_pe, user_1.stored_pe)
         end
       end
 
       context 'a filter is applied' do
-        before do
-          @u2 = @pm.create_user('u2')
-          @u3 = @pm.create_user('u3')
-          @u2.update(color: 'blue')
-          @u3.update(color: 'blue')
-          @pm.add_assignment(@u2, @ua1)
-          @pm.add_assignment(@u3, @ua1)
-        end
-
         it 'applies a single filter if one is supplied' do
-          expect(@ua1.parents(color: 'blue')).to contain_exactly(@u2.stored_pe, @u3.stored_pe)
+          expect(user_attr_1.parents(color: 'blue')).to match_array(users.map(&:stored_pe))
         end
 
         it 'applies multiple filters if they are supplied' do
-          expect(@ua1.parents(color: 'blue', unique_identifier: 'u3')).to contain_exactly(@u3.stored_pe)
+          expect(user_attr_1.parents(color: 'blue', unique_identifier: 'user_3')).to contain_exactly(user_3.stored_pe)
         end
 
         it 'returns appropriate results when filters apply to no parents' do
-          expect(@ua1.parents(color: 'taupe')).to be_empty
-          expect { @ua1.parents(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
+          expect(user_attr_1.parents(color: 'taupe')).to be_empty
+          expect { user_attr_1.parents(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
+        end
+      end
+    end
+
+    describe '#pluck_from_parents' do
+      before { darken_colors.call }
+
+      context 'no filter is applied' do
+        it 'returns appropriate parents and the specified attribute' do
+          plucked_results = [{ color: 'blue' }, { color: 'navy_blue' }, { color: 'blue' }]
+          expect(user_attr_1.pluck_from_parents(fields: [:color])).to match_array(plucked_results)
+        end
+
+        it 'returns appropriate parents and multiple specified attributes' do
+          plucked_results = [
+            { unique_identifier: 'user_1', color: 'blue' },
+            { unique_identifier: 'user_2', color: 'navy_blue' },
+            { unique_identifier: 'user_3', color: 'blue' }]
+          expect(user_attr_1.pluck_from_parents(fields: [:unique_identifier, :color])).to match_array(plucked_results)
+        end
+
+        it 'errors appropriately when nonexistent attributes are specified' do
+          expect { expect(user_attr_1.pluck_from_parents(fields: ['favorite_mountain'])) }
+            .to raise_error(ArgumentError)
+        end
+
+        it 'errors appropriately when no attributes are specified' do
+          expect { expect(user_attr_1.pluck_from_parents(fields: [])) }.to raise_error(ArgumentError)
+        end
+      end
+
+      context 'a filter is applied' do
+        it 'applies a single filter if one is supplied' do
+          plucked_results = [{ color: 'blue' }, { color: 'blue' }]
+          expect(user_attr_1.pluck_from_parents(fields: [:color], filters: { color: 'blue' }))
+            .to match_array(plucked_results)
+        end
+
+        it 'applies multiple filters if they are supplied' do
+          args = { fields: [:unique_identifier], filters: { unique_identifier: 'user_1', color: 'blue' } }
+          expect(user_attr_1.pluck_from_parents(args)).to contain_exactly({ unique_identifier: 'user_1' })
+        end
+
+        it 'returns appropriate results when filters apply to no parents' do
+          expect(user_attr_1.pluck_from_parents(fields: [:unique_identifier], filters: { color: 'red' })).to be_empty
         end
       end
     end
@@ -556,29 +703,67 @@ describe 'ActiveRecord' do
     describe '#children' do
       context 'no filter is applied' do
         it 'returns appropriate children' do
-          expect(@user_attributes.first.children).to match_array [@user_attributes.second.stored_pe]
+          expect(user_attr_1.children).to contain_exactly(user_attr_2.stored_pe)
         end
       end
 
       context 'a filter is applied' do
-        before do
-          @ua1.update(color: 'green')
-          @new_ua = @pm.create_user_attribute('new_ua')
-          @new_ua.update(color: 'green')
-          @pm.add_assignment(@u1, @new_ua)
-        end
-
         it 'applies a single filter if one is supplied' do
-          expect(@u1.children(color: 'green')).to contain_exactly(@ua1.stored_pe, @new_ua.stored_pe)
+          expect(user_1.children(color: 'green')).to match_array(user_attributes.map(&:stored_pe))
         end
 
         it 'applies multiple filters if they are supplied' do
-          expect(@u1.children(color: 'green', unique_identifier: 'new_ua')).to contain_exactly(@new_ua.stored_pe)
+          expect(user_1.children(color: 'green', unique_identifier: 'user_attr_2')).to contain_exactly(user_attr_2.stored_pe)
         end
 
         it 'returns appropriate results when filters apply to no children' do
-          expect(@u1.children(color: 'taupe')).to be_empty
-          expect { @u1.children(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
+          expect(user_1.children(color: 'taupe')).to be_empty
+          expect { user_1.children(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
+        end
+      end
+    end
+
+    describe '#pluck_from_children' do
+      before { darken_colors.call }
+
+      context 'no filter is applied' do
+        it 'returns appropriate children and the specified attribute' do
+          plucked_results = [{ color: 'green' }, { color: 'forest_green' }, { color: 'green' }]
+          expect(user_1.pluck_from_children(fields: [:color])).to match_array(plucked_results)
+        end
+
+        it 'returns appropriate children and multiple specified attributes' do
+          plucked_results = [
+            { unique_identifier: 'user_attr_1', color: 'green' },
+            { unique_identifier: 'user_attr_2', color: 'forest_green' },
+            { unique_identifier: 'user_attr_3', color: 'green' }]
+          expect(user_1.pluck_from_children(fields: [:unique_identifier, :color])).to match_array(plucked_results)
+        end
+
+        it 'errors appropriately when nonexistent attributes are specified' do
+          expect { expect(user_1.pluck_from_children(fields: ['favorite_mountain'])) }
+            .to raise_error(ArgumentError)
+        end
+
+        it 'errors appropriately when no attributes are specified' do
+          expect { expect(user_1.pluck_from_children(fields: [])) }.to raise_error(ArgumentError)
+        end
+      end
+
+      context 'a filter is applied' do
+        it 'applies a single filter if one is supplied' do
+          plucked_results = [{ color: 'green' }, { color: 'green' }]
+          expect(user_1.pluck_from_children(fields: [:color], filters: { color: 'green' }))
+            .to match_array(plucked_results)
+        end
+
+        it 'applies multiple filters if they are supplied' do
+          args = { fields: [:unique_identifier], filters: { unique_identifier: 'user_attr_1', color: 'green' } }
+          expect(user_1.pluck_from_children(args)).to contain_exactly({ unique_identifier: 'user_attr_1' })
+        end
+
+        it 'returns appropriate results when filters apply to no children' do
+          expect(user_1.pluck_from_children(fields: [:unique_identifier], filters: { color: 'red' })).to be_empty
         end
       end
     end
@@ -586,29 +771,69 @@ describe 'ActiveRecord' do
     describe '#link_parents' do
       context 'no filter is applied' do
         it 'returns appropriate parents' do
-          expect(@pm3_user_attribute.link_parents).to match_array [@pm2_op.stored_pe]
+          link_parents = [pm2_operation_1, pm2_operation_2]
+          expect(pm3_user_attr.link_parents).to match_array(link_parents.map(&:stored_pe))
         end
       end
 
       context 'a filter is applied' do
-        before do
-          @pm2_op.update(color: 'green')
-          @new_op = @pm2.create_operation('new_op')
-          @new_op.update(color: 'green')
-          @pm.add_link(@new_op, @pm3_user_attribute)
-        end
-
         it 'applies a single filter if one is supplied' do
-          expect(@pm3_user_attribute.link_parents(color: 'green')).to contain_exactly(@pm2_op.stored_pe, @new_op.stored_pe)
+          red_link_parents = [pm2_operation_1, pm2_operation_2]
+          expect(pm3_user_attr.link_parents(color: 'red')).to match_array(red_link_parents.map(&:stored_pe))
         end
 
         it 'applies multiple filters if they are supplied' do
-          expect(@pm3_user_attribute.link_parents(color: 'green', unique_identifier: 'new_op')).to contain_exactly(@new_op.stored_pe)
+          expect(pm3_user_attr.link_parents(color: 'red', unique_identifier: 'pm2_operation_2'))
+            .to contain_exactly(pm2_operation_2.stored_pe)
         end
 
         it 'returns appropriate results when filters apply to no link_parents' do
-          expect(@pm3_user_attribute.link_parents(color: 'taupe')).to be_empty
-          expect { @pm3_user_attribute.link_parents(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
+          expect(pm3_user_attr.link_parents(color: 'taupe')).to be_empty
+          expect { pm3_user_attr.link_parents(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
+        end
+      end
+    end
+
+    describe '#pluck_from_link_parents' do
+      before { darken_colors.call }
+
+      context 'no filter is applied' do
+        it 'returns appropriate link_parents and the specified attribute' do
+          plucked_results = [{ color: 'red' }, { color: 'crimson' }]
+          expect(pm3_user_attr.pluck_from_link_parents(fields: [:color])).to match_array(plucked_results)
+        end
+
+        it 'returns appropriate link_parents and multiple specified attributes' do
+          plucked_results = [
+            { unique_identifier: 'pm2_operation_1', color: 'red' },
+            { unique_identifier: 'pm2_operation_2', color: 'crimson' }]
+          expect(pm3_user_attr.pluck_from_link_parents(fields: [:unique_identifier, :color])).to match_array(plucked_results)
+        end
+
+        it 'errors appropriately when nonexistent attributes are specified' do
+          expect { expect(pm3_user_attr.pluck_from_link_parents(fields: ['favorite_mountain'])) }
+            .to raise_error(ArgumentError)
+        end
+
+        it 'errors appropriately when no attributes are specified' do
+          expect { expect(pm3_user_attr.pluck_from_link_parents(fields: [])) }.to raise_error(ArgumentError)
+        end
+      end
+
+      context 'a filter is applied' do
+        it 'applies a single filter if one is supplied' do
+          plucked_results = [{ color: 'red' }]
+          expect(pm3_user_attr.pluck_from_link_parents(fields: [:color], filters: { color: 'red' }))
+            .to match_array(plucked_results)
+        end
+
+        it 'applies multiple filters if they are supplied' do
+          args = { fields: [:unique_identifier], filters: { unique_identifier: 'pm2_operation_1', color: 'red' } }
+          expect(pm3_user_attr.pluck_from_link_parents(args)).to contain_exactly({ unique_identifier: 'pm2_operation_1' })
+        end
+
+        it 'returns appropriate results when filters apply to no link_parents' do
+          expect(pm3_user_attr.pluck_from_link_parents(fields: [:unique_identifier], filters: { color: 'blue' })).to be_empty
         end
       end
     end
@@ -616,29 +841,71 @@ describe 'ActiveRecord' do
     describe '#link_children' do
       context 'no filter is applied' do
         it 'returns appropriate children' do
-          expect(@u1.link_children).to match_array [@pm2_u1.stored_pe, @pm2_op.stored_pe]
+          link_children = [pm2_user, pm2_operation_1, pm2_operation_2, pm2_user_attr]
+          expect(user_1.link_children).to match_array(link_children.map(&:stored_pe))
         end
       end
 
       context 'a filter is applied' do
-        before do
-          @pm2_u1.update(color: 'green')
-          @new_ua = @pm2.create_user_attribute('new_ua')
-          @new_ua.update(color: 'green')
-          @pm.add_link(@u1, @new_ua)
-        end
-
         it 'applies a single filter if one is supplied' do
-          expect(@u1.link_children(color: 'green')).to contain_exactly(@pm2_u1.stored_pe, @new_ua.stored_pe)
+          green_link_children = [pm2_user_attr]
+          expect(user_1.link_children(color: 'green')).to match_array(green_link_children.map(&:stored_pe))
         end
 
         it 'applies multiple filters if they are supplied' do
-          expect(@u1.link_children(color: 'green', unique_identifier: 'new_ua')).to contain_exactly(@new_ua.stored_pe)
+          expect(user_1.link_children(color: 'red', unique_identifier: 'pm2_operation_1'))
+            .to contain_exactly(pm2_operation_1.stored_pe)
         end
 
         it 'returns appropriate results when filters apply to no link_children' do
-          expect(@u1.link_children(color: 'taupe')).to be_empty
-          expect { @u1.link_children(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
+          expect(user_1.link_children(color: 'taupe')).to be_empty
+          expect { user_1.link_children(not_a_real_attribute: 'fake') }.to raise_error(ArgumentError)
+        end
+      end
+    end
+
+    describe '#pluck_from_link_children' do
+      before { darken_colors.call }
+
+      context 'no filter is applied' do
+        it 'returns appropriate link_children and the specified attribute' do
+          plucked_results = [{ color: 'blue' }, { color: 'red' }, { color: 'crimson' }, { color: 'green' }]
+          expect(user_1.pluck_from_link_children(fields: [:color])).to match_array(plucked_results)
+        end
+
+        it 'returns appropriate link_children and multiple specified attributes' do
+          plucked_results = [
+            { unique_identifier: 'pm2_user', color: 'blue' },
+            { unique_identifier: 'pm2_operation_1', color: 'red' },
+            { unique_identifier: 'pm2_operation_2', color: 'crimson' },
+            { unique_identifier: 'pm2_user_attr', color: 'green' }]
+          expect(user_1.pluck_from_link_children(fields: [:unique_identifier, :color])).to match_array(plucked_results)
+        end
+
+        it 'errors appropriately when nonexistent attributes are specified' do
+          expect { expect(user_1.pluck_from_link_children(fields: ['favorite_mountain'])) }
+            .to raise_error(ArgumentError)
+        end
+
+        it 'errors appropriately when no attributes are specified' do
+          expect { expect(user_1.pluck_from_link_children(fields: [])) }.to raise_error(ArgumentError)
+        end
+      end
+
+      context 'a filter is applied' do
+        it 'applies a single filter if one is supplied' do
+          plucked_results = [{ color: 'green' }]
+          expect(user_1.pluck_from_link_children(fields: [:color], filters: { color: 'green' }))
+            .to match_array(plucked_results)
+        end
+
+        it 'applies multiple filters if they are supplied' do
+          args = { fields: [:unique_identifier], filters: { unique_identifier: 'pm2_user', color: 'blue' } }
+          expect(user_1.pluck_from_link_children(args)).to contain_exactly({ unique_identifier: 'pm2_user' })
+        end
+
+        it 'returns appropriate results when filters apply to no link_children' do
+          expect(user_1.pluck_from_link_children(fields: [:unique_identifier], filters: { color: 'chartreuse' })).to be_empty
         end
       end
     end
@@ -646,7 +913,9 @@ describe 'ActiveRecord' do
 
   describe 'PolicyMachine integration with PolicyMachineStorageAdapter::ActiveRecord' do
     it_behaves_like 'a policy machine' do
-      let(:policy_machine) { PolicyMachine.new(:name => 'ActiveRecord PM', :storage_adapter => PolicyMachineStorageAdapter::ActiveRecord) }
+      let(:policy_machine) do
+        PolicyMachine.new(name: 'ActiveRecord PM', storage_adapter: PolicyMachineStorageAdapter::ActiveRecord)
+      end
 
       #TODO: move to shared example group when in memory equivalent exists
       describe '.serialize' do
@@ -658,15 +927,15 @@ describe 'ActiveRecord' do
         (PolicyMachine::POLICY_ELEMENT_TYPES).each do |type|
           describe 'store' do
             it 'can specify a root store level store supported by the backing system' do
-              some_hash = {'foo' => 'bar'}
-              obj = policy_machine.send("create_#{type}", SecureRandom.uuid, {document: some_hash})
+              some_hash = { 'foo' => 'bar' }
+              obj = policy_machine.send("create_#{type}", SecureRandom.uuid, { document: some_hash })
 
               expect(obj.stored_pe.document).to eq some_hash
               expect(obj.stored_pe.extra_attributes).to be_empty
             end
 
             it 'can specify additional key names to be serialized' do
-              pm2_hash = {'is_arbitrary' => ['thing']}
+              pm2_hash = { 'is_arbitrary' => ['thing'] }
               obj = policy_machine.send("create_#{type}", SecureRandom.uuid, pm2_hash)
 
               expect(obj.stored_pe.is_arbitrary).to eq pm2_hash['is_arbitrary']
