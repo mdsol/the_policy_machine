@@ -207,6 +207,31 @@ module PolicyMachineStorageAdapter
         end
       end
 
+      # Pluck attributes (fields) from all ancestors of the PolicyElement that satisfy the provided
+      # filters.
+      def pluck_attributes_from_ancestors(filters: {}, fields:)
+        raise(ArgumentError.new("Must provide at least one field to pluck")) unless fields.present?
+
+        assert_valid_attributes!(filters.keys)
+        assert_valid_attributes!(fields)
+
+        # Pluck ancestor attributes and group them by child_id
+        result = Assignment.pluck_ancestor_attributes([id], filters: filters, fields: fields)
+        grouped_result = result.each_with_object({}) do |row, memo|
+          child_id = row['id']
+          parent_attributes_hash = row.with_indifferent_access.slice(*fields)
+          memo[child_id] ? memo[child_id] << parent_attributes_hash : memo[child_id] = [parent_attributes_hash]
+        end
+
+        # Pluck the unique_identifiers for all child_ids in the result and replace
+        # the ids with the unique_identifiers
+        uuids = PolicyElement.where(id: grouped_result.keys).pluck(:unique_identifier)
+        uuids = Hash[grouped_result.keys.zip(uuids)]
+        uuids.each { |child_id, uuid| grouped_result[uuid] = grouped_result.delete(child_id) }
+
+        grouped_result
+      end
+
       def self.serialize(store:, name:, serializer: nil)
         active_record_serialize store, serializer
 
