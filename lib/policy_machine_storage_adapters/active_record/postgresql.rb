@@ -65,7 +65,17 @@ module PolicyMachineStorageAdapter
 
       # Return an ActiveRecord::Relation containing the ids of all ancestors and the
       # interstitial relationships, as a string of ancestor_ids
-      def self.select_ancestor_ids(root_element_ids, filters:, fields:)
+      def self.pluck_ancestor_attributes(root_element_ids, filters:, fields:)
+        fields_to_pluck = fields.reduce([]) do |memo, field|
+          memo << "policy_elements." + field.to_s
+        end.join(", ")
+
+        # binding.pry
+        filters_to_apply =
+          if filters.present?
+            "WHERE #{sanitize_sql_for_conditions(filters, 'policy_elements')} "
+          end
+
         query = <<-SQL
           WITH RECURSIVE assignments_recursive AS (
             (
@@ -81,14 +91,22 @@ module PolicyMachineStorageAdapter
               ON assignments_recursive.parent_id = assignments.child_id
             )
           ), plucked_pairs AS (
-            SELECT assignments_recursive.child_id as id, policy_elements.unique_identifier as parent_uuid
+            SELECT assignments_recursive.child_id as id, (#{fields_to_pluck}) as parent_attributes
             FROM assignments_recursive
             JOIN policy_elements
             ON assignments_recursive.parent_id = policy_elements.id
+            #{filters_to_apply if filters_to_apply}
+          ), child_uuids AS (
+            SELECT policy_elements.unique_identifier as uuid, plucked_pairs.id
+            FROM plucked_pairs
+            JOIN policy_elements
+            ON plucked_pairs.id = policy_elements.id
           )
 
-          SELECT id, parent_uuid
-          FROM plucked_pairs
+          SELECT DISTINCT child_uuids.uuid, plucked_pairs.parent_attributes
+          FROM child_uuids
+          JOIN plucked_pairs
+          ON child_uuids.id = plucked_pairs.id
         SQL
 
         PolicyElement.connection.exec_query(query)

@@ -603,7 +603,7 @@ describe 'ActiveRecord' do
       end
     end
 
-    describe '#pluck_ancestor_attributes_from_ancestors' do
+    describe '#pluck_attributes_from_ancestors' do
       before { darken_colors.call }
 
       let(:user_attr_4) { pm1.create_user_attribute('user_attr_4') }
@@ -616,53 +616,82 @@ describe 'ActiveRecord' do
       let(:user_attr_9) { pm1.create_user_attribute('user_attr_9') }
       let!(:double_ancestors) { [user_attr_7, user_attr_8, user_attr_9] }
 
+      before do
+        single_ancestors.each { |ancestor| ancestor.update(color: 'gold' ) }
+        double_ancestors.each { |ancestor| ancestor.update(color: 'silver' ) }
+        pm1.add_assignment(user_attr_4, user_attr_1)
+        pm1.add_assignment(user_attr_5, user_attr_1)
+        pm1.add_assignment(user_attr_6, user_attr_1)
+
+        pm1.add_assignment(user_attr_7, user_attr_4)
+        pm1.add_assignment(user_attr_8, user_attr_5)
+        pm1.add_assignment(user_attr_9, user_attr_6)
+
+        pm1.add_assignment(user_attr_9, user_attr_3)
+      end
+
       context 'no filter is applied' do
-        before do
-          single_ancestors.each { |ancestor| ancestor.update(color: 'gold' ) }
-          double_ancestors.each { |ancestor| ancestor.update(color: 'silver' ) }
-          pm1.add_assignment(user_attr_4, user_attr_1)
-          pm1.add_assignment(user_attr_5, user_attr_1)
-          pm1.add_assignment(user_attr_6, user_attr_1)
-
-          pm1.add_assignment(user_attr_7, user_attr_4)
-          pm1.add_assignment(user_attr_8, user_attr_5)
-          pm1.add_assignment(user_attr_9, user_attr_6)
-        end
-
         it 'returns appropriate ancestors and the specified attribute' do
+          expect(user_attr_3.pluck_attributes_from_ancestors(fields: [:color]))
+            .to eq({ "user_attr_3" => [{ "color" => "blue" }, { "color" => "silver" }] })
         end
 
         it 'returns appropriate ancestors and multiple specified attributes' do
           plucked_results = {
-            'user_1' => [],
-            'user_2' => [],
-            'user_3' => [],
-            'user_attr_4' => [{ unique_identifier: 'user_attr_7', color: 'silver' }],
-            'user_attr_5' => [{ unique_identifier: 'user_attr_8', color: 'silver' }],
-            'user_attr_6' => [{ unique_identifier: 'user_attr_9', color: 'silver' }],
-            'user_attr_7' => [],
-            'user_attr_8' => [],
-            'user_attr_9' => []
+            "user_attr_1" => [
+              { "unique_identifier" => "user_1", "color" => "blue" },
+              { "unique_identifier" => "user_2", "color" => "navy_blue" },
+              { "unique_identifier" => "user_3", "color" => "blue" },
+              { "unique_identifier" => "user_attr_4", "color" => "gold" },
+              { "unique_identifier" => "user_attr_5", "color" => "gold" },
+              { "unique_identifier" => "user_attr_6", "color" => "gold" }
+            ],
+            "user_attr_4" => [{ "unique_identifier" => "user_attr_7", "color" => "silver" }],
+            "user_attr_5" => [{ "unique_identifier" => "user_attr_8", "color" => "silver" }],
+            "user_attr_6" => [{ "unique_identifier" => "user_attr_9", "color" => "silver" }]
           }
-          expect(user_attr_1.pluck_ancestor_attributes_from_ancestors(fields: [:unique_identifier, :color]))
-            .to match_array(plucked_results)
+          expect(user_attr_1.pluck_attributes_from_ancestors(fields: [:unique_identifier, :color]))
+            .to eq(plucked_results)
         end
 
         it 'errors appropriately when nonexistent attributes are specified' do
+          expect { expect(user_attr_1.pluck_attributes_from_ancestors(fields: ['favorite_mountain'])) }
+            .to raise_error(ArgumentError)
         end
 
         it 'errors appropriately when no attributes are specified' do
+          expect { expect(user_attr_1.pluck_attributes_from_ancestors(fields: [])) }.to raise_error(ArgumentError)
         end
       end
 
       context 'a filter is applied' do
-        xit 'applies a single filter if one is supplied' do
+        it 'applies a single filter if one is supplied' do
+          plucked_results = {
+            "user_attr_1" => [
+              { "unique_identifier" => "user_attr_4", "color" => "gold" },
+              { "unique_identifier" => "user_attr_5", "color" => "gold" },
+              { "unique_identifier" => "user_attr_6", "color" => "gold" }
+            ]
+          }
+          pluck_args = { filters: { color: 'gold' }, fields: [:unique_identifier, :color] }
+          expect(user_attr_1.pluck_attributes_from_ancestors(pluck_args)).to eq(plucked_results)
         end
 
-        xit 'applies multiple filters if they are supplied' do
+        it 'applies multiple filters if they are supplied' do
+          pluck_args = {
+            filters: { unique_identifier: 'user_attr_9', color: 'silver' },
+            fields: [:unique_identifier, :type]
+          }
+          plucked_results = {
+            "user_attr_6" => [
+              { "unique_identifier" => "user_attr_9", "type" => "PolicyMachineStorageAdapter::ActiveRecord::UserAttribute" }
+            ]
+          }
+          expect(user_attr_1.pluck_attributes_from_ancestors(pluck_args)).to eq(plucked_results)
         end
 
-        xit 'returns appropriate results when filters apply to no ancestors' do
+        it 'returns appropriate results when filters apply to no ancestors' do
+          expect(user_attr_1.pluck_attributes_from_ancestors(fields: [:unique_identifier], filters: { color: 'red' })).to be_empty
         end
       end
     end
