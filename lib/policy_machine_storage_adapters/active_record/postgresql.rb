@@ -67,8 +67,9 @@ module PolicyMachineStorageAdapter
       # which themselves have ancestors satisfying the provided filters, and an array of
       # plucked attributes from those ancestors.
       def self.pluck_ancestor_attributes(root_element_ids, filters:, fields:)
+        # Construct valid SQL format from input fields with matching aliases
         fields_to_pluck = fields.reduce([]) do |memo, field|
-          memo << "policy_elements." + field.to_s
+          memo << "policy_elements." + field.to_s + " as " + field.to_s
         end.join(", ")
 
         filters_to_apply =
@@ -91,7 +92,7 @@ module PolicyMachineStorageAdapter
               ON assignments_recursive.parent_id = assignments.child_id
             )
           ), plucked_pairs AS (
-            SELECT assignments_recursive.child_id as id, (#{fields_to_pluck}) as parent_attributes
+            SELECT assignments_recursive.child_id as id, #{fields_to_pluck}
             FROM assignments_recursive
             JOIN policy_elements
             ON assignments_recursive.parent_id = policy_elements.id
@@ -103,7 +104,7 @@ module PolicyMachineStorageAdapter
             ON plucked_pairs.id = policy_elements.id
           )
 
-          SELECT DISTINCT child_uuids.uuid, plucked_pairs.parent_attributes
+          SELECT DISTINCT child_uuids.uuid, plucked_pairs.*
           FROM child_uuids
           JOIN plucked_pairs
           ON child_uuids.id = plucked_pairs.id

@@ -218,9 +218,7 @@ module PolicyMachineStorageAdapter
         result = Assignment.pluck_ancestor_attributes([id], filters: filters, fields: fields)
         result.each_with_object({}) do |row, memo|
           uuid = row['uuid']
-          parent_attributes_array = row["parent_attributes"].tr('()','').split(',')
-          parent_attributes_hash = HashWithIndifferentAccess[fields.zip(parent_attributes_array)]
-
+          parent_attributes_hash = row.with_indifferent_access.slice(*fields)
           memo[uuid] ? memo[uuid] << parent_attributes_hash : memo[uuid] = [parent_attributes_hash]
         end
       end
