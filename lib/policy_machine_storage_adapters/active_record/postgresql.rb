@@ -91,23 +91,13 @@ module PolicyMachineStorageAdapter
               INNER JOIN assignments_recursive
               ON assignments_recursive.parent_id = assignments.child_id
             )
-          ), plucked_pairs AS (
-            SELECT assignments_recursive.child_id as id, #{fields_to_pluck}
-            FROM assignments_recursive
-            JOIN policy_elements
-            ON assignments_recursive.parent_id = policy_elements.id
-            #{filters_to_apply if filters_to_apply}
-          ), child_uuids AS (
-            SELECT policy_elements.unique_identifier as uuid, plucked_pairs.id
-            FROM plucked_pairs
-            JOIN policy_elements
-            ON plucked_pairs.id = policy_elements.id
           )
 
-          SELECT DISTINCT child_uuids.uuid, plucked_pairs.*
-          FROM child_uuids
-          JOIN plucked_pairs
-          ON child_uuids.id = plucked_pairs.id
+          SELECT DISTINCT assignments_recursive.child_id as id, #{fields_to_pluck}
+          FROM assignments_recursive
+          JOIN policy_elements
+          ON assignments_recursive.parent_id = policy_elements.id
+          #{filters_to_apply if filters_to_apply}
         SQL
 
         PolicyElement.connection.exec_query(query)
