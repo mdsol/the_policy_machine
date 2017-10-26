@@ -632,12 +632,19 @@ describe 'ActiveRecord' do
 
       context 'no filter is applied' do
         it 'returns appropriate ancestors and the specified attribute' do
-          expect(user_attr_3.pluck_attributes_from_ancestors(fields: [:color]))
-            .to eq({ "user_attr_3" => [{ "color" => "blue" }, { "color" => "silver" }] })
+          expected_result = {
+            "user_attr_3" => [{ "color" => "blue" }, { "color" => "silver" }]
+          }
+
+          actual_result = user_attr_3.pluck_attributes_from_ancestors(fields: [:color])
+
+          expected_result.each do |uuid, attribute_hash|
+            expect(actual_result[uuid]).to match_array(attribute_hash)
+          end
         end
 
         it 'returns appropriate ancestors and multiple specified attributes' do
-          plucked_results = {
+          expected_result = {
             "user_attr_1" => [
               { "unique_identifier" => "user_1", "color" => "blue" },
               { "unique_identifier" => "user_2", "color" => "navy_blue" },
@@ -650,8 +657,12 @@ describe 'ActiveRecord' do
             "user_attr_5" => [{ "unique_identifier" => "user_attr_8", "color" => "silver" }],
             "user_attr_6" => [{ "unique_identifier" => "user_attr_9", "color" => "silver" }]
           }
-          expect(user_attr_1.pluck_attributes_from_ancestors(fields: [:unique_identifier, :color]))
-            .to eq(plucked_results)
+
+          actual_result = user_attr_1.pluck_attributes_from_ancestors(fields: [:unique_identifier, :color])
+
+          expected_result.each do |uuid, attribute_hash|
+            expect(actual_result[uuid]).to match_array(attribute_hash)
+          end
         end
 
         it 'errors appropriately when nonexistent attributes are specified' do
@@ -666,15 +677,20 @@ describe 'ActiveRecord' do
 
       context 'a filter is applied' do
         it 'applies a single filter if one is supplied' do
-          plucked_results = {
+          expected_result = {
             "user_attr_1" => [
               { "unique_identifier" => "user_attr_4", "color" => "gold" },
               { "unique_identifier" => "user_attr_5", "color" => "gold" },
               { "unique_identifier" => "user_attr_6", "color" => "gold" }
             ]
           }
+
           pluck_args = { filters: { color: 'gold' }, fields: [:unique_identifier, :color] }
-          expect(user_attr_1.pluck_attributes_from_ancestors(pluck_args)).to eq(plucked_results)
+          actual_result = user_attr_1.pluck_attributes_from_ancestors(pluck_args)
+
+          expected_result.each do |uuid, attribute_hash|
+            expect(actual_result[uuid]).to match_array(attribute_hash)
+          end
         end
 
         it 'applies multiple filters if they are supplied' do
@@ -683,9 +699,7 @@ describe 'ActiveRecord' do
             fields: [:unique_identifier, :type]
           }
           plucked_results = {
-            "user_attr_6" => [
-              { "unique_identifier" => "user_attr_9", "type" => "PolicyMachineStorageAdapter::ActiveRecord::UserAttribute" }
-            ]
+            "user_attr_6" => [{ "unique_identifier" => "user_attr_9", "type" => "PolicyMachineStorageAdapter::ActiveRecord::UserAttribute" }]
           }
           expect(user_attr_1.pluck_attributes_from_ancestors(pluck_args)).to eq(plucked_results)
         end
