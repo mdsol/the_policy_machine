@@ -65,7 +65,7 @@ module PolicyMachineStorageAdapter
 
       # Return an ActiveRecord::Relation containing the ids of all ancestors and the
       # interstitial relationships, as a string of ancestor_ids
-      def self.select_ancestor_ids(root_element_ids)
+      def self.select_ancestor_ids(root_element_ids, filters:, fields:)
         query = <<-SQL
           WITH RECURSIVE assignments_recursive AS (
             (
@@ -80,11 +80,15 @@ module PolicyMachineStorageAdapter
               INNER JOIN assignments_recursive
               ON assignments_recursive.parent_id = assignments.child_id
             )
+          ), plucked_pairs AS (
+            SELECT assignments_recursive.child_id as id, policy_elements.unique_identifier as parent_uuid
+            FROM assignments_recursive
+            JOIN policy_elements
+            ON assignments_recursive.parent_id = policy_elements.id
           )
 
-          SELECT child_id as id, array_agg(parent_id) as ancestor_ids
-          FROM assignments_recursive
-          GROUP BY child_id
+          SELECT id, parent_uuid
+          FROM plucked_pairs
         SQL
 
         PolicyElement.connection.exec_query(query)
