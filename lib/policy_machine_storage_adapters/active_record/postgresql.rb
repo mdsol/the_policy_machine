@@ -70,7 +70,6 @@ module PolicyMachineStorageAdapter
           memo << "policy_elements." + field.to_s
         end.join(", ")
 
-        # binding.pry
         filters_to_apply =
           if filters.present?
             "WHERE #{sanitize_sql_for_conditions(filters, 'policy_elements')} "
