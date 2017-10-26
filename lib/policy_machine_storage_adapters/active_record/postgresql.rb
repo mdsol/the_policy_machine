@@ -63,8 +63,9 @@ module PolicyMachineStorageAdapter
         PolicyElement.where(query, [*element_or_scope].map(&:id))
       end
 
-      # Return an ActiveRecord::Relation containing the ids of all ancestors and the
-      # interstitial relationships, as a string of ancestor_ids
+      # Return an ActiveRecord::Relation containing the unique_identifiers of all ancestors
+      # which themselves have ancestors satisfying the provided filters, and an array of
+      # plucked attributes from those ancestors.
       def self.pluck_ancestor_attributes(root_element_ids, filters:, fields:)
         fields_to_pluck = fields.reduce([]) do |memo, field|
           memo << "policy_elements." + field.to_s

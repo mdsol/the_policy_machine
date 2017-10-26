@@ -207,7 +207,8 @@ module PolicyMachineStorageAdapter
         end
       end
 
-      # This method plucks the attributes of your ancestors' ancestors.
+      # Pluck attributes (fields) from all ancestors of the PolicyElement that satisfy the provided
+      # filters.
       def pluck_attributes_from_ancestors(filters: {}, fields:)
         raise(ArgumentError.new("Must provide at least one field to pluck")) unless fields.present?
 
