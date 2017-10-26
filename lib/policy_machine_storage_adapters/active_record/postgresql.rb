@@ -93,7 +93,7 @@ module PolicyMachineStorageAdapter
             )
           )
 
-          SELECT DISTINCT assignments_recursive.child_id as id, #{fields_to_pluck}
+          SELECT assignments_recursive.child_id as id, #{fields_to_pluck}
           FROM assignments_recursive
           JOIN policy_elements
           ON assignments_recursive.parent_id = policy_elements.id
