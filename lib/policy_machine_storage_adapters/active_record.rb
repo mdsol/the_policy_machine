@@ -209,13 +209,13 @@ module PolicyMachineStorageAdapter
 
       # This method plucks the attributes of your ancestors' ancestors. If an ancestor does not have any
       # ancestors of its own, this method will not return it.
-      def pluck_ancestor_attributes_from_ancestors(filters: {}, fields:)
+      def pluck_ancestor_attributes_from_ancestors(filters: {}, fields:, depth: {})
         assert_valid_attributes!(filters.keys)
         assert_valid_attributes!(fields)
 
         # (1) Database call number 1: obtain the edges of the ancestor 'subtree', represented as a
         #     hash where each ancestor's id is the key, and the value is an array of _its_ ancestors
-        id_tree = Assignment.select_ancestor_ids([id]).each_with_object({}) do |row, memo|
+        id_tree = Assignment.select_ancestor_ids([id], depth[:min_depth], depth[:max_depth]).each_with_object({}) do |row, memo|
           ancestor_array = row['ancestor_ids'].tr('{}','').split(',')
           ancestor_array.each { |ancestor_id| memo[ancestor_id] ||= [] }
           memo[row['id']] = ancestor_array

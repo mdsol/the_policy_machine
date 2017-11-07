@@ -65,25 +65,36 @@ module PolicyMachineStorageAdapter
 
       # Return an ActiveRecord::Relation containing the ids of all ancestors and the
       # interstitial relationships, as a string of ancestor_ids
-      def self.select_ancestor_ids(root_element_ids)
+      def self.select_ancestor_ids(root_element_ids, min_depth, max_depth)
+        if min_depth
+          min_depth_fragment = "WHERE depth >= #{min_depth}"
+          if max_depth
+            max_depth_fragment = "AND depth <= #{max_depth}"
+          end
+        elsif max_depth
+          max_depth_fragment = "WHERE depth <= #{max_depth}" 
+        end
+
         query = <<-SQL
           WITH RECURSIVE assignments_recursive AS (
             (
-              SELECT parent_id, child_id
+              SELECT parent_id, child_id, 1::INT AS depth
               FROM assignments
               WHERE #{sanitize_sql_for_conditions(["child_id IN (:root_ids)", root_ids: root_element_ids])}
             )
             UNION ALL
             (
-              SELECT assignments.parent_id, assignments.child_id
+              SELECT assignments.parent_id, assignments.child_id, depth + 1 AS depth
               FROM assignments
               INNER JOIN assignments_recursive
               ON assignments_recursive.parent_id = assignments.child_id
             )
           )
 
-          SELECT child_id as id, array_agg(parent_id) as ancestor_ids
+          SELECT child_id as id, array_agg(parent_id) as ancestor_ids, max(depth) as depth
           FROM assignments_recursive
+          #{min_depth_fragment if min_depth_fragment}
+          #{max_depth_fragment if max_depth_fragment}
           GROUP BY child_id
         SQL
 

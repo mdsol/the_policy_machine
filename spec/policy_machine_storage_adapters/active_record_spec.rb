@@ -644,8 +644,12 @@ describe 'ActiveRecord' do
             'user_attr_8' => [],
             'user_attr_9' => []
           }
-          expect(user_attr_1.pluck_ancestor_attributes_from_ancestors(fields: [:unique_identifier, :color]))
-            .to match_array(plucked_results)
+          expect(
+            user_attr_1.pluck_ancestor_attributes_from_ancestors(
+              fields: [:unique_identifier, :color],
+              depth: { min_depth: 0, max_depth: 2 }
+            )
+          ).to match_array(plucked_results)
         end
 
         it 'errors appropriately when nonexistent attributes are specified' do
