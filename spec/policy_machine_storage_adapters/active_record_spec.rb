@@ -647,7 +647,8 @@ describe 'ActiveRecord' do
           expect(
             user_attr_1.pluck_ancestor_attributes_from_ancestors(
               fields: [:unique_identifier, :color],
-              depth: { min_depth: 0, max_depth: 2 }
+              min_depth: 0,
+              max_depth: 2
             )
           ).to match_array(plucked_results)
         end
