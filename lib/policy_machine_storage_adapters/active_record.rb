@@ -219,18 +219,16 @@ module PolicyMachineStorageAdapter
         id_tree.delete(id.to_s)
 
         fields_to_pluck = [:id, :unique_identifier] | fields
-
         PolicyElement.where(id: id_tree.keys).where(filters).pluck_to_hash(*fields_to_pluck).each do |attrs|
-          pe_id = attrs[:id].to_s
-          id_tree[pe_id] = attrs.except(:id).merge(relative_ids: id_tree[pe_id])
+          id_tree[attrs[:id].to_s] = attrs.except(:id).merge(relative_ids: id_tree[attrs[:id].to_s])
         end
 
         # For each ancestor hash, convert all instances of 'id' to 'unique_identifier'
         # and replace each relative's id with that relative's attributes
-        id_tree.each_with_object({}) do |(_, policy_element_attrs), memo|
-          if policy_element_attrs.present? && policy_element_attrs.is_a?(Hash)
-            ancestral_attributes = select_relative_attributes(id_tree, policy_element_attrs[:relative_ids])
-            memo[policy_element_attrs[:unique_identifier]] = ancestral_attributes
+        id_tree.each_with_object({}) do |(_, pe_attrs), memo|
+          if pe_attrs.present? && pe_attrs.is_a?(Hash)
+            ancestral_attributes = select_relative_attributes(id_tree, pe_attrs[:relative_ids])
+            memo[pe_attrs[:unique_identifier]] = ancestral_attributes
           end
         end
       end

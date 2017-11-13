@@ -24,6 +24,7 @@ Gem::Specification.new do |s|
     # Only required for postgres
     s.add_dependency('pg')
     s.add_dependency('activerecord-hierarchical_query', '~> 0.0')
+    s.add_dependency('pluck_to_hash-hierarchical_query', '~> 1')
 
   s.add_development_dependency('rspec', '~> 3.5.0')
   s.add_development_dependency('simplecov', '~> 0.7.1')
