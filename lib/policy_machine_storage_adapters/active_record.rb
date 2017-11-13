@@ -207,6 +207,22 @@ module PolicyMachineStorageAdapter
         end
       end
 
+      # Pluck attributes (fields) from all ancestors of the PolicyElement that satisfy the provided
+      # filters.
+      def pluck_attributes_from_ancestors(filters: {}, fields:)
+        raise(ArgumentError.new("Must provide at least one field to pluck")) unless fields.present?
+
+        assert_valid_attributes!(filters.keys)
+        assert_valid_attributes!(fields)
+
+        result = Assignment.pluck_ancestor_attributes([id], filters: filters, fields: fields)
+        result.each_with_object({}) do |row, memo|
+          uuid = row['uuid']
+          parent_attributes_hash = row.with_indifferent_access.slice(*fields)
+          memo[uuid] ? memo[uuid] << parent_attributes_hash : memo[uuid] = [parent_attributes_hash]
+        end
+      end
+
       def self.serialize(store:, name:, serializer: nil)
         active_record_serialize store, serializer
 

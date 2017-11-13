@@ -63,6 +63,56 @@ module PolicyMachineStorageAdapter
         PolicyElement.where(query, [*element_or_scope].map(&:id))
       end
 
+      # Return an ActiveRecord::Relation containing the unique_identifiers of all ancestors
+      # which themselves have ancestors satisfying the provided filters, and an array of
+      # plucked attributes from those ancestors.
+      def self.pluck_ancestor_attributes(root_element_ids, filters:, fields:)
+        # Construct valid SQL format from input fields with matching aliases
+        fields_to_pluck = fields.reduce([]) do |memo, field|
+          memo << "policy_elements." + field.to_s + " as " + field.to_s
+        end.join(", ")
+
+        filters_to_apply =
+          if filters.present?
+            "WHERE #{sanitize_sql_for_conditions(filters, 'policy_elements')} "
+          end
+
+        query = <<-SQL
+          WITH RECURSIVE assignments_recursive AS (
+            (
+              SELECT parent_id, child_id
+              FROM assignments
+              WHERE #{sanitize_sql_for_conditions(["child_id IN (:root_ids)", root_ids: root_element_ids])}
+            )
+            UNION ALL
+            (
+              SELECT assignments.parent_id, assignments.child_id
+              FROM assignments
+              INNER JOIN assignments_recursive
+              ON assignments_recursive.parent_id = assignments.child_id
+            )
+          ), plucked_pairs AS (
+            SELECT assignments_recursive.child_id as id, #{fields_to_pluck}
+            FROM assignments_recursive
+            JOIN policy_elements
+            ON assignments_recursive.parent_id = policy_elements.id
+            #{filters_to_apply if filters_to_apply}
+          ), child_uuids AS (
+            SELECT policy_elements.unique_identifier as uuid, plucked_pairs.id
+            FROM plucked_pairs
+            JOIN policy_elements
+            ON plucked_pairs.id = policy_elements.id
+          )
+
+          SELECT DISTINCT child_uuids.uuid, plucked_pairs.*
+          FROM child_uuids
+          JOIN plucked_pairs
+          ON child_uuids.id = plucked_pairs.id
+        SQL
+
+        PolicyElement.connection.exec_query(query)
+      end
+
       # Returns the operation set IDs from the given list where the operation is
       # a descendant of the operation set.
       # TODO: Generalize this so that we can arbitrarily filter recursive assignments calls.

@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.7.0
+* Add pluck_attributes_from_ancestors method to ActiveRecord storage adapter and associated postgresql query.
+
 ## 1.6.2
 * Add pluck_from method family to the ActiveRecord storage adapter.
 
