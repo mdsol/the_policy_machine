@@ -219,10 +219,11 @@ module PolicyMachineStorageAdapter
         id_tree.delete(id.to_s)
 
         fields_to_pluck = [:id, :unique_identifier] | fields
-        plucked_policy_elements = PolicyElement.where(id: id_tree.keys).where(filters).pluck(*fields_to_pluck)
 
-        # Convert the plucked attribute arrays into attribute hashes and merge them into the id subtree
-        zip_attributes_into_id_tree!(id_tree, fields_to_pluck - [:id], plucked_policy_elements)
+        PolicyElement.where(id: id_tree.keys).where(filters).pluck_to_hash(*fields_to_pluck).each do |attrs|
+          pe_id = attrs[:id].to_s
+          id_tree[pe_id] = attrs.except(:id).merge(relative_ids: id_tree[pe_id])
+        end
 
         # For each ancestor hash, convert all instances of 'id' to 'unique_identifier'
         # and replace each relative's id with that relative's attributes
@@ -325,17 +326,6 @@ module PolicyMachineStorageAdapter
           id_array = row['ancestor_ids'].tr('{}','').split(',')
           id_array.each { |ancestor_id| memo[ancestor_id] ||= [] }
           memo[row['id']] = id_array
-        end
-      end
-
-      # Zip an array of attributes into an id tree, with interstitial relationships preserved
-      # under the "relative_ids" key
-      def zip_attributes_into_id_tree!(id_tree, plucked_fields, plucked_attributes)
-        plucked_attributes.each do |policy_element_attrs|
-          # Convert [1, "blue", "user_1"] into { color: "blue", uuid: "user_1" }
-          policy_element_id = policy_element_attrs[0].to_s
-          attribute_hash = HashWithIndifferentAccess[plucked_fields.zip(policy_element_attrs.drop(1))]
-          id_tree[policy_element_id] = attribute_hash.merge(relative_ids: id_tree[policy_element_id])
         end
       end
 
