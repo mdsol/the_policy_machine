@@ -222,13 +222,13 @@ module PolicyMachineStorageAdapter
         plucked_policy_elements = PolicyElement.where(id: id_tree.keys).where(filters).pluck(*fields_to_pluck)
 
         # Convert the plucked attribute arrays into attribute hashes and merge them into the id subtree
-        zip_attributes_into_id_tree!(id_tree, fields_to_pluck - [:id], plucked_policy_elements)
+        id_attribute_tree = zip_attributes_into_id_tree(id_tree, fields_to_pluck - [:id], plucked_policy_elements)
 
         # For each ancestor hash, convert all instances of 'id' to 'unique_identifier'
         # and replace each relative's id with that relative's attributes
-        id_tree.each_with_object({}) do |(_, policy_element_attrs), memo|
+        id_attribute_tree.each_with_object({}) do |(_, policy_element_attrs), memo|
           if policy_element_attrs.present? && policy_element_attrs.is_a?(Hash)
-            ancestral_attributes = select_relative_attributes(id_tree, policy_element_attrs[:relative_ids])
+            ancestral_attributes = select_relative_attributes(id_attribute_tree, policy_element_attrs[:relative_ids])
             memo[policy_element_attrs[:unique_identifier]] = ancestral_attributes
           end
         end
@@ -321,31 +321,29 @@ module PolicyMachineStorageAdapter
       # Returns a hash containing the ancestors of the root nodes, with the interstitial
       # ancestor relationships represented by the key/value pairs.
       def get_ancestor_id_tree(root_nodes)
-        Assignment.select_ancestor_ids(root_nodes).each_with_object({}) do |row, memo|
+        Assignment.find_ancestor_ids(root_nodes).each_with_object({}) do |row, ancestor_id_tree|
           id_array = row['ancestor_ids'].tr('{}','').split(',')
-          id_array.each { |ancestor_id| memo[ancestor_id] ||= [] }
-          memo[row['id']] = id_array
+          id_array.each { |ancestor_id| ancestor_id_tree[ancestor_id] ||= [] }
+          ancestor_id_tree[row['id']] = id_array
         end
       end
 
       # Zip an array of attributes into an id tree, with interstitial relationships preserved
       # under the "relative_ids" key
-      def zip_attributes_into_id_tree!(id_tree, plucked_fields, plucked_attributes)
-        plucked_attributes.each do |policy_element_attrs|
+      def zip_attributes_into_id_tree(id_tree, plucked_fields, plucked_attributes)
+        plucked_attributes.each_with_object({}) do |policy_element_attrs, id_attribute_tree|
           # Convert [1, "blue", "user_1"] into { color: "blue", uuid: "user_1" }
           policy_element_id = policy_element_attrs[0].to_s
           attribute_hash = HashWithIndifferentAccess[plucked_fields.zip(policy_element_attrs.drop(1))]
-          id_tree[policy_element_id] = attribute_hash.merge(relative_ids: id_tree[policy_element_id])
+          id_attribute_tree[policy_element_id] = attribute_hash.merge(relative_ids: id_tree[policy_element_id])
         end
       end
 
-      def select_relative_attributes(id_tree, relative_ids)
-        relative_ids.map do |relative_id|
-          relative_attributes = id_tree[relative_id]
+      def select_relative_attributes(id_attribute_tree, relative_ids)
+        relative_ids.each_with_object([]) do |relative_id, attribute_array|
+          relative_attributes = id_attribute_tree[relative_id]
           if relative_attributes && relative_attributes.is_a?(Hash)
-            relative_attributes.except(:relative_ids)
-          else
-            {}
+            attribute_array << relative_attributes.except(:relative_ids)
           end
         end
       end

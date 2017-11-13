@@ -65,7 +65,7 @@ module PolicyMachineStorageAdapter
 
       # Return an ActiveRecord::Relation containing the ids of all ancestors and the
       # interstitial relationships, as a string of ancestor_ids
-      def self.select_ancestor_ids(root_element_ids)
+      def self.find_ancestor_ids(root_element_ids)
         query = <<-SQL
           WITH RECURSIVE assignments_recursive AS (
             (

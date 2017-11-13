@@ -632,34 +632,34 @@ describe 'ActiveRecord' do
 
       context 'no filter is applied' do
         it 'returns appropriate ancestors and the specified attribute' do
-          plucked_results = {
-            'user_1' => [],
-            'user_2' => [],
-            'user_3' => [],
-            'user_attr_4' => [{ unique_identifier: 'user_attr_7' }],
-            'user_attr_5' => [{ unique_identifier: 'user_attr_8' }],
-            'user_attr_6' => [{ unique_identifier: 'user_attr_9' }],
-            'user_attr_7' => [],
-            'user_attr_8' => [],
-            'user_attr_9' => []
-          }
+          plucked_results = HashWithIndifferentAccess.new(
+            user_1: [],
+            user_2: [],
+            user_3: [],
+            user_attr_4: [{ unique_identifier: 'user_attr_7' }],
+            user_attr_5: [{ unique_identifier: 'user_attr_8' }],
+            user_attr_6: [{ unique_identifier: 'user_attr_9' }],
+            user_attr_7: [],
+            user_attr_8: [],
+            user_attr_9: []
+          )
 
-          expect(user_attr_1.pluck_ancestor_tree(fields: [:unique_identifier])).to match_array(plucked_results)
+          expect(user_attr_1.pluck_ancestor_tree(fields: [:unique_identifier])).to eq(plucked_results)
         end
 
         it 'returns appropriate ancestors and multiple specified attributes' do
-          plucked_results = {
-            'user_1' => [],
-            'user_2' => [],
-            'user_3' => [],
-            'user_attr_4' => [{ unique_identifier: 'user_attr_7', color: 'silver' }],
-            'user_attr_5' => [{ unique_identifier: 'user_attr_8', color: 'silver' }],
-            'user_attr_6' => [{ unique_identifier: 'user_attr_9', color: 'silver' }],
-            'user_attr_7' => [],
-            'user_attr_8' => [],
-            'user_attr_9' => []
-          }
-          expect(user_attr_1.pluck_ancestor_tree(fields: [:unique_identifier, :color])).to match_array(plucked_results)
+          plucked_results = HashWithIndifferentAccess.new(
+            user_1: [],
+            user_2: [],
+            user_3: [],
+            user_attr_4: [{ unique_identifier: 'user_attr_7', color: 'silver' }],
+            user_attr_5: [{ unique_identifier: 'user_attr_8', color: 'silver' }],
+            user_attr_6: [{ unique_identifier: 'user_attr_9', color: 'silver' }],
+            user_attr_7: [],
+            user_attr_8: [],
+            user_attr_9: []
+          )
+          expect(user_attr_1.pluck_ancestor_tree(fields: [:unique_identifier, :color])).to eq(plucked_results)
         end
 
         it 'errors appropriately when nonexistent attributes are specified' do
@@ -673,30 +673,30 @@ describe 'ActiveRecord' do
 
       context 'a filter is applied' do
         it 'applies a single filter if one is supplied' do
-          plucked_results = { 'user_attr_7' => [], 'user_attr_8' => [], 'user_attr_9' => [] }
+          plucked_results = HashWithIndifferentAccess.new(user_attr_7: [], user_attr_8: [], user_attr_9: [])
           params = { fields: [:unique_identifier], filters: { color: 'silver'} }
-          expect(user_attr_1.pluck_ancestor_tree(params)).to match_array(plucked_results)
+          expect(user_attr_1.pluck_ancestor_tree(params)).to eq(plucked_results)
         end
 
         it 'applies multiple filters if they are supplied' do
-          plucked_results = { 'user_attr_9' => [] }
+          plucked_results = HashWithIndifferentAccess.new('user_attr_9': [])
           params = { fields: [:unique_identifier], filters: { color: 'silver', unique_identifier: 'user_attr_9' } }
-          expect(user_attr_1.pluck_ancestor_tree(params)).to match_array(plucked_results)
+          expect(user_attr_1.pluck_ancestor_tree(params)).to eq(plucked_results)
         end
 
         it 'returns appropriate results when filters apply to ancestors that have no ancestors themselves' do
           user_attr_10.update(color: 'indigo')
           pm1.add_assignment(user_attr_10, user_attr_1)
 
-          plucked_results = { 'user_attr_10' => [] }
+          plucked_results = HashWithIndifferentAccess.new(user_attr_10: [])
           params = { fields: [:unique_identifier], filters: { color: 'indigo'} }
-          expect(user_attr_1.pluck_ancestor_tree(params)).to match_array(plucked_results)
+          expect(user_attr_1.pluck_ancestor_tree(params)).to eq(plucked_results)
         end
 
         it 'returns appropriate results when filters apply to ancestors but not their ancestors' do
-          plucked_results = { 'user_attr_4' => [{}], 'user_attr_5' => [{}], 'user_attr_6' => [{}] }
+          plucked_results = HashWithIndifferentAccess.new(user_attr_4: [], user_attr_5: [], user_attr_6: [])
           params = { fields: [:unique_identifier], filters: { color: 'gold'} }
-          expect(user_attr_1.pluck_ancestor_tree(params)).to match_array(plucked_results)
+          expect(user_attr_1.pluck_ancestor_tree(params)).to eq(plucked_results)
         end
 
         it 'returns appropriate results when filters apply to no ancestors' do
