@@ -221,7 +221,7 @@ module PolicyMachineStorageAdapter
         fields_to_pluck = [:id, :unique_identifier] | fields
         PolicyElement.where(id: id_tree.keys).where(filters).select(*fields_to_pluck).as_json.each do |attrs|
           attrs.symbolize_keys!
-          id_tree[attrs[:id]] = attrs.except(:id).merge(relative_ids: id_tree[attrs[:id].to_s])
+          id_tree[attrs[:id].to_s] = attrs.except(:id).merge(relative_ids: id_tree[attrs[:id].to_s])
         end
 
         # For each ancestor hash, convert all instances of 'id' to 'unique_identifier'
