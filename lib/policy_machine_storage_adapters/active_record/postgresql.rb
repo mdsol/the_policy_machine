@@ -63,6 +63,33 @@ module PolicyMachineStorageAdapter
         PolicyElement.where(query, [*element_or_scope].map(&:id))
       end
 
+      # Return an ActiveRecord::Relation containing the ids of all ancestors and the
+      # interstitial relationships, as a string of ancestor_ids
+      def self.find_ancestor_ids(root_element_ids)
+        query = <<-SQL
+          WITH RECURSIVE assignments_recursive AS (
+            (
+              SELECT parent_id, child_id
+              FROM assignments
+              WHERE #{sanitize_sql_for_conditions(["child_id IN (:root_ids)", root_ids: root_element_ids])}
+            )
+            UNION ALL
+            (
+              SELECT assignments.parent_id, assignments.child_id
+              FROM assignments
+              INNER JOIN assignments_recursive
+              ON assignments_recursive.parent_id = assignments.child_id
+            )
+          )
+
+          SELECT child_id as id, array_agg(parent_id) as ancestor_ids
+          FROM assignments_recursive
+          GROUP BY child_id
+        SQL
+
+        PolicyElement.connection.exec_query(query)
+      end
+
       # Returns the operation set IDs from the given list where the operation is
       # a descendant of the operation set.
       # TODO: Generalize this so that we can arbitrarily filter recursive assignments calls.

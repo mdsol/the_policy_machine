@@ -207,6 +207,33 @@ module PolicyMachineStorageAdapter
         end
       end
 
+      # This method plucks the attributes of your ancestors' ancestors, along with the
+      # relationships among those ancestors.
+      def pluck_ancestor_tree(filters: {}, fields:)
+        raise(ArgumentError.new("Must provide at least one field to pluck")) unless fields.present?
+
+        assert_valid_attributes!(filters.keys)
+        assert_valid_attributes!(fields)
+
+        id_tree = get_ancestor_id_tree([id])
+        id_tree.delete(id.to_s)
+
+        fields_to_pluck = [:id, :unique_identifier] | fields
+        plucked_policy_elements = PolicyElement.where(id: id_tree.keys).where(filters).pluck(*fields_to_pluck)
+
+        # Convert the plucked attribute arrays into attribute hashes and merge them into the id subtree
+        id_attribute_tree = zip_attributes_into_id_tree(id_tree, fields_to_pluck - [:id], plucked_policy_elements)
+
+        # For each ancestor hash, convert all instances of 'id' to 'unique_identifier'
+        # and replace each relative's id with that relative's attributes
+        id_attribute_tree.each_with_object({}) do |(_, policy_element_attrs), memo|
+          if policy_element_attrs.present? && policy_element_attrs.is_a?(Hash)
+            ancestral_attributes = select_relative_attributes(id_attribute_tree, policy_element_attrs[:relative_ids])
+            memo[policy_element_attrs[:unique_identifier]] = ancestral_attributes
+          end
+        end
+      end
+
       def self.serialize(store:, name:, serializer: nil)
         active_record_serialize store, serializer
 
@@ -288,6 +315,36 @@ module PolicyMachineStorageAdapter
       def assert_valid_attributes!(attributes)
         unless (attributes.map(&:to_sym) - PolicyElement.column_names.map(&:to_sym)).empty?
           raise ArgumentError, "Provided argument contains invalid keys, valid keys are #{PolicyElement.column_names}"
+        end
+      end
+
+      # Returns a hash containing the ancestors of the root nodes, with the interstitial
+      # ancestor relationships represented by the key/value pairs.
+      def get_ancestor_id_tree(root_nodes)
+        Assignment.find_ancestor_ids(root_nodes).each_with_object({}) do |row, ancestor_id_tree|
+          id_array = row['ancestor_ids'].tr('{}','').split(',')
+          id_array.each { |ancestor_id| ancestor_id_tree[ancestor_id] ||= [] }
+          ancestor_id_tree[row['id']] = id_array
+        end
+      end
+
+      # Zip an array of attributes into an id tree, with interstitial relationships preserved
+      # under the "relative_ids" key
+      def zip_attributes_into_id_tree(id_tree, plucked_fields, plucked_attributes)
+        plucked_attributes.each_with_object({}) do |policy_element_attrs, id_attribute_tree|
+          # Convert [1, "blue", "user_1"] into { color: "blue", uuid: "user_1" }
+          policy_element_id = policy_element_attrs[0].to_s
+          attribute_hash = HashWithIndifferentAccess[plucked_fields.zip(policy_element_attrs.drop(1))]
+          id_attribute_tree[policy_element_id] = attribute_hash.merge(relative_ids: id_tree[policy_element_id])
+        end
+      end
+
+      def select_relative_attributes(id_attribute_tree, relative_ids)
+        relative_ids.each_with_object([]) do |relative_id, attribute_array|
+          relative_attributes = id_attribute_tree[relative_id]
+          if relative_attributes && relative_attributes.is_a?(Hash)
+            attribute_array << relative_attributes.except(:relative_ids)
+          end
         end
       end
     end
