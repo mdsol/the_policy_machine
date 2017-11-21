@@ -633,6 +633,13 @@ describe 'ActiveRecord' do
       context 'no filter is applied' do
         it 'returns appropriate ancestors and the specified attribute' do
           plucked_results = HashWithIndifferentAccess.new(
+            user_attr_1: [
+              { unique_identifier: 'user_1' },
+              { unique_identifier: 'user_2' },
+              { unique_identifier: 'user_3' },
+              { unique_identifier: 'user_attr_4' },
+              { unique_identifier: 'user_attr_5' },
+              { unique_identifier: 'user_attr_6' }],
             user_1: [],
             user_2: [],
             user_3: [],
@@ -649,6 +656,13 @@ describe 'ActiveRecord' do
 
         it 'returns appropriate ancestors and multiple specified attributes' do
           plucked_results = HashWithIndifferentAccess.new(
+            user_attr_1: [
+              { unique_identifier: 'user_1', color: 'blue' },
+              { unique_identifier: 'user_2', color: 'navy_blue' },
+              { unique_identifier: 'user_3', color: 'blue' },
+              { unique_identifier: 'user_attr_4', color: 'gold' },
+              { unique_identifier: 'user_attr_5', color: 'gold' },
+              { unique_identifier: 'user_attr_6', color: 'gold' }],
             user_1: [],
             user_2: [],
             user_3: [],
@@ -673,13 +687,21 @@ describe 'ActiveRecord' do
 
       context 'a filter is applied' do
         it 'applies a single filter if one is supplied' do
-          plucked_results = HashWithIndifferentAccess.new(user_attr_7: [], user_attr_8: [], user_attr_9: [])
+          plucked_results = HashWithIndifferentAccess.new(
+            user_attr_1: [],
+            user_attr_7: [],
+            user_attr_8: [],
+            user_attr_9: []
+          )
           params = { fields: [:unique_identifier], filters: { color: 'silver'} }
           expect(user_attr_1.pluck_ancestor_tree(params)).to eq(plucked_results)
         end
 
         it 'applies multiple filters if they are supplied' do
-          plucked_results = HashWithIndifferentAccess.new('user_attr_9': [])
+          plucked_results = HashWithIndifferentAccess.new(
+            user_attr_1: [],
+            user_attr_9: []
+          )
           params = { fields: [:unique_identifier], filters: { color: 'silver', unique_identifier: 'user_attr_9' } }
           expect(user_attr_1.pluck_ancestor_tree(params)).to eq(plucked_results)
         end
@@ -688,20 +710,32 @@ describe 'ActiveRecord' do
           user_attr_10.update(color: 'indigo')
           pm1.add_assignment(user_attr_10, user_attr_1)
 
-          plucked_results = HashWithIndifferentAccess.new(user_attr_10: [])
+          plucked_results = HashWithIndifferentAccess.new(
+            user_attr_1: [{ unique_identifier: 'user_attr_10' }],
+            user_attr_10: []
+          )
           params = { fields: [:unique_identifier], filters: { color: 'indigo'} }
           expect(user_attr_1.pluck_ancestor_tree(params)).to eq(plucked_results)
         end
 
         it 'returns appropriate results when filters apply to ancestors but not their ancestors' do
-          plucked_results = HashWithIndifferentAccess.new(user_attr_4: [], user_attr_5: [], user_attr_6: [])
+          plucked_results = HashWithIndifferentAccess.new(
+            user_attr_1: [
+              { unique_identifier: 'user_attr_4' },
+              { unique_identifier: 'user_attr_5' },
+              { unique_identifier: 'user_attr_6' }],
+            user_attr_4: [],
+            user_attr_5: [],
+            user_attr_6: []
+          )
           params = { fields: [:unique_identifier], filters: { color: 'gold'} }
           expect(user_attr_1.pluck_ancestor_tree(params)).to eq(plucked_results)
         end
 
         it 'returns appropriate results when filters apply to no ancestors' do
+          plucked_results = HashWithIndifferentAccess.new(user_attr_1: [])
           params = { fields: [:unique_identifier], filters: { color: 'obsidian'} }
-          expect(user_attr_1.pluck_ancestor_tree(params)).to match_array({})
+          expect(user_attr_1.pluck_ancestor_tree(params)).to eq(plucked_results)
         end
       end
     end
