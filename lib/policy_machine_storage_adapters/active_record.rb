@@ -216,10 +216,11 @@ module PolicyMachineStorageAdapter
         assert_valid_attributes!(fields)
 
         id_tree = get_ancestor_id_tree([id])
-        id_tree.delete(id.to_s)
 
         fields_to_pluck = [:id, :unique_identifier] | fields
-        plucked_policy_elements = PolicyElement.where(id: id_tree.keys).where(filters).pluck(*fields_to_pluck)
+        ancestor_attributes = PolicyElement.where(id: id_tree.keys - [id.to_s]).where(filters).pluck(*fields_to_pluck)
+        root_attributes     = PolicyElement.where(id: id.to_s).pluck(:id, :unique_identifier)
+        plucked_policy_elements = ancestor_attributes + root_attributes
 
         # Convert the plucked attribute arrays into attribute hashes and merge them into the id subtree
         id_attribute_tree = zip_attributes_into_id_tree(id_tree, fields_to_pluck - [:id], plucked_policy_elements)
