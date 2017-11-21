@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.7.1
+* Added root node to pluck_ancestor_tree method with parent relationships identified.
+
 ## 1.7.0
 * Add pluck_ancestor_tree method to ActiveRecord storage adapter.
 
