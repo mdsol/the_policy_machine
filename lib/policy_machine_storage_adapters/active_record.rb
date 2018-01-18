@@ -796,6 +796,28 @@ module PolicyMachineStorageAdapter
       end
     end
 
+    def accessibly_objecty(user, operation, accessible_scope)
+      operation_id = operation.try(:unique_identifier) || operation.to_s
+      user_attributes = user.descendants.pluck(:id) | [user.id]
+
+      associations = PolicyElementAssociation.where(user_attribute_id: user_attributes)
+      operation_set_ids = associations.pluck(:operation_set_id)
+
+      filtered_operation_set_ids = Assignment.filter_operation_set_list_by_assigned_operation(operation_set_ids, operation_id)
+
+      associations = associations.where(operation_set_id: filtered_operation_set_ids)
+
+      results =
+      if associations.exists?(object_attribute_id: accessible_scope.id)
+        Assignment.ancestors_of([accessible_scope]).where(type: class_for_type('object')) | PolicyElement.where(id: accessible_scope.id)
+      else
+        Assignment.ancestors_with_limiting_scope(user, accessible_scope, associations.pluck(:id))
+      end
+
+      byebug
+      results
+    end
+
     private
 
     def prohibition_for(operation)

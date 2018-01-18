@@ -267,6 +267,12 @@ class PolicyMachine
     end
   end
 
+  def accessibly_objecty(user, operation, accessible_scope)
+    if policy_machine_storage_adapter.respond_to?(:accessibly_objecty)
+      policy_machine_storage_adapter.accessibly_objecty(user, operation, accessible_scope)
+    end
+  end
+
   ##
   # Returns an array of all user_attributes a PM::User is assigned to,
   # directly or indirectly.

@@ -90,6 +90,39 @@ module PolicyMachineStorageAdapter
         PolicyElement.connection.exec_query(query)
       end
 
+      def self.ancestors_with_limiting_scope(element_or_scope, accessible_scope, pea_ids)
+        query = <<-SQL
+          id IN (
+            WITH RECURSIVE assignments_recursive(parent_id, child_id, qualified_pea_id) AS (
+              (
+                SELECT parent_id, child_id, policy_element_associations.id
+                FROM assignments
+                LEFT OUTER JOIN policy_element_associations 
+                  ON assignments.parent_id = policy_element_associations.object_attribute_id AND
+                    policy_element_associations.id IN (:pea_ids)
+                WHERE child_id = :accessible_scope_id 
+              )
+              UNION
+              (
+                SELECT assignments.parent_id, assignments.child_id, pea.id 
+                FROM assignments
+                INNER JOIN assignments_recursive ON assignments_recursive.parent_id = assignments.child_id
+                LEFT OUTER JOIN policy_element_associations AS pea 
+                  ON assignments_recursive.parent_id = pea.object_attribute_id AND pea.id IN (:pea_ids)
+                WHERE assignments_recursive.qualified_pea_id IS NULL 
+              )
+            )
+          
+            SELECT assignments_recursive.parent_id
+            FROM assignments_recursive
+            WHERE qualified_pea_id IS NOT NULL
+          )
+        SQL
+        pes = PolicyElement.where(query, accessible_scope_id: accessible_scope.id, pea_ids: pea_ids)
+
+        self.ancestors_of(pes) + pes
+      end
+
       # Returns the operation set IDs from the given list where the operation is
       # a descendant of the operation set.
       # TODO: Generalize this so that we can arbitrarily filter recursive assignments calls.
@@ -112,7 +145,7 @@ module PolicyMachineStorageAdapter
 
           SELECT parents[1]
           FROM assignments_recursive
-          JOIN policy_elements
+          JOIN policy_elements 
           ON policy_elements.id = assignments_recursive.child_id
           WHERE #{sanitize_sql_for_conditions(["policy_elements.unique_identifier=:op_id", op_id: operation_id])}
           AND type = 'PolicyMachineStorageAdapter::ActiveRecord::Operation'
