@@ -811,7 +811,7 @@ module PolicyMachineStorageAdapter
       if associations.exists?(object_attribute_id: accessible_scope.id)
         Assignment.ancestors_of([accessible_scope]).where(type: class_for_type('object')) | PolicyElement.where(id: accessible_scope.id)
       else
-        Assignment.ancestors_with_limiting_scope(user, accessible_scope, associations.pluck(:id))
+        Assignment.ancestors_filtered_by_policy_element_associations(accessible_scope, associations.pluck(:id))
       end
 
       byebug

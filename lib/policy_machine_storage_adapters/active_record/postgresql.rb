@@ -90,37 +90,39 @@ module PolicyMachineStorageAdapter
         PolicyElement.connection.exec_query(query)
       end
 
-      def self.ancestors_with_limiting_scope(element_or_scope, accessible_scope, pea_ids)
+      def self.ancestors_filtered_by_policy_element_associations(element, policy_element_association_ids)
         query = <<-SQL
           id IN (
-            WITH RECURSIVE assignments_recursive(parent_id, child_id, qualified_pea_id) AS (
+            WITH RECURSIVE assignments_recursive(parent_id, child_id, matching_policy_element_association_ids) AS (
               (
                 SELECT parent_id, child_id, policy_element_associations.id
                 FROM assignments
                 LEFT OUTER JOIN policy_element_associations 
                   ON assignments.parent_id = policy_element_associations.object_attribute_id AND
-                    policy_element_associations.id IN (:pea_ids)
-                WHERE child_id = :accessible_scope_id 
+                    policy_element_associations.id IN (:policy_element_association_ids)
+                WHERE child_id = :accessible_scope_id
               )
               UNION
               (
-                SELECT assignments.parent_id, assignments.child_id, pea.id 
+                SELECT assignments.parent_id, assignments.child_id, policy_element_associations.id 
                 FROM assignments
                 INNER JOIN assignments_recursive ON assignments_recursive.parent_id = assignments.child_id
-                LEFT OUTER JOIN policy_element_associations AS pea 
-                  ON assignments_recursive.parent_id = pea.object_attribute_id AND pea.id IN (:pea_ids)
-                WHERE assignments_recursive.qualified_pea_id IS NULL 
+                LEFT OUTER JOIN policy_element_associations
+                  ON assignments_recursive.parent_id = policy_element_associations.object_attribute_id AND 
+                    policy_element_associations.id IN (:policy_element_association_ids)
+                WHERE assignments_recursive.matching_policy_element_association_ids IS NULL 
               )
             )
           
             SELECT assignments_recursive.parent_id
             FROM assignments_recursive
-            WHERE qualified_pea_id IS NOT NULL
+            WHERE matching_policy_element_association_ids IS NOT NULL
           )
         SQL
-        pes = PolicyElement.where(query, accessible_scope_id: accessible_scope.id, pea_ids: pea_ids)
+        policy_elements =
+          PolicyElement.where(query, accessible_scope_id: element.id, policy_element_association_ids: policy_element_association_ids)
 
-        self.ancestors_of(pes) + pes
+        self.ancestors_of(policy_elements) + policy_elements
       end
 
       # Returns the operation set IDs from the given list where the operation is
