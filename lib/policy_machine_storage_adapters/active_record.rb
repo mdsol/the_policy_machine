@@ -769,18 +769,28 @@ module PolicyMachineStorageAdapter
 
       user_attributes = user_or_attribute.descendants | [user_or_attribute]
       associations = PolicyElementAssociation.where(user_attribute_id: user_attributes.map(&:id))
+
       operation_set_ids = associations.pluck(:operation_set_id)
-
       filtered_operation_set_ids = Assignment.filter_operation_set_list_by_assigned_operation(operation_set_ids, operation_id)
-      filtered_associations =
-        associations.select do |association|
-          filtered_operation_set_ids.include?(association.operation_set_id)
-        end
 
-      permitting_oas = PolicyElement.where(id: filtered_associations.map(&:object_attribute_id))
+      filtered_associations = associations.where(operation_set_id: filtered_operation_set_ids)
+
+      permitting_oas =
+        if (accessible_scope = options[:accessible_scope])
+
+          if filtered_associations.exists?(object_attribute_id: accessible_scope.id)
+            PolicyElement.where(id: accessible_scope.id)
+          else
+            Assignment.ancestors_filtered_by_policy_element_associations(accessible_scope, filtered_associations.pluck(:id))
+          end
+        else
+
+          PolicyElement.where(id: filtered_associations.pluck(&:object_attribute_id))
+        end
 
       direct_scope = permitting_oas.where(type: class_for_type('object'))
       indirect_scope = Assignment.ancestors_of(permitting_oas).where(type: class_for_type('object'))
+
 
       if inclusion = options[:includes]
         direct_scope = Adapter.apply_include_condition(scope: direct_scope, key: options[:key], value: inclusion, klass: class_for_type('object'))
@@ -794,28 +804,6 @@ module PolicyMachineStorageAdapter
       else
         candidates - accessible_objects(user_or_attribute, prohibition, options.merge(ignore_prohibitions: true))
       end
-    end
-
-    def accessibly_objecty(user, operation, accessible_scope)
-      operation_id = operation.try(:unique_identifier) || operation.to_s
-      user_attributes = user.descendants.pluck(:id) | [user.id]
-
-      associations = PolicyElementAssociation.where(user_attribute_id: user_attributes)
-      operation_set_ids = associations.pluck(:operation_set_id)
-
-      filtered_operation_set_ids = Assignment.filter_operation_set_list_by_assigned_operation(operation_set_ids, operation_id)
-
-      associations = associations.where(operation_set_id: filtered_operation_set_ids)
-
-      results =
-      if associations.exists?(object_attribute_id: accessible_scope.id)
-        Assignment.ancestors_of([accessible_scope]).where(type: class_for_type('object')) | PolicyElement.where(id: accessible_scope.id)
-      else
-        Assignment.ancestors_filtered_by_policy_element_associations(accessible_scope, associations.pluck(:id))
-      end
-
-      byebug
-      results
     end
 
     private

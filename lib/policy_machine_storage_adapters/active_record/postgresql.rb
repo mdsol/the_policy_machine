@@ -119,10 +119,10 @@ module PolicyMachineStorageAdapter
             WHERE matching_policy_element_association_ids IS NOT NULL
           )
         SQL
-        policy_elements =
-          PolicyElement.where(query, accessible_scope_id: element.id, policy_element_association_ids: policy_element_association_ids)
 
-        self.ancestors_of(policy_elements) + policy_elements
+        PolicyElement.where(query,
+          accessible_scope_id: element.id,
+          policy_element_association_ids: policy_element_association_ids)
       end
 
       # Returns the operation set IDs from the given list where the operation is
