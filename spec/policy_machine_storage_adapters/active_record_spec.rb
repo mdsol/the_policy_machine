@@ -383,12 +383,20 @@ describe 'ActiveRecord' do
     let(:object_attr_1) { pm1.create_object_attribute('object_attr_1') }
     let(:object_attr_2) { pm1.create_object_attribute('object_attr_2') }
     let(:object_attr_3) { pm1.create_object_attribute('object_attr_3') }
+    let(:object_attr_1_1) { pm1.create_object_attribute('object_attr_1_1') }
+    let(:object_attr_1_2) { pm1.create_object_attribute('object_attr_1_2') }
+    let(:object_attr_1_1_1) { pm1.create_object_attribute('object_attr_1_1_1') }
     let(:object_attributes) { [object_attr_1, object_attr_2, object_attr_3] }
+    let(:more_object_attributes) { [object_attr_1_1, object_attr_1_2, object_attr_1_1_1] }
 
     let(:object_1) { pm1.create_object('object_1') }
     let(:object_2) { pm1.create_object('object_2') }
     let(:object_3) { pm1.create_object('object_3') }
+    let(:object_1_1) { pm1.create_object('object_1_1') }
+    let(:object_1_2) { pm1.create_object('object_1_2') }
+    let(:object_1_1_1) { pm1.create_object('object_1_1_1') }
     let(:objects) { [object_1, object_2, object_3] }
+    let(:more_objects) { [object_1_1, object_1_2, object_1_1_1] }
 
     let(:pm2_user) { pm2.create_user('pm2_user') }
     let(:pm2_user_attr) { pm2.create_user_attribute('pm2_user_attr') }
@@ -1010,6 +1018,24 @@ describe 'ActiveRecord' do
         it 'returns appropriate results when filters apply to no link_children' do
           expect(user_1.pluck_from_link_children(fields: [:unique_identifier], filters: { color: 'chartreuse' })).to be_empty
         end
+      end
+    end
+
+    describe 'accessible_objects' do
+      before do
+        more_object_attributes.zip(more_objects) { |oa, obj| pm1.add_assignment(obj, oa) }
+        pm1.add_assignment(object_attr_1_1, object_attr_1)
+        pm1.add_assignment(object_attr_1_2, object_attr_1)
+        pm1.add_assignment(object_attr_1_1_1, object_attr_1_1)
+      end
+      it 'whatever' do
+        accessible_objects = (objects + more_objects).map(&:stored_pe)
+        expect(pm1.accessible_objects(user_1, operation_1)).to match_array(accessible_objects)
+      end
+
+      it 'with scope now' do
+        accessible_objects = ([object_1] + more_objects).map(&:stored_pe)
+        expect(pm1.accessible_objects(user_1, operation_1, accessible_scope: object_attr_1)).to match_array(accessible_objects)
       end
     end
   end
