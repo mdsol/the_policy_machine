@@ -93,7 +93,7 @@ module PolicyMachineStorageAdapter
       def self.ancestors_filtered_by_policy_element_associations(element, policy_element_association_ids)
         query = <<-SQL
           id IN (
-            WITH RECURSIVE assignments_recursive(parent_id, child_id, matching_policy_element_association_ids) AS (
+            WITH RECURSIVE assignments_recursive(parent_id, child_id, matching_policy_element_association_id) AS (
               (
                 SELECT parent_id, child_id, policy_element_associations.id
                 FROM assignments
@@ -110,19 +110,92 @@ module PolicyMachineStorageAdapter
                 LEFT OUTER JOIN policy_element_associations
                   ON assignments_recursive.parent_id = policy_element_associations.object_attribute_id AND 
                     policy_element_associations.id IN (:policy_element_association_ids)
-                WHERE assignments_recursive.matching_policy_element_association_ids IS NULL 
+                WHERE assignments_recursive.matching_policy_element_association_id IS NULL 
               )
             )
           
             SELECT assignments_recursive.child_id
             FROM assignments_recursive
-            WHERE matching_policy_element_association_ids IS NOT NULL
+            WHERE matching_policy_element_association_id IS NOT NULL
           )
         SQL
 
         PolicyElement.where(query,
           accessible_scope_id: element.id,
           policy_element_association_ids: policy_element_association_ids)
+      end
+
+      def self.accessible_ancestors_filtered_by_policy_element_associations_and_object_descendants_or_something(element, policy_element_association_ids)
+        query = <<-SQL
+          id IN (
+            WITH candidate_policy_elements(policy_element_association_id, policy_element_id) AS (
+              SELECT id, object_attribute_id
+              FROM policy_element_associations
+              WHERE policy_element_association_id IN (:policy_element_association_ids)
+            )
+          
+            SELECT id
+            FROM policy_elements
+            WHERE id IN (
+              WITH RECURSIVE assignments_recursive(parent_id, child_id, matching_policy_element_association_id AS (
+                (
+                  SELECT asg1.parent_id, asg1.child_id, cpe1.policy_element_association_id
+                  FROM assignments AS asg1
+                  LEFT OUTER JOIN candidate_policy_elements AS cpe1 ON asg1.parent_id = cpe1.policy_element_id OR cpe1.policy_element_association_id IN (
+                    #{complicated_candidate_policy_elements_join_conditions}
+                  )
+                  WHERE child_id = :accessible_scope_id
+                )
+                UNION
+                (
+                  SELECT asg1.parent_id, asg1.child_id, cp1.policy_element_association_id
+                  FROM assignments AS asg1
+                  INNER JOIN assignments_recursive
+                  LEFT OUTER JOIN candidate_policy_elements AS cpe1 ON assignments_recursive.parent_id = cpe1.policy_element_id OR cpe1.policy_element_association_id IN (
+                    #{complicated_candidate_policy_elements_join_conditions}
+                  )
+                  WHERE assignments_recursive.matching_policy_element_association_id IS NULL
+                )
+              )
+          
+              SELECT assignments_recursive.child_id
+              FROM assignments_recursive
+              WHERE matching_policy_element_association_id IS NOT NULL
+            )
+          )
+        SQL
+
+        PolicyElement.where(query,
+          accessible_scope_id: element.id,
+          policy_element_association_ids: policy_element_association_ids)
+      end
+
+      def complicated_candidate_policy_elements_join_conditions
+        <<-SQL
+          WITH RECURSIVE child_assignments_recursive(parent_id, child_id, matching_policy_element_association_id) AS (
+            (
+              SELECT asg2.parent_id, asg2.child_id, cpe2.policy_element_association_id
+              FROM assignments AS asg2
+              LEFT OUTER JOIN candidate_policy_elements AS cpe2 ON asg2.child_id = cpe2.policy_element_id
+              WHERE asg2.parent_id = asg1.parent_id AND asg2.child_id != asg2.child_id
+            )
+            UNION
+            (
+              SELECT asg3.parent_id, asg3.child_id, cpe3.policy_element_association_id
+              FROM assignments AS asg3
+              INNER JOIN child_assignments_recursive ON child_assignments_recursive.child_id = assignments.parent_id
+              LEFT OUTER JOIN candidate_policy_elements AS cpe3 ON cpe3.policy_element_id = child_assignments_recursive.child_id
+              WHERE assignments_recursive.matching_policy_element_association_id IS NULL AND NOT EXISTS (
+                SELECT 1 FROM assignments_recursive WHERE matching_policy_element_association_id IS NOT NULL
+              )
+            )
+          )
+
+          SELECT child_assignments_recursive.matching_policy_element_association_id
+          FROM child_assignments_recursive
+          WHERE child_assignments_recursive.matching_policy_element_association_id IS NOT NULL
+          LIMIT 1
+        SQL
       end
 
       # Returns the operation set IDs from the given list where the operation is
