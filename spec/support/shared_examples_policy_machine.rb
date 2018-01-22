@@ -1,4 +1,5 @@
 require 'spec_helper'
+require 'byebug'
 require_relative 'storage_adapter_helpers.rb'
 
 policy_element_types = ::PolicyMachine::POLICY_ELEMENT_TYPES
@@ -1065,7 +1066,6 @@ shared_examples "a policy machine" do
   end
 
   describe 'accessible_objects' do
-
     before do
       @one_fish = policy_machine.create_object('one:fish')
       @two_fish = policy_machine.create_object('two:fish')
@@ -1138,6 +1138,66 @@ shared_examples "a policy machine" do
 
     end
 
+    context 'with scoping to a particular object' do
+      let(:object_one) { policy_machine.create_object('my_obj1') }
+      let(:object_two) { policy_machine.create_object('my_obj2') }
+      let(:object_three) { policy_machine.create_object('my_obj3') }
+      let(:object_four) { policy_machine.create_object('my_obj4') }
+      let(:object_five) { policy_machine.create_object('my_obj5') }
+
+      let(:related_objects) { [object_one, object_two, object_three] }
+      let(:unrelated_objects) { [object_four, object_five] }
+      let(:all_objects) { related_objects + unrelated_objects }
+
+      let(:object_attr_one) { policy_machine.create_object_attribute('my_oa1') }
+      let(:object_attr_two) { policy_machine.create_object_attribute('my_oa2') }
+      let(:object_attr_three) { policy_machine.create_object_attribute('my_oa3') }
+      let(:object_attr_four) { policy_machine.create_object_attribute('my_oa4') }
+      let(:object_attr_five) { policy_machine.create_object_attribute('my_oa5') }
+      let(:related_object_attrs) { [object_attr_one, object_attr_two, object_attr_three] }
+      let(:unrelated_object_attrs) { [object_attr_four, object_attr_five] }
+      let(:all_object_attrs) { related_object_attrs + unrelated_object_attrs }
+
+      let(:reader) { policy_machine.create_operation_set('my_reader') }
+      let(:writer) { policy_machine.create_operation_set('my_writer') }
+
+      let(:read) { policy_machine.create_operation('my_read') }
+      let(:write) { policy_machine.create_operation('my_write') }
+
+      let(:user_one) { policy_machine.create_user('user1') }
+      let(:user_two) { policy_machine.create_user('user1') }
+      let(:user_attr_one) { policy_machine.create_user_attribute('user_attr1') }
+
+      before do
+        all_object_attrs.zip(all_objects) { |oa, obj| policy_machine.add_assignment(obj, oa) }
+
+        policy_machine.add_assignment(object_one, object_attr_two)
+        policy_machine.add_assignment(object_attr_three, object_one)
+
+        policy_machine.add_assignment(writer, write)
+        policy_machine.add_assignment(reader, read)
+        policy_machine.add_assignment(user_one, user_attr_one)
+
+        policy_machine.add_association(user_attr_one, writer, object_two)
+        policy_machine.add_association(user_attr_one, writer, object_four)
+      end
+
+      context 'with a given privilege for a given user' do
+        it 'lists all objects within the scope' do
+          accessible_objects = policy_machine.accessible_objects(user_one, write, accessible_scope: object_one)
+          expect(accessible_objects.map(&:unique_identifier)).to eq([object_two.unique_identifier])
+        end
+
+        it 'does not list objects outside of the scope that match the criteria'
+        it 'properly cascades privileges from outside of the scope that affect objects within the scope'
+      end
+
+      context 'with prohibitions' do
+        it 'filters out prohibited objects'
+        it 'properly cascades prohibitions from outside of the scope that affect objects within the scope'
+        it 'can ignore prohibitions'
+      end
+    end
   end
 
 
