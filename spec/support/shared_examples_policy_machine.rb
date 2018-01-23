@@ -1165,14 +1165,14 @@ shared_examples "a policy machine" do
       let(:write) { policy_machine.create_operation('my_write') }
 
       let(:user_one) { policy_machine.create_user('user1') }
-      let(:user_two) { policy_machine.create_user('user1') }
+      let(:user_two) { policy_machine.create_user('user2') }
       let(:user_attr_one) { policy_machine.create_user_attribute('user_attr1') }
 
       before do
-        all_object_attrs.zip(all_objects) { |oa, obj| policy_machine.add_assignment(obj, oa) }
+        all_object_attrs.zip(all_objects) { |oa, obj| policy_machine.add_assignment(oa, obj) }
 
-        policy_machine.add_assignment(object_one, object_attr_two)
-        policy_machine.add_assignment(object_attr_three, object_one)
+        policy_machine.add_assignment(object_two, object_attr_one)
+        policy_machine.add_assignment(object_three, object_attr_one)
 
         policy_machine.add_assignment(writer, write)
         policy_machine.add_assignment(reader, read)
@@ -1188,8 +1188,39 @@ shared_examples "a policy machine" do
           expect(accessible_objects.map(&:unique_identifier)).to eq([object_two.unique_identifier])
         end
 
-        it 'does not list objects outside of the scope that match the criteria'
-        it 'properly cascades privileges from outside of the scope that affect objects within the scope'
+        it 'does not list objects outside of the scope that match the criteria' do
+          accessible_objects = policy_machine.accessible_objects(user_one, write, accessible_scope: object_one)
+          expect(accessible_objects.map(&:unique_identifier)).to_not include([object_one, object_three].map(&:unique_identifier))
+        end
+
+        context 'when privileges cascade originated from outside of the scope' do
+          let(:object_zero) { policy_machine.create_object('my_obj0') }
+          let(:object_attr_zero) { policy_machine.create_object_attribute('my_oa0') }
+          let(:object_three_zero) { policy_machine.create_object('my_obj3_0') }
+          let(:object_attr_three_zero) { policy_machine.create_object_attribute('my_oa3_0') }
+
+          it 'properly cascades when the privileges cascade from a descendant of the scope node' do
+            policy_machine.add_assignment(object_attr_zero, object_zero)
+            policy_machine.add_assignment(object_one, object_attr_zero)
+
+            policy_machine.add_association(user_attr_one, writer, object_zero)
+
+            accessible_objects = policy_machine.accessible_objects(user_one, write, accessible_scope: object_one)
+            expected_accessible = [object_one, object_two, object_three].map(&:unique_identifier)
+            expect(accessible_objects.map(&:unique_identifier).sort).to eq(expected_accessible.sort)
+          end
+
+          it 'properly cascades when the privileges cascade from a descendant of a node that is not the scope node' do
+            policy_machine.add_assignment(object_attr_three_zero, object_three_zero)
+            policy_machine.add_assignment(object_three, object_attr_three_zero)
+
+            policy_machine.add_association(user_attr_one, writer, object_three_zero)
+
+            accessible_objects = policy_machine.accessible_objects(user_one, write, accessible_scope: object_one)
+            expected_accessible = [object_two, object_three].map(&:unique_identifier)
+            expect(accessible_objects.map(&:unique_identifier).sort).to eq(expected_accessible.sort)
+          end
+        end
       end
 
       context 'with prohibitions' do
