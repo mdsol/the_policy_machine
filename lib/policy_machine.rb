@@ -259,7 +259,11 @@ class PolicyMachine
     if policy_machine_storage_adapter.respond_to?(:accessible_objects)
       policy_machine_storage_adapter.accessible_objects(user_or_attribute, operation, options)
     else
-      result = objects.select { |object| is_privilege?(user_or_attribute, operation, object, options) }
+      result = objects.select do |object|
+        next if options[:accessible_scope] && !object.connected?(options[:accessible_scope])
+
+        is_privilege?(user_or_attribute, operation, object, options)
+      end
       if inclusion = options[:includes]
         result.select! { |object| object.unique_identifier.include?(inclusion) }
       end
