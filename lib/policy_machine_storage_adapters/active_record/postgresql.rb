@@ -128,40 +128,84 @@ module PolicyMachineStorageAdapter
       def self.accessible_ancestors_filtered_by_policy_element_associations_and_object_descendants_or_something(element, policy_element_association_ids)
         query = <<-SQL
           id IN (
-            WITH candidate_policy_elements(policy_element_association_id, policy_element_id) AS (
-              SELECT id, object_attribute_id
-              FROM policy_element_associations
-              WHERE policy_element_association_id IN (:policy_element_association_ids)
-            )
-          
-            SELECT id
-            FROM policy_elements
-            WHERE id IN (
-              WITH RECURSIVE assignments_recursive(parent_id, child_id, matching_policy_element_association_id AS (
-                (
-                  SELECT asg1.parent_id, asg1.child_id, cpe1.policy_element_association_id
-                  FROM assignments AS asg1
-                  LEFT OUTER JOIN candidate_policy_elements AS cpe1 ON asg1.parent_id = cpe1.policy_element_id OR cpe1.policy_element_association_id IN (
-                    #{complicated_candidate_policy_elements_join_conditions}
-                  )
-                  WHERE child_id = :accessible_scope_id
-                )
-                UNION
-                (
-                  SELECT asg1.parent_id, asg1.child_id, cp1.policy_element_association_id
-                  FROM assignments AS asg1
-                  INNER JOIN assignments_recursive
-                  LEFT OUTER JOIN candidate_policy_elements AS cpe1 ON assignments_recursive.parent_id = cpe1.policy_element_id OR cpe1.policy_element_association_id IN (
-                    #{complicated_candidate_policy_elements_join_conditions}
-                  )
-                  WHERE assignments_recursive.matching_policy_element_association_id IS NULL
-                )
+            WITH RECURSIVE assignments_recursive(parent_id, child_id, matching_policy_element_association_id) AS (
+              (
+                SELECT asg1.parent_id, asg1.child_id, pea.id
+                FROM assignments AS asg1
+                LEFT OUTER JOIN policy_element_associations AS pea 
+                  ON pea.id IN (:policy_element_association_ids) AND asg1.parent_id = pea.object_attribute_id 
+                    OR pea.id IN (
+                      WITH RECURSIVE child_assignments_recursive(parent_id, child_id, matching_policy_element_association_id) AS (
+                        (
+                          SELECT afc.parent_id, afc.child_id, policy_element_associations.id
+                          FROM assignments AS afc
+                          LEFT OUTER JOIN policy_element_associations 
+                          ON policy_element_associations.id IN (:policy_element_association_ids) 
+                            AND afc.child_id = policy_element_associations.object_attribute_id
+                          WHERE afc.parent_id = asg1.parent_id AND afc.child_id != asg1.child_id
+                        )
+                        UNION
+                        (
+                          SELECT afc.parent_id, afc.child_id, policy_element_associations.id
+                          FROM assignments AS afc
+                          JOIN child_assignments_recursive 
+                            ON child_assignments_recursive.child_id = afc.parent_id
+                          LEFT OUTER JOIN policy_element_associations 
+                            ON policy_element_associations.id IN (:policy_element_association_ids) 
+                              AND afc.child_id = policy_element_associations.object_attribute_id
+                          WHERE child_assignments_recursive.matching_policy_element_association_id IS NULL 
+                        )
+                      )
+            
+                      SELECT child_assignments_recursive.matching_policy_element_association_id
+                      FROM child_assignments_recursive
+                      WHERE child_assignments_recursive.matching_policy_element_association_id IS NOT NULL
+                      LIMIT 1
+                    )
+                WHERE child_id = :accessible_scope_id
               )
-          
-              SELECT assignments_recursive.child_id
-              FROM assignments_recursive
-              WHERE matching_policy_element_association_id IS NOT NULL
+              UNION
+              (
+                SELECT asg.parent_id, asg.child_id, pea.id
+                FROM assignments AS asg
+                JOIN assignments_recursive ON assignments_recursive.parent_id = asg.child_id
+                LEFT OUTER JOIN policy_element_associations AS pea 
+                  ON pea.id IN (:policy_element_association_ids) AND asg.parent_id = pea.object_attribute_id 
+                    OR pea.id IN (
+                      WITH RECURSIVE child_assignments_recursive(parent_id, child_id, matching_policy_element_association_id) AS (
+                        (
+                          SELECT afc.parent_id, afc.child_id, policy_element_associations.id
+                          FROM assignments AS afc
+                          LEFT OUTER JOIN policy_element_associations 
+                            ON policy_element_associations.id IN (:policy_element_association_ids) 
+                              AND afc.child_id = policy_element_associations.object_attribute_id
+                          WHERE afc.parent_id = asg.parent_id AND afc.child_id != asg.child_id
+                        )
+                        UNION
+                        (
+                          SELECT afc.parent_id, afc.child_id, policy_element_associations.id
+                          FROM assignments AS afc
+                          JOIN child_assignments_recursive 
+                            ON child_assignments_recursive.child_id = afc.parent_id
+                          LEFT OUTER JOIN policy_element_associations 
+                            ON policy_element_associations.id IN (:policy_element_association_ids) 
+                              AND afc.child_id = policy_element_associations.object_attribute_id
+                          WHERE child_assignments_recursive.matching_policy_element_association_id IS NULL
+                        )
+                      )
+                
+                      SELECT child_assignments_recursive.matching_policy_element_association_id
+                      FROM child_assignments_recursive
+                      WHERE child_assignments_recursive.matching_policy_element_association_id IS NOT NULL
+                      LIMIT 1
+                    )
+                WHERE assignments_recursive.matching_policy_element_association_id IS NULL
+              )
             )
+            
+            SELECT assignments_recursive.parent_id
+            FROM assignments_recursive
+            WHERE matching_policy_element_association_id IS NOT NULL
           )
         SQL
 
