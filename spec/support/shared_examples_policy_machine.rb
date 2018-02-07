@@ -1259,7 +1259,7 @@ shared_examples "a policy machine" do
             policy_machine.add_association(user_attr_one, anti_writer, object_three_zero)
 
             accessible_objects = policy_machine.accessible_objects(user_one, write, accessible_scope: object_one)
-            expected_accessible = [object_one, object_twogit , object_six].map(&:unique_identifier)
+            expected_accessible = [object_one, object_two, object_six].map(&:unique_identifier)
             expect(accessible_objects.map(&:unique_identifier).sort).to eq(expected_accessible)
           end
         end
