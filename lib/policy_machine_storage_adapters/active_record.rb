@@ -722,6 +722,7 @@ module PolicyMachineStorageAdapter
     # Returns true if the user has the operation on the object
     def is_privilege?(user_or_attribute, operation, object_or_attribute)
       policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
+
       operation_id = operation.try(:unique_identifier) || operation.to_s
 
       if policy_classes_containing_object.size < 2
@@ -770,7 +771,7 @@ module PolicyMachineStorageAdapter
       user_attributes = user_or_attribute.descendants | [user_or_attribute]
       associations = PolicyElementAssociation.where(user_attribute_id: user_attributes.map(&:id))
 
-      operation_set_ids = associations.pluck(:operation_set_id)
+      operation_set_ids = associations.uniq.pluck(:operation_set_id)
       filtered_operation_set_ids = Assignment.filter_operation_set_list_by_assigned_operation(operation_set_ids, operation_id)
 
       filtered_associations = associations.where(operation_set_id: filtered_operation_set_ids)
@@ -778,10 +779,10 @@ module PolicyMachineStorageAdapter
       permitting_oas =
         if (accessible_scope = options[:accessible_scope])
 
-          if filtered_associations.exists?(object_attribute_id: accessible_scope.id)
+          if filtered_associations.exists?(object_attribute_id: accessible_scope.id) || is_privilege?(user_or_attribute, operation, accessible_scope)
             PolicyElement.where(id: accessible_scope.id)
           else
-            Assignment.ancestors_filtered_by_policy_element_associations(accessible_scope, filtered_associations.pluck(:id))
+            Assignment.accessible_ancestors_filtered_by_policy_element_associations_and_object_descendants_or_something(accessible_scope, filtered_associations.pluck(:id))
           end
         else
 
