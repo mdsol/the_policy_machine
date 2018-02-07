@@ -37,6 +37,10 @@ module PolicyMachineStorageAdapter
 
     end
     def add_operation_set(unique_identifier, policy_machine_uuid, extra_attributes = {})
+
+    end
+    def add_incompatible_operation_set(unique_identifier, policy_machine_uuid, extra_attributes = {})
+
     end
     def add_policy_class(unique_identifier, policy_machine_uuid, extra_attributes = {})
 
@@ -64,6 +68,9 @@ module PolicyMachineStorageAdapter
 
     end
     def find_all_of_type_operation_set(options = {})
+
+    end
+    def find_all_of_type_incompatible_operation_set(options = {})
 
     end
     def find_all_of_type_policy_class(options = {})

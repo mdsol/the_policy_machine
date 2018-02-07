@@ -252,6 +252,12 @@ module PM
     end
   end
 
+  class IncompatibleOperationSet < PolicyElement
+    def allowed_assignee_classes
+      [OperationSet]
+    end
+  end
+
   # A prohibition in a policy machine.
   class Prohibition < PolicyElement
     def self.on(operation, extra_attributes = {})

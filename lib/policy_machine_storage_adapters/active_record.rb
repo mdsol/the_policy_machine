@@ -95,6 +95,66 @@ module PolicyMachineStorageAdapter
       true #TODO: More useful return value?
     end
 
+    def self.incompatibilities(operator_uri, operable_ids, ios_ids)
+      descendants_query = <<-SQL
+        WITH RECURSIVE descendants AS (
+        SELECT parent_id, child_id, parent_id AS root_node FROM assignments
+        WHERE parent_id IN ('#{operable_ids.join("', '")}')
+        UNION ALL
+        SELECT a.parent_id, a.child_id, root_node FROM assignments a
+        INNER JOIN descendants d ON d.child_id = a.parent_id)
+        SELECT d.root_node, ios.id FROM descendants d
+        JOIN policy_element_associations pea
+        ON pea.object_attribute_id = d.child_id OR pea.object_attribute_id = d.parent_id
+        JOIN policy_elements as ra
+        ON ra.id = pea.user_attribute_id
+        JOIN policy_elements as os
+        ON pea.operation_set_id = os.id
+        JOIN assignments as bb_a
+        ON os.id = bb_a.parent_id
+        JOIN assignments as ios_a
+        ON bb_a.child_id = ios_a.child_id
+        JOIN policy_elements AS ios
+        ON ios_a.parent_id = ios.id
+        WHERE ios.active_policy_element_type = 'IncompatibleOperationSet'
+        AND ra.operator_uri = '#{operator_uri}'
+        AND ios_a.parent_id IN ('#{ios_ids.join("', '")}')
+        GROUP BY root_node, ios.id
+        HAVING COUNT(DISTINCT bb_a.child_id) > 1
+      SQL
+
+      result = PolicyElement.connection.exec_query(descendants_query).rows.flatten.map(&:to_i)
+
+      ancestors_query = <<-SQL
+        WITH RECURSIVE ancestors AS (
+        SELECT child_id, parent_id, child_id AS root_node FROM assignments
+        WHERE child_id IN ('#{operable_ids.join("', '")}')
+        UNION ALL
+        SELECT a.child_id, a.parent_id, root_node FROM assignments a
+        INNER JOIN ancestors ans ON ans.parent_id = a.child_id)
+        SELECT ans.root_node, ios.id FROM ancestors ans
+        JOIN policy_element_associations pea
+        ON pea.object_attribute_id = ans.child_id OR pea.object_attribute_id = ans.parent_id
+        JOIN policy_elements as ra
+        ON ra.id = pea.user_attribute_id
+        JOIN policy_elements as os
+        ON pea.operation_set_id = os.id
+        JOIN assignments as bb_a
+        ON os.id = bb_a.parent_id
+        JOIN assignments as ios_a
+        ON bb_a.child_id = ios_a.child_id
+        JOIN policy_elements AS ios
+        ON ios_a.parent_id = ios.id
+        WHERE ios.active_policy_element_type = 'IncompatibleOperationSet'
+        AND ra.operator_uri = '#{operator_uri}'
+        AND ios_a.parent_id IN ('#{ios_ids.join("', '")}')
+        GROUP BY root_node, ios.id
+        HAVING COUNT(DISTINCT bb_a.child_id) > 1
+      SQL
+
+      result.concat(PolicyElement.connection.exec_query(ancestors_query).rows.flatten.map(&:to_i))
+    end
+
     class PolicyElement < ::ActiveRecord::Base
       alias_method :persisted, :persisted?
       singleton_class.send(:alias_method, :active_record_serialize, :serialize)
@@ -374,6 +434,9 @@ module PolicyMachineStorageAdapter
       end
     end
 
+    class IncompatibleOperationSet < PolicyElement
+    end
+
     class PolicyClass < PolicyElement
     end
 
@@ -403,7 +466,7 @@ module PolicyMachineStorageAdapter
       end
     end
 
-    POLICY_ELEMENT_TYPES = %w(user user_attribute object object_attribute operation operation_set policy_class)
+    POLICY_ELEMENT_TYPES = %w(user user_attribute object object_attribute operation operation_set incompatible_operation_set policy_class)
 
     POLICY_ELEMENT_TYPES.each do |pe_type|
       ##

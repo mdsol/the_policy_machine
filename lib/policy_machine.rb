@@ -11,7 +11,7 @@ require 'will_paginate/array'
 Dir.glob(File.dirname(File.absolute_path(__FILE__)) + '/policy_machine_storage_adapters/*.rb').each{ |f| require f }
 
 class PolicyMachine
-  POLICY_ELEMENT_TYPES = %w(user user_attribute object object_attribute operation operation_set policy_class)
+  POLICY_ELEMENT_TYPES = %w(user user_attribute object object_attribute operation operation_set incompatible_operation_set policy_class)
 
   attr_accessor :name
   attr_reader   :uuid
