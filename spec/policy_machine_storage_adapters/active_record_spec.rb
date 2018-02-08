@@ -1040,6 +1040,113 @@ describe 'ActiveRecord' do
     end
   end
 
+  describe 'why must i do this' do
+    let(:pm1) { PolicyMachine.new(name: 'AR PM 1', storage_adapter: PolicyMachineStorageAdapter::ActiveRecord) }
+
+    # OPERABLE GRAPH
+    let(:cds_coll_op) { pm1.create_object('cds_coll_op') }
+    let(:cds_coll_coll) { pm1.create_object_attribute('cds_coll_coll') }
+    let(:ct_coll_op) { pm1.create_object('ct_coll_op') }
+    let(:ct_coll_coll) { pm1.create_object_attribute('ct_coll_coll') }
+    let(:ctr_coll_op) { pm1.create_object('ctr_coll_op') }
+    let(:ctr_coll_coll) { pm1.create_object_attribute('ctr_coll_coll') }
+    let(:cdsa_coll_op) { pm1.create_object('cdsa_coll_op') }
+    let(:cdsa_coll_coll) { pm1.create_object_attribute('cdsa_coll_coll') }
+    let(:hcf_coll_op) { pm1.create_object('hcf_coll_op') }
+    let(:hcf_coll_coll) { pm1.create_object_attribute('hcf_coll_coll') }
+    let(:cdhcf_coll_op) { pm1.create_object('cdhcf_coll_op') }
+    let(:cdhcf_coll_coll) { pm1.create_object_attribute('cdhcf_coll_coll') }
+    let(:study_coll_op) { pm1.create_object('study_coll_op') }
+    let(:study_coll_coll) { pm1.create_object_attribute('study_coll_coll') }
+    let(:study_env_coll_op) { pm1.create_object('se_coll_op') }
+    let(:study_env_coll_coll) { pm1.create_object_attribute('se_coll_coll') }
+    let(:sea_coll_op) { pm1.create_object('sea_coll_op') }
+    let(:sea_coll_coll) { pm1.create_object_attribute('sea_coll_coll') }
+
+    let(:hcf_ops) { (1..9).to_a.map { |i| pm1.create_object("hcf_op_#{i}") } }
+    let(:hcf_colls) { (1..9).to_a.map { |i| pm1.create_object_attribute("hcf_coll_#{i}") } }
+
+    let(:cds_op) { pm1.create_object('cds_op') }
+    let(:cds_coll) { pm1.create_object_attribute('cds_coll') }
+
+    let(:ct_coll) { pm1.create_object_attribute('ct_coll') }
+    let(:ct_op) { pm1.create_object('ct_op') }
+    let(:ctr_coll) { pm1.create_object_attribute('ctr_coll') }
+    let(:ctr_ops) { (1..3).to_a.map { |i| pm1.create_object("ctr_op_#{i}") } }
+
+    let(:cdsa_coll) { pm1.create_object_attribute('cdsa_coll') }
+    let(:cdsa_ops) { (1..6).to_a.map { |i| pm1.create_object("cdsa_op_#{i}") } }
+
+    let(:cdhcf_coll) { pm1.create_object_attribute('cdhcf_coll') }
+    let(:cdhcf_ops) { (1..9).to_a.map { |i| pm1.create_object("cdhcf_op_#{i}") } }
+
+    let(:study_coll) { pm1.create_object_attribute('study_coll') }
+    let(:study_op) { pm1.create_object('study_op') }
+    let(:study_env_coll) { pm1.create_object_attribute('study_env_coll') }
+    let(:study_env_ops) { (1..6).to_a.map { |i| pm1.create_object("study_env_op_#{i}") } }
+    let(:sea_colls) { (1..6).to_a.map { |i| pm1.create_object_attribute("sea_coll_#{i}") } }
+    let(:sea_ops) { study_env_ops.map.with_index { |_, i| i == 5 ? (1..18).map { |j| pm1.create_object("sea_op_#{i}_#{j}") } : [pm1.create_object("sea_op_#{i}")] } }
+
+    let(:hcf_ops_children) { [hcf_coll_coll] }
+    let(:hcf_colls_children) { hcf_ops }
+    let(:ct_op_children) { [ct_coll, ct_coll_coll] }
+    let(:ctr_ops_children) { [ctr_coll, ctr_coll_coll] }
+    let(:cdsa_ops_children) { [cdsa_coll, cdsa_coll_coll] }
+    let(:study_op_children) { [study_coll, study_coll_coll] }
+    let(:study_env_coll_children) { [study_op] }
+    let(:study_env_ops_children) { [study_env_coll, study_env_coll_coll] }
+
+    # USER_ATTRIBUTE GRAPH
+    # OPERATION/SET GRAPH
+
+    before do
+      # OPERABLE GRAPH
+      [cds_coll_coll, ct_coll_coll, cdsa_coll_coll, ctr_coll_coll, hcf_coll_coll, cdhcf_coll_coll, study_coll_coll, study_env_coll_coll, sea_coll_coll].
+        zip([cds_coll_op, ct_coll_op, cdsa_coll_op, ctr_coll_op, hcf_coll_op, cdhcf_coll_op, study_coll_op, study_env_coll_op, sea_coll_op]) do |coll, op|
+        coll.assign_to(op)
+      end
+      ctr_coll_op.assign_to(ct_coll_coll)
+      hcf_ops.each_with_index do |hcf_op, idx|
+        hcf_op.assign_to(hcf_coll_coll)
+        hcf_colls[idx].assign_to(hcf_op)
+      end
+
+      cds_op.assign_to(cds_coll_coll)
+      ct_coll.assign_to(cds_op)
+      ct_op_children.each { |child| ct_op.assign_to(child) }
+      ctr_coll.assign_to(ct_op)
+      ctr_ops_children.each { |child| ctr_ops.each { |op| op.assign_to(child) } }
+      cdsa_coll.assign_to(cds_op)
+      cdsa_ops_children.each { |child| cdsa_ops.each { |op| op.assign_to(child) } }
+      cdhcf_coll.assign_to(cds_op)
+      hcf_colls.each_with_index do |child, idx|
+        cdhcf_ops[idx].assign_to(child)
+        cdhcf_ops[idx].assign_to(cdhcf_coll)
+        cdhcf_ops[idx].assign_to(cdhcf_coll_coll)
+      end
+
+      study_coll.assign_to(cds_op)
+      study_op_children.each { |child| study_op.assign_to(child) }
+      study_env_coll.assign_to(study_op)
+      study_env_ops.each do |op|
+        study_env_ops_children.each { |child| op.assign_to(child) }
+      end
+      study_env_ops.each_with_index { |child, idx| sea_colls[idx].assign_to(child) }
+      sea_ops.each_with_index do |some_sea_ops, idx|
+        some_sea_ops.each do |sea_op|
+          sea_op.assign_to(sea_colls[idx])
+          sea_op.assign_to(sea_coll_coll)
+        end
+      end
+    end
+    it 'has a much larger graph' do
+      # parent.assign_to(child)
+      puts 'fjkjdsf'
+      byebug
+      puts 'fkajds'
+    end
+  end
+
   describe 'PolicyMachine integration with PolicyMachineStorageAdapter::ActiveRecord' do
     it_behaves_like 'a policy machine' do
       let(:policy_machine) do
