@@ -98,27 +98,27 @@ module PolicyMachineStorageAdapter
     def self.incompatibilities(operator_uri, operable_ids, ios_ids)
       descendants_query = <<-SQL
         WITH RECURSIVE descendants AS (
-        SELECT parent_id, child_id, parent_id AS root_node FROM assignments
-        WHERE parent_id IN ('#{operable_ids.join("', '")}')
-        UNION ALL
-        SELECT a.parent_id, a.child_id, root_node FROM assignments a
-        INNER JOIN descendants d ON d.child_id = a.parent_id)
+          SELECT parent_id, child_id, parent_id AS root_node FROM assignments
+          WHERE parent_id IN ('#{operable_ids.join("', '")}')
+          UNION ALL
+          SELECT a.parent_id, a.child_id, root_node FROM assignments a
+          INNER JOIN descendants d ON d.child_id = a.parent_id
+        )
         SELECT d.root_node, ios.id FROM descendants d
-        JOIN policy_element_associations pea
-        ON pea.object_attribute_id = d.child_id OR pea.object_attribute_id = d.parent_id
-        JOIN policy_elements as ra
-        ON ra.id = pea.user_attribute_id
-        JOIN policy_elements as os
-        ON pea.operation_set_id = os.id
-        JOIN assignments as bb_a
-        ON os.id = bb_a.parent_id
-        JOIN assignments as ios_a
-        ON bb_a.child_id = ios_a.child_id
-        JOIN policy_elements AS ios
-        ON ios_a.parent_id = ios.id
-        WHERE ios.active_policy_element_type = 'IncompatibleOperationSet'
-        AND ra.operator_uri = '#{operator_uri}'
-        AND ios_a.parent_id IN ('#{ios_ids.join("', '")}')
+          JOIN policy_element_associations pea
+          ON pea.object_attribute_id = d.child_id OR pea.object_attribute_id = d.parent_id
+          JOIN policy_elements as ra
+          ON ra.id = pea.user_attribute_id
+          JOIN policy_elements as os
+          ON pea.operation_set_id = os.id
+          JOIN assignments as bb_a
+          ON os.id = bb_a.parent_id
+          JOIN assignments as ios_a
+          ON bb_a.child_id = ios_a.child_id
+          JOIN policy_elements AS ios
+          ON ios_a.parent_id = ios.id
+        WHERE ra.operator_uri = '#{operator_uri}'
+        AND ios.active_policy_element_type = 'IncompatibleOperationSet'
         GROUP BY root_node, ios.id
         HAVING COUNT(DISTINCT bb_a.child_id) > 1
       SQL
@@ -145,9 +145,8 @@ module PolicyMachineStorageAdapter
         ON bb_a.child_id = ios_a.child_id
         JOIN policy_elements AS ios
         ON ios_a.parent_id = ios.id
-        WHERE ios.active_policy_element_type = 'IncompatibleOperationSet'
-        AND ra.operator_uri = '#{operator_uri}'
-        AND ios_a.parent_id IN ('#{ios_ids.join("', '")}')
+        WHERE ra.operator_uri = '#{operator_uri}'
+        AND ios.active_policy_element_type = 'IncompatibleOperationSet'
         GROUP BY root_node, ios.id
         HAVING COUNT(DISTINCT bb_a.child_id) > 1
       SQL
