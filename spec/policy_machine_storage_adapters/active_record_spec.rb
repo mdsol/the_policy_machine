@@ -1097,9 +1097,33 @@ describe 'ActiveRecord' do
     let(:study_env_ops_children) { [study_env_coll, study_env_coll_coll] }
 
     # USER_ATTRIBUTE GRAPH
-    # OPERATION/SET GRAPH
+    let(:user) { pm1.create_user('fiona') }
+    let(:user_attributes) { (1..14).to_a.map { |i| pm1.create_user_attribute("ua_#{i}") } }
 
+    # OPERATION/SET GRAPH
+    let(:read) { pm1.create_operation('read') }
+    let(:mom_opset1) { pm1.create_operation_set('mom_opset1') }
+    let(:child1_opset) { pm1.create_operation_set('child1_opset') }
+    let(:child2_opset) { pm1.create_operation_set('child2_opset') }
+    let(:opset2) { pm1.create_operation_set('opset2') }
+    let(:mom_opset3) { pm1.create_operation_set('mom_opset3') }
+    let(:child3_opset) { pm1.create_operation_set('child3_opset') }
+    let(:child4_opset) { pm1.create_operation_set('child4_opset') }
+    let(:opset4) { pm1.create_operation_set('opset4') }
+
+    let(:unrelated_se_ops) { (1..2).to_a.map { |i| pm1.create_object("unrelated_se_op#{i}") } }
+    let(:unrelated_ct_op) { pm1.create_object("unrelated_ct_op") }
     before do
+      # OPERATION GRAPH
+      mom_opset1.assign_to(child1_opset)
+      mom_opset1.assign_to(child2_opset)
+      mom_opset3.assign_to(child3_opset)
+      mom_opset3.assign_to(child4_opset)
+      [child1_opset, child2_opset, opset2, child3_opset, child4_opset, opset4].each { |opset| opset.assign_to(read) }
+
+      # USER_ATTRIBUTE_GRAPH
+      user_attributes.each { |ua| user.assign_to(ua) }
+
       # OPERABLE GRAPH
       [cds_coll_coll, ct_coll_coll, cdsa_coll_coll, ctr_coll_coll, hcf_coll_coll, cdhcf_coll_coll, study_coll_coll, study_env_coll_coll, sea_coll_coll].
         zip([cds_coll_op, ct_coll_op, cdsa_coll_op, ctr_coll_op, hcf_coll_op, cdhcf_coll_op, study_coll_op, study_env_coll_op, sea_coll_op]) do |coll, op|
@@ -1138,12 +1162,30 @@ describe 'ActiveRecord' do
           sea_op.assign_to(sea_coll_coll)
         end
       end
+
+      # ASSOCIATIONS
+      pm1.add_association(user_attributes[3], mom_opset1, unrelated_se_ops[0])
+      pm1.add_association(user_attributes[9], mom_opset1, unrelated_se_ops[1])
+
+      pm1.add_association(user_attributes[12], opset2, unrelated_ct_op)
+
+      pm1.add_association(user_attributes[6], mom_opset3, study_env_ops[0])
+      pm1.add_association(user_attributes[8], mom_opset3, study_env_ops[1])
+      pm1.add_association(user_attributes[11], mom_opset3, study_env_ops[2])
+      pm1.add_association(user_attributes[0], mom_opset3, study_env_ops[3])
+      pm1.add_association(user_attributes[3], mom_opset3, study_env_ops[4])
+      pm1.add_association(user_attributes[13], mom_opset3, study_env_ops[5])
+
+      pm1.add_association(user_attributes[4], opset4, ct_op)
     end
     it 'has a much larger graph' do
-      # parent.assign_to(child)
-      puts 'fjkjdsf'
-      byebug
-      puts 'fkajds'
+      timer = Time.now
+      non_scope = pm1.accessible_objects(user, read)
+      expect(non_scope.size).to eq(36)
+      nu_timer = Time.now
+      scope = pm1.accessible_objects(user, read, accessible_scope: cds_op)
+      expect(scope.size).to eq(33)
+      puts "Time elapsed: nonscope: #{nu_timer - timer} s | scope #{Time.now - nu_timer} s"
     end
   end
 
