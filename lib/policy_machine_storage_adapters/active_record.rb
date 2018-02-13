@@ -95,11 +95,66 @@ module PolicyMachineStorageAdapter
       true #TODO: More useful return value?
     end
 
-    def self.incompatibilities(operator_uri, operable_ids, ios_ids)
+    def self.role_update_incompatibilities(operable_ids)
+      descendants_query = <<-SQL
+        WITH RECURSIVE descendants AS (
+          SELECT parent_id, child_id, parent_id as root_node FROM assignments
+          WHERE parent_id IN (#{operable_ids.join(", ")})
+          UNION ALL
+          SELECT a.parent_id, a.child_id, root_node FROM assignments a
+          INNER JOIN descendants d ON d.child_id = a.parent_id)
+        SELECT root_node, ra.operator_uri, ios.id FROM descendants d
+        JOIN policy_element_associations AS pea
+        ON pea.object_attribute_id = d.child_id OR pea.object_attribute_id = d.parent_id
+        JOIN policy_elements as ra
+        ON ra.id = pea.user_attribute_id
+        JOIN policy_elements as os
+        ON pea.operation_set_id = os.id
+        JOIN assignments as bb_a
+        ON os.id = bb_a.parent_id
+        JOIN assignments as ios_a
+        ON bb_a.child_id = ios_a.child_id
+        JOIN policy_elements AS ios
+        ON ios_a.parent_id = ios.id
+        WHERE ios.active_policy_element_type = 'IncompatibleOperationSet'
+        GROUP BY root_node, ra.operator_uri, ios.id
+        HAVING COUNT(DISTINCT bb_a.child_id) > 1
+      SQL
+
+      ancestors_query = <<-SQL
+        WITH RECURSIVE ancestors AS (
+          SELECT child_id, parent_id, child_id AS root_node FROM assignments
+          WHERE child_id IN (#{operable_ids.join(", ")})
+          UNION ALL
+          SELECT a.child_id, a.parent_id, root_node FROM assignments a
+          INNER JOIN ancestors ans ON ans.parent_id = a.child_id)
+        SELECT ans.root_node, ra.operator_uri, ios.id FROM ancestors ans
+        JOIN policy_element_associations pea
+        ON pea.object_attribute_id = ans.child_id OR pea.object_attribute_id = ans.parent_id
+        JOIN policy_elements as ra
+        ON ra.id = pea.user_attribute_id
+        JOIN policy_elements as os
+        ON pea.operation_set_id = os.id
+        JOIN assignments as bb_a
+        ON os.id = bb_a.parent_id
+        JOIN assignments as ios_a
+        ON bb_a.child_id = ios_a.child_id
+        JOIN policy_elements AS ios
+        ON ios_a.parent_id = ios.id
+        WHERE ios.active_policy_element_type = 'IncompatibleOperationSet'
+        GROUP BY root_node, ra.operator_uri, ios.id
+        HAVING COUNT(DISTINCT bb_a.child_id) > 1
+      SQL
+
+      result = PolicyElement.connection.exec_query(descendants_query).rows.flatten.map(&:to_i)
+      result.concat(PolicyElement.connection.exec_query(ancestors_query).rows.flatten.map(&:to_i))
+    end
+
+    def self.incompatibilities(operator_uri, operable_ids)
       descendants_query = <<-SQL
         WITH RECURSIVE descendants AS (
           SELECT parent_id, child_id, parent_id AS root_node FROM assignments
-          WHERE parent_id IN ('#{operable_ids.join("', '")}')
+          WHERE parent_id IN (#{operable_ids.join(", ")})
           UNION ALL
           SELECT a.parent_id, a.child_id, root_node FROM assignments a
           INNER JOIN descendants d ON d.child_id = a.parent_id
@@ -123,12 +178,10 @@ module PolicyMachineStorageAdapter
         HAVING COUNT(DISTINCT bb_a.child_id) > 1
       SQL
 
-      result = PolicyElement.connection.exec_query(descendants_query).rows.flatten.map(&:to_i)
-
       ancestors_query = <<-SQL
         WITH RECURSIVE ancestors AS (
         SELECT child_id, parent_id, child_id AS root_node FROM assignments
-        WHERE child_id IN ('#{operable_ids.join("', '")}')
+        WHERE child_id IN (#{operable_ids.join(", ")})
         UNION ALL
         SELECT a.child_id, a.parent_id, root_node FROM assignments a
         INNER JOIN ancestors ans ON ans.parent_id = a.child_id)
@@ -151,6 +204,7 @@ module PolicyMachineStorageAdapter
         HAVING COUNT(DISTINCT bb_a.child_id) > 1
       SQL
 
+      result = PolicyElement.connection.exec_query(descendants_query).rows.flatten.map(&:to_i)
       result.concat(PolicyElement.connection.exec_query(ancestors_query).rows.flatten.map(&:to_i))
     end
 
