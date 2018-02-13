@@ -771,7 +771,7 @@ module PolicyMachineStorageAdapter
       user_attributes = user_or_attribute.descendants | [user_or_attribute]
       associations = PolicyElementAssociation.where(user_attribute_id: user_attributes.map(&:id))
 
-      operation_set_ids = associations.uniq.pluck(:operation_set_id)
+      operation_set_ids = associations.pluck(:operation_set_id)
       filtered_operation_set_ids = Assignment.filter_operation_set_list_by_assigned_operation(operation_set_ids, operation_id)
 
       filtered_associations = associations.where(operation_set_id: filtered_operation_set_ids)
@@ -780,18 +780,21 @@ module PolicyMachineStorageAdapter
         if (accessible_scope = options[:accessible_scope])
 
           if filtered_associations.exists?(object_attribute_id: accessible_scope.id) || is_privilege?(user_or_attribute, operation, accessible_scope)
+
             PolicyElement.where(id: accessible_scope.id)
+
           else
+
             Assignment.accessible_ancestors_filtered_by_policy_element_associations_and_object_descendants_or_something(accessible_scope, filtered_associations.pluck(:id))
+
           end
         else
 
-          PolicyElement.where(id: filtered_associations.pluck(&:object_attribute_id))
+          PolicyElement.where(id: filtered_associations.pluck(:object_attribute_id))
         end
-
+      
       direct_scope = permitting_oas.where(type: class_for_type('object'))
       indirect_scope = Assignment.ancestors_of(permitting_oas).where(type: class_for_type('object'))
-
 
       if inclusion = options[:includes]
         direct_scope = Adapter.apply_include_condition(scope: direct_scope, key: options[:key], value: inclusion, klass: class_for_type('object'))
