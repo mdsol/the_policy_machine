@@ -197,7 +197,7 @@ module PolicyMachineStorageAdapter
             )
             SELECT assignments_recursive.parent_id
             FROM assignments_recursive
-            WHERE matching_policy_element_association_id IS NOT NULL;	
+            WHERE matching_policy_element_association_id IS NOT NULL
           )
         SQL
 
