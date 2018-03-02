@@ -796,6 +796,40 @@ module PolicyMachineStorageAdapter
       end
     end
 
+    # Version of accessible_objects which only returns objects that are
+    # descendants of a specified root object.
+    def accessible_descendant_objects(user_or_attribute, operation, root_object, options = {})
+      operation_id = operation.try(:unique_identifier) || operation.to_s
+
+      user_attributes = user_or_attribute.descendants | [user_or_attribute]
+      associations = PolicyElementAssociation.where(user_attribute_id: user_attributes.map(&:id))
+      operation_set_ids = associations.pluck(:operation_set_id)
+
+      filtered_operation_set_ids = Assignment.filter_operation_set_list_by_assigned_operation(operation_set_ids, operation_id)
+      filtered_associations =
+        associations.select do |association|
+          filtered_operation_set_ids.include?(association.operation_set_id)
+        end
+
+      permitting_oas = PolicyElement.where(id: filtered_associations.map(&:object_attribute_id))
+
+      direct_scope = permitting_oas.where(type: class_for_type('object'))
+      indirect_scope = Assignment.ancestors_of(permitting_oas).where(type: class_for_type('object'))
+
+      if inclusion = options[:includes]
+        direct_scope = Adapter.apply_include_condition(scope: direct_scope, key: options[:key], value: inclusion, klass: class_for_type('object'))
+        indirect_scope = Adapter.apply_include_condition(scope: indirect_scope, key: options[:key], value: inclusion, klass: class_for_type('object'))
+      end
+
+      candidates = direct_scope | indirect_scope
+
+      if options[:ignore_prohibitions] || !(prohibition = prohibition_for(operation_id))
+        candidates
+      else
+        candidates - accessible_objects(user_or_attribute, prohibition, options.merge(ignore_prohibitions: true))
+      end
+    end
+
     private
 
     def prohibition_for(operation)
