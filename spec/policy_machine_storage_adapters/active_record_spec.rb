@@ -401,6 +401,12 @@ describe 'ActiveRecord' do
       expect(adapt.accessible_descendant_objects(u1, write, 0, key: :unique_identifier).map(&:unique_identifier) ).to eq( ['child_fish_1'] )
     end
 
+    it 'does not return objects which are not descendants of the specified object' do
+    end
+
+    it 'lists objects with the given privilege even if the privilege is not present on an intermediate object' do
+    end
+
     it 'filters objects via substring matching' do
       expect(adapt.accessible_descendant_objects(u1, read, 0, includes: 'fish', key: :unique_identifier).map(&:unique_identifier) ).to match_array(['grandparent_fish','parent_fish'])
       expect(adapt.accessible_descendant_objects(u1, read, 0, includes: 'one', key: :unique_identifier).map(&:unique_identifier) ).to match_array(['grandparent_fish','child_fish_1'])

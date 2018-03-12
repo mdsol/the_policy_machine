@@ -821,7 +821,7 @@ module PolicyMachineStorageAdapter
         indirect_scope = Adapter.apply_include_condition(scope: indirect_scope, key: options[:key], value: inclusion, klass: class_for_type('object'))
       end
 
-      candidates = direct_scope | indirect_scope
+      candidates = (direct_scope | indirect_scope) | root_object.descendants
 
       if options[:ignore_prohibitions] || !(prohibition = prohibition_for(operation_id))
         candidates
