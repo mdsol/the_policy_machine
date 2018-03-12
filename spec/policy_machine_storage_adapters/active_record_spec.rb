@@ -365,35 +365,45 @@ describe 'ActiveRecord' do
     let(:ado_pm) { PolicyMachine.new(name: 'ADO ActiveRecord PM', storage_adapter: PolicyMachineStorageAdapter::ActiveRecord) }
     let(:adapt) { ado_pm.policy_machine_storage_adapter}
 
-    let!(:one_fish) { ado_pm.create_object('one:fish') }
-    let!(:two_fish) { ado_pm.create_object('two:fish') }
-    let!(:red_one)  { ado_pm.create_object('red:one') }
+    let!(:grandparent_fish) { ado_pm.create_object('grandparent_fish') }
+    let!(:parent_fish) { ado_pm.create_object('parent_fish') }
+    let!(:uncle_fish) { ado_pm.create_object('uncle_fish') }
+    let!(:child_fish_1) { ado_pm.create_object('child_fish_1') }
+    let!(:child_fish_2) { ado_pm.create_object('child_fish_2') }
+
     let!(:read) { ado_pm.create_operation('read') }
     let!(:write) { ado_pm.create_operation('write') }
     let!(:reader) { ado_pm.create_operation_set('reader') }
     let!(:writer) { ado_pm.create_operation_set('writer') }
+
     let!(:u1) { ado_pm.create_user('u1') }
     let!(:ua) { ado_pm.create_user_attribute('ua') }
     let!(:oa) { ado_pm.create_object_attribute('oa') }
 
     before do
-      [one_fish, two_fish, red_one].each { |object| ado_pm.add_association(ua, reader, object) }
+      [grandparent_fish, parent_fish, child_fish_1].each { |object| ado_pm.add_association(ua, reader, object) }
       ado_pm.add_association(ua, writer, oa)
 
       ado_pm.add_assignment(reader, read)
       ado_pm.add_assignment(writer, write)
       ado_pm.add_assignment(u1, ua)
-      ado_pm.add_assignment(red_one, oa)
+      ado_pm.add_assignment(child_fish_1, oa)
+
+      ado_pm.add_assignment(grandparent_fish, parent_fish)
+      ado_pm.add_assignment(grandparent_fish, uncle_fish)
+      ado_pm.add_assignment(parent_fish, child_fish_1)
+      ado_pm.add_assignment(parent_fish, child_fish_2)
     end
 
-    it 'lists all objects with the given privilege for the given user' do
-      expect(adapt.accessible_descendant_objects(u1, read, 0, key: :unique_identifier).map(&:unique_identifier) ).to include('one:fish','two:fish','red:one')
-      expect(adapt.accessible_descendant_objects(u1, write, 0, key: :unique_identifier).map(&:unique_identifier) ).to eq( ['red:one'] )
+    it 'lists all objects with the given privilege for the given user that are descendants of a specified object' do
+      all_accessible = ['grandparent_fish','parent_fish','uncle_fish','child_fish_1', 'child_fish_2']
+      expect(adapt.accessible_descendant_objects(u1, read, grandparent_fish, key: :unique_identifier).map(&:unique_identifier) ).to include(all_accessible)
+      expect(adapt.accessible_descendant_objects(u1, write, 0, key: :unique_identifier).map(&:unique_identifier) ).to eq( ['child_fish_1'] )
     end
 
     it 'filters objects via substring matching' do
-      expect(adapt.accessible_descendant_objects(u1, read, 0, includes: 'fish', key: :unique_identifier).map(&:unique_identifier) ).to match_array(['one:fish','two:fish'])
-      expect(adapt.accessible_descendant_objects(u1, read, 0, includes: 'one', key: :unique_identifier).map(&:unique_identifier) ).to match_array(['one:fish','red:one'])
+      expect(adapt.accessible_descendant_objects(u1, read, 0, includes: 'fish', key: :unique_identifier).map(&:unique_identifier) ).to match_array(['grandparent_fish','parent_fish'])
+      expect(adapt.accessible_descendant_objects(u1, read, 0, includes: 'one', key: :unique_identifier).map(&:unique_identifier) ).to match_array(['grandparent_fish','child_fish_1'])
     end
 
     context 'cascading operation sets' do
@@ -410,11 +420,11 @@ describe 'ActiveRecord' do
       end
 
       it 'lists all objects with the given privilege for the given user 1 operation set deep' do
-        expect(adapt.accessible_descendant_objects(u1, speed_read, 0, key: :unique_identifier).map(&:unique_identifier) ).to include('one:fish','two:fish','red:one')
+        expect(adapt.accessible_descendant_objects(u1, speed_read, grandparent_fish, key: :unique_identifier).map(&:unique_identifier) ).to include('grandparent_fish','parent_fish','child_fish_1')
       end
 
       it 'lists all objects with the given privilege for the given user 2 operation sets deep' do
-        expect(adapt.accessible_descendant_objects(u1, speediest_read, 0, key: :unique_identifier).map(&:unique_identifier) ).to include('one:fish','two:fish','red:one')
+        expect(adapt.accessible_descendant_objects(u1, speediest_read, grandparent_fish, key: :unique_identifier).map(&:unique_identifier) ).to include('grandparent_fish','parent_fish','child_fish_1')
       end
     end
   end
