@@ -341,13 +341,13 @@ describe 'ActiveRecord' do
       before do
         n = 20
         @pm = PolicyMachine.new(:name => 'ActiveRecord PM', :storage_adapter => PolicyMachineStorageAdapter::ActiveRecord)
-        u1 = @pm.create_user('u1')
+        @u1 = @pm.create_user('u1')
         @op = @pm.create_operation('own')
         @op_set = @pm.create_operation_set('owner')
         @user_attributes = (1..n).map { |i| @pm.create_user_attribute("ua#{i}") }
         @object_attributes = (1..n).map { |i| @pm.create_object_attribute("oa#{i}") }
         @objects = (1..n).map { |i| @pm.create_object("o#{i}") }
-        @user_attributes.each { |ua| @pm.add_assignment(u1, ua) }
+        @user_attributes.each { |ua| @pm.add_assignment(@u1, ua) }
         @pm.add_assignment(@op_set, @op)
         @object_attributes.product(@user_attributes) { |oa, ua| @pm.add_association(ua, @op_set, oa) }
         @object_attributes.zip(@objects) { |oa, o| @pm.add_assignment(o, oa) }
@@ -356,13 +356,14 @@ describe 'ActiveRecord' do
       it 'does not have O(n) database calls' do
         #TODO: Find a way to count all database calls that doesn't conflict with ActiveRecord magic
         expect(PolicyMachineStorageAdapter::ActiveRecord::Assignment).to receive(:transitive_closure?).at_most(10).times
-        expect(@pm.is_privilege?(u1, @op, @objects.first)).to be true
+        expect(@pm.is_privilege?(@u1, @op, @objects.first)).to be true
       end
     end
   end
 
   describe '#accessible_descendant_objects' do
-    let(:ado_pm) { PolicyMachine.new(name: 'ActiveRecord PM', storage_adapter: PolicyMachineStorageAdapter::ActiveRecord) }
+    let(:ado_pm) { PolicyMachine.new(name: 'ADO ActiveRecord PM', storage_adapter: PolicyMachineStorageAdapter::ActiveRecord) }
+    let(:adapt) { ado_pm.policy_machine_storage_adapter}
 
     let!(:one_fish) { ado_pm.create_object('one:fish') }
     let!(:two_fish) { ado_pm.create_object('two:fish') }
@@ -386,13 +387,13 @@ describe 'ActiveRecord' do
     end
 
     it 'lists all objects with the given privilege for the given user' do
-      expect(ado_pm.accessible_descendant_objects(u1, read, 0, key: :unique_identifier).map(&:unique_identifier) ).to include('one:fish','two:fish','red:one')
-      expect(ado_pm.accessible_descendant_objects(u1, write, 0, key: :unique_identifier).map(&:unique_identifier) ).to eq( ['red:one'] )
+      expect(adapt.accessible_descendant_objects(u1, read, 0, key: :unique_identifier).map(&:unique_identifier) ).to include('one:fish','two:fish','red:one')
+      expect(adapt.accessible_descendant_objects(u1, write, 0, key: :unique_identifier).map(&:unique_identifier) ).to eq( ['red:one'] )
     end
 
     it 'filters objects via substring matching' do
-      expect(ado_pm.accessible_descendant_objects(u1, read, 0, includes: 'fish', key: :unique_identifier).map(&:unique_identifier) ).to match_array(['one:fish','two:fish'])
-      expect(ado_pm.accessible_descendant_objects(u1, read, 0, includes: 'one', key: :unique_identifier).map(&:unique_identifier) ).to match_array(['one:fish','red:one'])
+      expect(adapt.accessible_descendant_objects(u1, read, 0, includes: 'fish', key: :unique_identifier).map(&:unique_identifier) ).to match_array(['one:fish','two:fish'])
+      expect(adapt.accessible_descendant_objects(u1, read, 0, includes: 'one', key: :unique_identifier).map(&:unique_identifier) ).to match_array(['one:fish','red:one'])
     end
 
     context 'cascading operation sets' do
@@ -409,11 +410,11 @@ describe 'ActiveRecord' do
       end
 
       it 'lists all objects with the given privilege for the given user 1 operation set deep' do
-        expect(ado_pm.accessible_descendant_objects(u1, speed_read, 0, key: :unique_identifier).map(&:unique_identifier) ).to include('one:fish','two:fish','red:one')
+        expect(adapt.accessible_descendant_objects(u1, speed_read, 0, key: :unique_identifier).map(&:unique_identifier) ).to include('one:fish','two:fish','red:one')
       end
 
       it 'lists all objects with the given privilege for the given user 2 operation sets deep' do
-        expect(ado_pm.accessible_descendant_objects(u1, speediest_read, 0, key: :unique_identifier).map(&:unique_identifier) ).to include('one:fish','two:fish','red:one')
+        expect(adapt.accessible_descendant_objects(u1, speediest_read, 0, key: :unique_identifier).map(&:unique_identifier) ).to include('one:fish','two:fish','red:one')
       end
     end
   end
