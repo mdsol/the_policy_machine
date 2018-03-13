@@ -797,21 +797,29 @@ module PolicyMachineStorageAdapter
     end
 
     # Version of accessible_objects which only returns objects that are
-    # descendants of a specified root object.
-    def accessible_descendant_objects(user_or_attribute, operation, root_object, options = {})
-      operation_id = operation.try(:unique_identifier) || operation.to_s
+    # ancestors of a specified root object or the object itself.
+    def accessible_ancestor_objects(user_or_attribute, operation, root_object, options = {})
+      # The final set of accessible objects must be contained in the following set
+      ancestor_objects = root_object.ancestors(type: class_for_type('object')) + [root_object.stored_pe]
 
-      user_attributes = user_or_attribute.descendants | [user_or_attribute]
-      associations = PolicyElementAssociation.where(user_attribute_id: user_attributes.map(&:id))
+      # Fetch all of the PEAs using the given UA or its descendants
+      user_attribute_ids = user_or_attribute.descendants.pluck(:id) | [user_or_attribute.id]
+      associations = PolicyElementAssociation.where(user_attribute_id: user_attribute_ids)
       operation_set_ids = associations.pluck(:operation_set_id)
 
+      # Narrow the list of PEAs to just those containing the specified operation
+      operation_id = operation.try(:unique_identifier) || operation.to_s
       filtered_operation_set_ids = Assignment.filter_operation_set_list_by_assigned_operation(operation_set_ids, operation_id)
       filtered_associations =
         associations.select do |association|
           filtered_operation_set_ids.include?(association.operation_set_id)
         end
 
-      permitting_oas = PolicyElement.where(id: filtered_associations.map(&:object_attribute_id))
+      # TODO: Add a filter here to limit the list of permitting OAs to the set of ancestor objects
+      # Complication: an object may be accessible from ancestors not in the set
+      # i.e. how interconnected are subgraphs?
+      permitting_oa_ids = filtered_associations.map(&:object_attribute_id)
+      permitting_oas = PolicyElement.where(id: permitting_oa_ids)
 
       direct_scope = permitting_oas.where(type: class_for_type('object'))
       indirect_scope = Assignment.ancestors_of(permitting_oas).where(type: class_for_type('object'))
@@ -821,7 +829,8 @@ module PolicyMachineStorageAdapter
         indirect_scope = Adapter.apply_include_condition(scope: indirect_scope, key: options[:key], value: inclusion, klass: class_for_type('object'))
       end
 
-      candidates = (direct_scope | indirect_scope) | root_object.descendants
+      # Ensure all candidates are ancestors of the specified root_object
+      candidates = (direct_scope | indirect_scope) & ancestor_objects
 
       if options[:ignore_prohibitions] || !(prohibition = prohibition_for(operation_id))
         candidates

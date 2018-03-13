@@ -361,13 +361,14 @@ describe 'ActiveRecord' do
     end
   end
 
-  describe '#accessible_descendant_objects' do
+  describe '#accessible_ancestor_objects' do
     let(:ado_pm) { PolicyMachine.new(name: 'ADO ActiveRecord PM', storage_adapter: PolicyMachineStorageAdapter::ActiveRecord) }
     let(:adapt) { ado_pm.policy_machine_storage_adapter}
 
     let!(:grandparent_fish) { ado_pm.create_object('grandparent_fish') }
     let!(:parent_fish) { ado_pm.create_object('parent_fish') }
     let!(:uncle_fish) { ado_pm.create_object('uncle_fish') }
+    let!(:cousin_fish) { ado_pm.create_object('cousin_fish') }
     let!(:child_fish_1) { ado_pm.create_object('child_fish_1') }
     let!(:child_fish_2) { ado_pm.create_object('child_fish_2') }
 
@@ -381,56 +382,84 @@ describe 'ActiveRecord' do
     let!(:oa) { ado_pm.create_object_attribute('oa') }
 
     before do
-      [grandparent_fish, parent_fish, child_fish_1].each { |object| ado_pm.add_association(ua, reader, object) }
+      [grandparent_fish, parent_fish, child_fish_1, cousin_fish].each do |object|
+        ado_pm.add_association(ua, reader, object)
+      end
       ado_pm.add_association(ua, writer, oa)
 
       ado_pm.add_assignment(reader, read)
       ado_pm.add_assignment(writer, write)
       ado_pm.add_assignment(u1, ua)
+
+      # Ancestors are accessible from descendants
+      ado_pm.add_assignment(parent_fish, grandparent_fish)
+      ado_pm.add_assignment(uncle_fish, grandparent_fish)
+      ado_pm.add_assignment(cousin_fish, uncle_fish)
+      ado_pm.add_assignment(child_fish_1, parent_fish)
+      ado_pm.add_assignment(child_fish_2, parent_fish)
       ado_pm.add_assignment(child_fish_1, oa)
-
-      ado_pm.add_assignment(grandparent_fish, parent_fish)
-      ado_pm.add_assignment(grandparent_fish, uncle_fish)
-      ado_pm.add_assignment(parent_fish, child_fish_1)
-      ado_pm.add_assignment(parent_fish, child_fish_2)
     end
 
-    it 'lists all objects with the given privilege for the given user that are descendants of a specified object' do
-      all_accessible = ['grandparent_fish','parent_fish','uncle_fish','child_fish_1', 'child_fish_2']
-      expect(adapt.accessible_descendant_objects(u1, read, grandparent_fish, key: :unique_identifier).map(&:unique_identifier) ).to include(all_accessible)
-      expect(adapt.accessible_descendant_objects(u1, write, 0, key: :unique_identifier).map(&:unique_identifier) ).to eq( ['child_fish_1'] )
+    it 'lists all objects with the given privilege for the given user that are ancestors of a specified object' do
+      all_accessible_from_grandparent = %w(grandparent_fish parent_fish uncle_fish cousin_fish child_fish_1 child_fish_2)
+
+      expect(adapt.accessible_ancestor_objects(u1, read, grandparent_fish, key: :unique_identifier).map(&:unique_identifier))
+        .to match_array(all_accessible_from_grandparent)
+      expect(adapt.accessible_ancestor_objects(u1, write, parent_fish, key: :unique_identifier).map(&:unique_identifier))
+        .to contain_exactly('child_fish_1')
     end
 
-    it 'does not return objects which are not descendants of the specified object' do
+    it 'does not return objects which are not ancestors of the specified object' do
+      all_accessible_from_uncle = adapt.accessible_ancestor_objects(u1, read, uncle_fish, key: :unique_identifier)
+
+      expect(all_accessible_from_uncle.map(&:unique_identifier)).to contain_exactly('uncle_fish', 'cousin_fish')
     end
 
     it 'lists objects with the given privilege even if the privilege is not present on an intermediate object' do
+      bluff = ado_pm.create_operation('blathe')
+      bluffer = ado_pm.create_operation_set('blather')
+      ado_pm.add_assignment(bluffer, bluff)
+
+      # Give the user 'bluff' on two of the lowest nodes
+      ado_pm.add_association(ua, bluffer, cousin_fish)
+      ado_pm.add_association(ua, bluffer, child_fish_1)
+
+      all_accessible_from_grandparent = adapt.accessible_ancestor_objects(u1, bluff, grandparent_fish, key: :unique_identifier)
+      all_accessible_from_parent = adapt.accessible_ancestor_objects(u1, bluff, parent_fish, key: :unique_identifier)
+
+      # Verify 'bluff' is still visible when not present on intermediate nodes, namely 'uncle' and 'parent'
+      expect(all_accessible_from_grandparent.map(&:unique_identifier)).to contain_exactly('child_fish_1', 'cousin_fish')
+      expect(all_accessible_from_parent.map(&:unique_identifier)).to contain_exactly('child_fish_1')
     end
 
     it 'filters objects via substring matching' do
-      expect(adapt.accessible_descendant_objects(u1, read, 0, includes: 'fish', key: :unique_identifier).map(&:unique_identifier) ).to match_array(['grandparent_fish','parent_fish'])
-      expect(adapt.accessible_descendant_objects(u1, read, 0, includes: 'one', key: :unique_identifier).map(&:unique_identifier) ).to match_array(['grandparent_fish','child_fish_1'])
+      expect(adapt.accessible_ancestor_objects(u1, read, grandparent_fish, includes: 'parent', key: :unique_identifier).map(&:unique_identifier))
+        .to contain_exactly('grandparent_fish', 'parent_fish')
+      expect(adapt.accessible_ancestor_objects(u1, read, grandparent_fish, includes: 'messedupstring', key: :unique_identifier).map(&:unique_identifier))
+        .to be_empty
     end
 
     context 'cascading operation sets' do
-      let!(:speed_read) { ado_pm.create_operation('speed_read') }
-      let!(:speed_reader) { ado_pm.create_operation_set('speed_reader') }
-      let!(:speediest_read) { ado_pm.create_operation('speediest_read') }
-      let!(:speediest_reader) { ado_pm.create_operation_set('speediest_reader') }
+      let!(:speed_write) { ado_pm.create_operation('speed_write') }
+      let!(:speed_writer) { ado_pm.create_operation_set('speed_writer') }
+      let!(:speediest_write) { ado_pm.create_operation('speediest_write') }
+      let!(:speediest_writer) { ado_pm.create_operation_set('speediest_writer') }
 
       before do
-        ado_pm.add_assignment(speed_reader, speed_read)
-        ado_pm.add_assignment(reader, speed_reader)
-        ado_pm.add_assignment(speediest_reader, speediest_read)
-        ado_pm.add_assignment(speed_reader, speediest_reader)
+        ado_pm.add_assignment(speed_writer, speed_write)
+        ado_pm.add_assignment(writer, speed_writer)
+        ado_pm.add_assignment(speediest_writer, speediest_write)
+        ado_pm.add_assignment(speed_writer, speediest_writer)
       end
 
       it 'lists all objects with the given privilege for the given user 1 operation set deep' do
-        expect(adapt.accessible_descendant_objects(u1, speed_read, grandparent_fish, key: :unique_identifier).map(&:unique_identifier) ).to include('grandparent_fish','parent_fish','child_fish_1')
+        expect(adapt.accessible_ancestor_objects(u1, speed_write, parent_fish, key: :unique_identifier).map(&:unique_identifier))
+          .to contain_exactly('child_fish_1')
       end
 
       it 'lists all objects with the given privilege for the given user 2 operation sets deep' do
-        expect(adapt.accessible_descendant_objects(u1, speediest_read, grandparent_fish, key: :unique_identifier).map(&:unique_identifier) ).to include('grandparent_fish','parent_fish','child_fish_1')
+        expect(adapt.accessible_ancestor_objects(u1, speediest_write, grandparent_fish, key: :unique_identifier).map(&:unique_identifier))
+          .to contain_exactly('child_fish_1')
       end
     end
   end
