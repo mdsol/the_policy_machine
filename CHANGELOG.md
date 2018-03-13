@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.8.0
+* Add accessible_ancestor_objects method to ActiveRecord storage adapter.
+
 ## 1.7.0
 * Add pluck_ancestor_tree method to ActiveRecord storage adapter.
 
