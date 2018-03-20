@@ -409,6 +409,20 @@ describe 'ActiveRecord' do
         .to contain_exactly('child_fish_1')
     end
 
+    it 'lists all objects with the given privilege provided by an out-of-scope descendant' do
+      wrestle = ado_pm.create_operation('wrestle')
+      wrestler = ado_pm.create_operation_set('wrestler')
+      ado_pm.add_assignment(wrestler, wrestle)
+
+      # Give the user 'wrestle' on the highest, out-of-scope node
+      ado_pm.add_association(ua, wrestler, grandparent_fish)
+
+      all_accessible_from_parent = %w(parent_fish child_fish_1 child_fish_2)
+
+      expect(adapt.accessible_ancestor_objects(u1, wrestle, parent_fish, key: :unique_identifier).map(&:unique_identifier))
+        .to match_array(all_accessible_from_parent)
+    end
+
     it 'does not return objects which are not ancestors of the specified object' do
       all_accessible_from_uncle = adapt.accessible_ancestor_objects(u1, read, uncle_fish, key: :unique_identifier)
 
@@ -460,6 +474,31 @@ describe 'ActiveRecord' do
       it 'lists all objects with the given privilege for the given user 2 operation sets deep' do
         expect(adapt.accessible_ancestor_objects(u1, speediest_write, grandparent_fish, key: :unique_identifier).map(&:unique_identifier))
           .to contain_exactly('child_fish_1')
+      end
+    end
+
+    context 'prohibitions' do
+      let!(:not_reader) { ado_pm.create_operation_set('not_reader') }
+
+      before do
+        ado_pm.add_assignment(not_reader, read.prohibition)
+      end
+
+      it 'does not return objects which are ancestors of a prohibited object' do
+        ado_pm.add_association(ua, not_reader, parent_fish)
+        all_accessible_from_grandparent = %w(grandparent_fish uncle_fish cousin_fish)
+
+        expect(adapt.accessible_ancestor_objects(u1, read, grandparent_fish, key: :unique_identifier).map(&:unique_identifier))
+          .to match_array(all_accessible_from_grandparent)
+        expect(adapt.accessible_ancestor_objects(u1, write, parent_fish, key: :unique_identifier).map(&:unique_identifier))
+          .to contain_exactly('child_fish_1')
+      end
+
+      it 'does not return objects which prohibited by an out-of-scope descendant' do
+        ado_pm.add_association(ua, not_reader, grandparent_fish)
+
+        expect(adapt.accessible_ancestor_objects(u1, read, parent_fish, key: :unique_identifier).map(&:unique_identifier))
+          .to be_empty
       end
     end
   end
