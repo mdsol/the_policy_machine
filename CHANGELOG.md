@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.7.1
+* Downversioned 'pg' gem to '~> 0.15.0' to avoid v1.0.0 error with core Rails.
+
 ## 1.7.0
 * Add pluck_ancestor_tree method to ActiveRecord storage adapter.
 
