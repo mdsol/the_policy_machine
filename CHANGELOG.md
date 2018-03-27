@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.7.2
+
+* Loosened 'pg' gem restriction to '< 1.0.0' for easier integration.
+
 ## 1.7.1
 * Downversioned 'pg' gem to '~> 0.15.0' to avoid v1.0.0 error with core Rails.
 
