@@ -95,7 +95,7 @@ module PolicyMachineStorageAdapter
       true #TODO: More useful return value?
     end
 
-    def self.role_update_incompatibilities(operable_ids)
+    def self.conflicts_for_operables(operable_ids)
       descendants_query = <<-SQL
         WITH RECURSIVE descendants AS (
           SELECT parent_id, child_id, parent_id as root_node FROM assignments
@@ -150,7 +150,7 @@ module PolicyMachineStorageAdapter
       result.concat(PolicyElement.connection.exec_query(ancestors_query).rows.flatten.map(&:to_i))
     end
 
-    def self.incompatibilities(operator_uri, operable_ids)
+    def self.conflicts_for_operators_and_operables(operator_uri, operable_ids)
       descendants_query = <<-SQL
         WITH RECURSIVE descendants AS (
           SELECT parent_id, child_id, parent_id AS root_node FROM assignments
