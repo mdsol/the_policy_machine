@@ -103,7 +103,7 @@ module PolicyMachineStorageAdapter
           UNION ALL
           SELECT a.parent_id, a.child_id, root_node FROM assignments a
           INNER JOIN descendants d ON d.child_id = a.parent_id)
-        SELECT root_node, ra.operator_uri, ios.id FROM descendants d
+        SELECT root_node, ra.operator_uri, crs.id FROM descendants d
         JOIN policy_element_associations AS pea
         ON pea.object_attribute_id = d.child_id OR pea.object_attribute_id = d.parent_id
         JOIN policy_elements as ra
@@ -112,12 +112,12 @@ module PolicyMachineStorageAdapter
         ON pea.operation_set_id = os.id
         JOIN assignments as bb_a
         ON os.id = bb_a.parent_id
-        JOIN assignments as ios_a
-        ON bb_a.child_id = ios_a.child_id
-        JOIN policy_elements AS ios
-        ON ios_a.parent_id = ios.id
-        WHERE ios.active_policy_element_type = 'IncompatibleOperationSet'
-        GROUP BY root_node, ra.operator_uri, ios.id
+        JOIN assignments as crs_a
+        ON bb_a.child_id = crs_a.child_id
+        JOIN policy_elements AS crs
+        ON crs_a.parent_id = crs.id
+        WHERE crs.active_policy_element_type = 'ConflictingRolesSet'
+        GROUP BY root_node, ra.operator_uri, crs.id
         HAVING COUNT(DISTINCT bb_a.child_id) > 1
       SQL
 
@@ -128,7 +128,7 @@ module PolicyMachineStorageAdapter
           UNION ALL
           SELECT a.child_id, a.parent_id, root_node FROM assignments a
           INNER JOIN ancestors ans ON ans.parent_id = a.child_id)
-        SELECT ans.root_node, ra.operator_uri, ios.id FROM ancestors ans
+        SELECT ans.root_node, ra.operator_uri, crs.id FROM ancestors ans
         JOIN policy_element_associations pea
         ON pea.object_attribute_id = ans.child_id OR pea.object_attribute_id = ans.parent_id
         JOIN policy_elements as ra
@@ -137,12 +137,12 @@ module PolicyMachineStorageAdapter
         ON pea.operation_set_id = os.id
         JOIN assignments as bb_a
         ON os.id = bb_a.parent_id
-        JOIN assignments as ios_a
-        ON bb_a.child_id = ios_a.child_id
-        JOIN policy_elements AS ios
-        ON ios_a.parent_id = ios.id
-        WHERE ios.active_policy_element_type = 'IncompatibleOperationSet'
-        GROUP BY root_node, ra.operator_uri, ios.id
+        JOIN assignments as crs_a
+        ON bb_a.child_id = crs_a.child_id
+        JOIN policy_elements AS crs
+        ON crs_a.parent_id = crs.id
+        WHERE crs.active_policy_element_type = 'ConflictingRolesSet'
+        GROUP BY root_node, ra.operator_uri, crs.id
         HAVING COUNT(DISTINCT bb_a.child_id) > 1
       SQL
 
@@ -159,7 +159,7 @@ module PolicyMachineStorageAdapter
           SELECT a.parent_id, a.child_id, root_node FROM assignments a
           INNER JOIN descendants d ON d.child_id = a.parent_id
         )
-        SELECT d.root_node, ios.id FROM descendants d
+        SELECT d.root_node, crs.id FROM descendants d
           JOIN policy_element_associations pea
           ON pea.object_attribute_id = d.child_id OR pea.object_attribute_id = d.parent_id
           JOIN policy_elements as ra
@@ -168,13 +168,13 @@ module PolicyMachineStorageAdapter
           ON pea.operation_set_id = os.id
           JOIN assignments as bb_a
           ON os.id = bb_a.parent_id
-          JOIN assignments as ios_a
-          ON bb_a.child_id = ios_a.child_id
-          JOIN policy_elements AS ios
-          ON ios_a.parent_id = ios.id
+          JOIN assignments as crs_a
+          ON bb_a.child_id = crs_a.child_id
+          JOIN policy_elements AS crs
+          ON crs_a.parent_id = crs.id
         WHERE ra.operator_uri = '#{operator_uri}'
-        AND ios.active_policy_element_type = 'IncompatibleOperationSet'
-        GROUP BY root_node, ios.id
+        AND crs.active_policy_element_type = 'ConflictingRolesSet'
+        GROUP BY root_node, crs.id
         HAVING COUNT(DISTINCT bb_a.child_id) > 1
       SQL
 
@@ -185,7 +185,7 @@ module PolicyMachineStorageAdapter
         UNION ALL
         SELECT a.child_id, a.parent_id, root_node FROM assignments a
         INNER JOIN ancestors ans ON ans.parent_id = a.child_id)
-        SELECT ans.root_node, ios.id FROM ancestors ans
+        SELECT ans.root_node, crs.id FROM ancestors ans
         JOIN policy_element_associations pea
         ON pea.object_attribute_id = ans.child_id OR pea.object_attribute_id = ans.parent_id
         JOIN policy_elements as ra
@@ -194,13 +194,13 @@ module PolicyMachineStorageAdapter
         ON pea.operation_set_id = os.id
         JOIN assignments as bb_a
         ON os.id = bb_a.parent_id
-        JOIN assignments as ios_a
-        ON bb_a.child_id = ios_a.child_id
-        JOIN policy_elements AS ios
-        ON ios_a.parent_id = ios.id
+        JOIN assignments as crs_a
+        ON bb_a.child_id = crs_a.child_id
+        JOIN policy_elements AS crs
+        ON crs_a.parent_id = crs.id
         WHERE ra.operator_uri = '#{operator_uri}'
-        AND ios.active_policy_element_type = 'IncompatibleOperationSet'
-        GROUP BY root_node, ios.id
+        AND crs.active_policy_element_type = 'ConflictingRolesSet'
+        GROUP BY root_node, crs.id
         HAVING COUNT(DISTINCT bb_a.child_id) > 1
       SQL
 
@@ -487,9 +487,6 @@ module PolicyMachineStorageAdapter
       end
     end
 
-    class IncompatibleOperationSet < PolicyElement
-    end
-
     class PolicyClass < PolicyElement
     end
 
@@ -519,7 +516,7 @@ module PolicyMachineStorageAdapter
       end
     end
 
-    POLICY_ELEMENT_TYPES = %w(user user_attribute object object_attribute operation operation_set incompatible_operation_set policy_class)
+    POLICY_ELEMENT_TYPES = %w(user user_attribute object object_attribute operation operation_set policy_class)
 
     POLICY_ELEMENT_TYPES.each do |pe_type|
       ##
