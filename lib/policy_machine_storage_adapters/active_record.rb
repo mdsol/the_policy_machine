@@ -95,6 +95,7 @@ module PolicyMachineStorageAdapter
       true #TODO: More useful return value?
     end
 
+    # Check conflicts for Configuration Type Role Updates
     def self.conflicts_for_operables(operable_ids)
       descendants_query = <<-SQL
         WITH RECURSIVE descendants AS (
@@ -150,6 +151,7 @@ module PolicyMachineStorageAdapter
       result.concat(PolicyElement.connection.exec_query(ancestors_query).rows.flatten.map(&:to_i))
     end
 
+    # Check conflicts for Grant updates
     def self.conflicts_for_operators_and_operables(operator_uri, operable_ids)
       descendants_query = <<-SQL
         WITH RECURSIVE descendants AS (
