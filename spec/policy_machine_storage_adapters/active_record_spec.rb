@@ -412,7 +412,7 @@ describe 'ActiveRecord' do
     it 'lists all objects with the given privilege provided by an out-of-scope descendant' do
       wrestle = ado_pm.create_operation('wrestle')
       wrestler = ado_pm.create_operation_set('wrestler')
-      ado_pm.add_assignment(wrestler, wrestle)
+      ado_pm.add_assignment(wrestler, wrestle) 
 
       # Give the user 'wrestle' on the highest, out-of-scope node
       ado_pm.add_association(ua, wrestler, grandparent_fish)

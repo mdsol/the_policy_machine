@@ -797,7 +797,7 @@ module PolicyMachineStorageAdapter
     end
 
     # Version of accessible_objects which only returns objects that are
-    # ancestors of a specified root object or the object itself.
+    # ancestors of a specified root object or the object itself
     def accessible_ancestor_objects(user_or_attribute, operation, root_object, options = {})
       # The final set of accessible objects must be contained in the following set
       ancestor_objects = root_object.ancestors(type: class_for_type('object')) + [root_object.stored_pe]
