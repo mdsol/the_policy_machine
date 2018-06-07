@@ -802,6 +802,25 @@ module PolicyMachineStorageAdapter
       # The final set of accessible objects must be contained in the following set
       ancestor_objects = root_object.ancestors(type: class_for_type('object')) + [root_object.stored_pe]
 
+      # Short-circuit and return all ancestors (minus prohibitions), if authorized on the root node
+      if is_privilege?(user_or_attribute, operation, root_object)
+        if options[:ignore_prohibitions]
+          if inclusion = options[:includes]
+            return ancestor_objects.select { |obj| obj.send(options[:key].to_sym).include?(inclusion) }
+          else
+            return ancestor_objects
+          end
+        else
+          ancestor_objects_minus_prohibitions = ancestor_objects - accessible_ancestor_objects(user_or_attribute, prohibition_for(operation), root_object)
+
+          if inclusion = options[:includes]
+            return ancestor_objects_minus_prohibitions.select { |obj| obj.send(options[:key].to_sym).include?(inclusion) }
+          else
+            return ancestor_objects_minus_prohibitions
+          end
+        end
+      end
+
       # Fetch all of the PEAs using the given UA or its descendants
       user_attribute_ids = user_or_attribute.descendants.pluck(:id) | [user_or_attribute.id]
       associations = PolicyElementAssociation.where(user_attribute_id: user_attribute_ids)
