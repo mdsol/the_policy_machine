@@ -103,21 +103,31 @@ module PolicyMachineStorageAdapter
           WHERE parent_id IN (#{operable_ids.join(", ")})
           UNION ALL
           SELECT a.parent_id, a.child_id, root_node FROM assignments a
-          INNER JOIN descendants d ON d.child_id = a.parent_id)
+          INNER JOIN descendants d 
+            ON d.child_id = a.parent_id
+            WHERE d.child_id = a.parent_id)
         SELECT root_node, ra.operator_uri, crs.id FROM descendants d
         JOIN policy_element_associations AS pea
-        ON pea.object_attribute_id = d.child_id OR pea.object_attribute_id = d.parent_id
+          ON pea.object_attribute_id = d.child_id OR pea.object_attribute_id = d.parent_id
         JOIN policy_elements as ra
-        ON ra.id = pea.user_attribute_id
+          ON ra.id = pea.user_attribute_id
         JOIN policy_elements as os
-        ON pea.operation_set_id = os.id
+          ON pea.operation_set_id = os.id
         JOIN assignments as bb_a
-        ON os.id = bb_a.parent_id
+          ON os.id = bb_a.parent_id
         JOIN assignments as crs_a
-        ON bb_a.child_id = crs_a.child_id
+          ON bb_a.child_id = crs_a.child_id
         JOIN policy_elements AS crs
-        ON crs_a.parent_id = crs.id
+          ON crs_a.parent_id = crs.id
+        AND crs.active_policy_element_type = 'ConflictingRolesSet'
         WHERE crs.active_policy_element_type = 'ConflictingRolesSet'
+          AND (pea.object_attribute_id = d.child_id
+            OR pea.object_attribute_id = d.parent_id)
+          AND ra.id = pea.user_attribute_id
+          AND pea.operation_set_id = os.id
+          AND os.id = bb_a.parent_id
+          AND bb_a.child_id = crs_a.child_id
+          AND crs_a.parent_id = crs.id
         GROUP BY root_node, ra.operator_uri, crs.id
         HAVING COUNT(DISTINCT bb_a.child_id) > 1
       SQL
@@ -128,7 +138,9 @@ module PolicyMachineStorageAdapter
           WHERE child_id IN (#{operable_ids.join(", ")})
           UNION ALL
           SELECT a.child_id, a.parent_id, root_node FROM assignments a
-          INNER JOIN ancestors ans ON ans.parent_id = a.child_id)
+          INNER JOIN ancestors ans
+            ON ans.parent_id = a.child_id
+            WHERE ans.parent_id = a.child_id)
         SELECT ans.root_node, ra.operator_uri, crs.id FROM ancestors ans
         JOIN policy_element_associations pea
         ON pea.object_attribute_id = ans.child_id OR pea.object_attribute_id = ans.parent_id
@@ -143,6 +155,13 @@ module PolicyMachineStorageAdapter
         JOIN policy_elements AS crs
         ON crs_a.parent_id = crs.id
         WHERE crs.active_policy_element_type = 'ConflictingRolesSet'
+          AND (pea.object_attribute_id = ans.child_id
+            OR pea.object_attribute_id = ans.parent_id)
+          AND ra.id = pea.user_attribute_id
+          AND pea.operation_set_id = os.id
+          AND os.id = bb_a.parent_id
+          AND bb_a.child_id = crs_a.child_id
+          AND crs_a.parent_id = crs.id
         GROUP BY root_node, ra.operator_uri, crs.id
         HAVING COUNT(DISTINCT bb_a.child_id) > 1
       SQL
