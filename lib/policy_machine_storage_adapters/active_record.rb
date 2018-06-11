@@ -799,8 +799,11 @@ module PolicyMachineStorageAdapter
     # Version of accessible_objects which only returns objects that are
     # ancestors of a specified root object or the object itself
     def accessible_ancestor_objects(user_or_attribute, operation, root_object, options = {})
+      # Drop down to the root's stored policy element if not already there
+      root_object = root_object.respond_to?(:stored_pe) ? root_object.stored_pe : root_object
+
       # The final set of accessible objects must be contained in the following set
-      ancestor_objects = root_object.ancestors(type: class_for_type('object')) + [root_object.stored_pe]
+      ancestor_objects = root_object.ancestors(type: class_for_type('object')) + [root_object]
 
       # Short-circuit and return all ancestors (minus prohibitions), if authorized on the root node
       if is_privilege?(user_or_attribute, operation, root_object)
