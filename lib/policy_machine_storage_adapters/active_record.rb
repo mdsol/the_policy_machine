@@ -701,14 +701,14 @@ module PolicyMachineStorageAdapter
     # Return array of all policy classes which contain the given object_attribute (or object).
     # Return empty array if no such policy classes found.
     def policy_classes_for_object_attribute(object_attribute)
-      object_attribute.descendants.merge(PolicyElement.where(type: class_for_type('policy_class')))
+      object_attribute.descendants.to_set.add(PolicyElement.where(type: class_for_type('policy_class'))).to_a
     end
 
     ##
     # Return array of all user attributes which contain the given user.
     # Return empty array if no such user attributes are found.
     def user_attributes_for_user(user)
-      user.descendants.merge(PolicyElement.where(type: class_for_type('user_attribute')))
+      user.descendants.to_set.add(PolicyElement.where(type: class_for_type('user_attribute'))).to_a
     end
 
     ##
