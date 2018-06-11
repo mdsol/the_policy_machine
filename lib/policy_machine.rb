@@ -267,6 +267,16 @@ class PolicyMachine
     end
   end
 
+  def accessible_ancestor_objects(user_or_attribute, operation, root_object, options = {})
+    if policy_machine_storage_adapter.respond_to?(:accessible_ancestor_objects)
+      policy_machine_storage_adapter.accessible_ancestor_objects(user_or_attribute, operation, root_object, options)
+    else
+      Warn.once "WARNING: accessible_ancestor_objects is not implemented for storage adapter " \
+                "#{policy_machine_storage_adapter.class}. Returning all accessible_objects."
+      accessible_objects(user_or_attribute, operation, options)
+    end
+  end
+
   ##
   # Returns an array of all user_attributes a PM::User is assigned to,
   # directly or indirectly.
