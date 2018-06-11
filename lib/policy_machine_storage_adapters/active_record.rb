@@ -814,7 +814,7 @@ module PolicyMachineStorageAdapter
             return ancestor_objects
           end
         else
-          ancestor_objects_minus_prohibitions = ancestor_objects - accessible_ancestor_objects(user_or_attribute, prohibition_for(operation), root_object)
+          ancestor_objects_minus_prohibitions = ancestor_objects - accessible_ancestor_objects(user_or_attribute, prohibition_for(operation), root_object_pe)
 
           if inclusion = options[:includes]
             return ancestor_objects_minus_prohibitions.select { |obj| obj.send(options[:key].to_sym).include?(inclusion) }
