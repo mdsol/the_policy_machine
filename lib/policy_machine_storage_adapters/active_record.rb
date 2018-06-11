@@ -800,13 +800,13 @@ module PolicyMachineStorageAdapter
     # ancestors of a specified root object or the object itself
     def accessible_ancestor_objects(user_or_attribute, operation, root_object, options = {})
       # Drop down to the root's stored policy element if not already there
-      root_object = root_object.respond_to?(:stored_pe) ? root_object.stored_pe : root_object
+      root_object_pe = root_object.respond_to?(:stored_pe) ? root_object.stored_pe : root_object
 
       # The final set of accessible objects must be contained in the following set
-      ancestor_objects = root_object.ancestors(type: class_for_type('object')) + [root_object]
+      ancestor_objects = root_object_pe.ancestors(type: class_for_type('object')) + [root_object_pe]
 
       # Short-circuit and return all ancestors (minus prohibitions), if authorized on the root node
-      if is_privilege?(user_or_attribute, operation, root_object)
+      if is_privilege?(user_or_attribute, operation, root_object_pe)
         if options[:ignore_prohibitions]
           if inclusion = options[:includes]
             return ancestor_objects.select { |obj| obj.send(options[:key].to_sym).include?(inclusion) }
