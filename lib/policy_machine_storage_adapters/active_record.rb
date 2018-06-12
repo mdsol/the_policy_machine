@@ -104,8 +104,8 @@ module PolicyMachineStorageAdapter
           UNION ALL
           SELECT a.parent_id, a.child_id, root_node FROM assignments a
           INNER JOIN descendants d 
-            ON d.child_id = a.parent_id
-            WHERE d.child_id = a.parent_id)
+            ON a.parent_id = d.child_id
+            WHERE a.parent_id = d.child_id)
         SELECT root_node, ra.operator_uri, crs.id FROM descendants d
         JOIN policy_element_associations AS pea
           ON pea.object_attribute_id = d.child_id OR pea.object_attribute_id = d.parent_id
