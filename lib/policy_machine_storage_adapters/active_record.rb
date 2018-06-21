@@ -101,28 +101,30 @@ module PolicyMachineStorageAdapter
         WITH RECURSIVE descendants AS (
           SELECT parent_id, child_id, parent_id as root_node
           FROM assignments
-            WHERE parent_id IN (#{operable_ids.join(", ")})
+          WHERE parent_id IN (#{operable_ids.join(", ")})
           UNION ALL
           SELECT a.parent_id, a.child_id, root_node
           FROM assignments a
-          INNER JOIN descendants d 
+            INNER JOIN descendants d 
             ON a.parent_id = d.child_id
-            WHERE a.parent_id = d.child_id
+          WHERE a.parent_id = d.child_id
         )
-        SELECT root_node, ra.operator_uri, crs.id FROM descendants d
-        JOIN policy_element_associations AS pea
-          ON pea.object_attribute_id = d.child_id OR pea.object_attribute_id = d.parent_id
-        JOIN policy_elements as ra
+        SELECT root_node, ra.operator_uri, crs.id
+        FROM descendants d
+          JOIN policy_element_associations AS pea
+          ON pea.object_attribute_id = d.child_id
+            OR pea.object_attribute_id = d.parent_id
+          JOIN policy_elements as ra
           ON ra.id = pea.user_attribute_id
-        JOIN policy_elements as os
+          JOIN policy_elements as os
           ON pea.operation_set_id = os.id
-        JOIN assignments as bb_a
+          JOIN assignments as bb_a
           ON os.id = bb_a.parent_id
-        JOIN assignments as crs_a
+          JOIN assignments as crs_a
           ON bb_a.child_id = crs_a.child_id
-        JOIN policy_elements AS crs
+          JOIN policy_elements AS crs
           ON crs_a.parent_id = crs.id
-        AND crs.active_policy_element_type = 'ConflictingRolesSet'
+            AND crs.active_policy_element_type = 'ConflictingRolesSet'
         WHERE crs.active_policy_element_type = 'ConflictingRolesSet'
           AND (pea.object_attribute_id = d.child_id
             OR pea.object_attribute_id = d.parent_id)
@@ -140,26 +142,28 @@ module PolicyMachineStorageAdapter
         WITH RECURSIVE ancestors AS (
           SELECT child_id, parent_id, child_id AS root_node
           FROM assignments
-            WHERE child_id IN (#{operable_ids.join(", ")})
+          WHERE child_id IN (#{operable_ids.join(", ")})
           UNION ALL
           SELECT a.child_id, a.parent_id, root_node
           FROM assignments a
-          INNER JOIN ancestors ans
+            INNER JOIN ancestors ans
             ON ans.parent_id = a.child_id
           WHERE ans.parent_id = a.child_id
         )
-        SELECT ans.root_node, ra.operator_uri, crs.id FROM ancestors ans
-        JOIN policy_element_associations pea
-          ON pea.object_attribute_id = ans.child_id OR pea.object_attribute_id = ans.parent_id
-        JOIN policy_elements as ra
+        SELECT ans.root_node, ra.operator_uri, crs.id
+        FROM ancestors ans
+          JOIN policy_element_associations pea
+          ON pea.object_attribute_id = ans.child_id
+            OR pea.object_attribute_id = ans.parent_id
+          JOIN policy_elements as ra
           ON ra.id = pea.user_attribute_id
-        JOIN policy_elements as os
+          JOIN policy_elements as os
           ON pea.operation_set_id = os.id
-        JOIN assignments as bb_a
+          JOIN assignments as bb_a
           ON os.id = bb_a.parent_id
-        JOIN assignments as crs_a
+          JOIN assignments as crs_a
           ON bb_a.child_id = crs_a.child_id
-        JOIN policy_elements AS crs
+          JOIN policy_elements AS crs
           ON crs_a.parent_id = crs.id
         WHERE crs.active_policy_element_type = 'ConflictingRolesSet'
           AND (pea.object_attribute_id = ans.child_id
@@ -182,27 +186,31 @@ module PolicyMachineStorageAdapter
     def self.conflicts_for_operators_and_operables(operator_uri, operable_ids, crs_ids)
       descendants_query = <<-SQL
         WITH RECURSIVE descendants AS (
-          SELECT parent_id, child_id, parent_id AS root_node FROM assignments
+          SELECT parent_id, child_id, parent_id AS root_node
+          FROM assignments
           WHERE parent_id IN (#{operable_ids.join(", ")})
           UNION ALL
-          SELECT a.parent_id, a.child_id, root_node FROM assignments a
-          INNER JOIN descendants d
+          SELECT a.parent_id, a.child_id, root_node
+          FROM assignments a
+            INNER JOIN descendants d
             ON a.parent_id = d.child_id
-            WHERE a.parent_id = d.child_id
+          WHERE a.parent_id = d.child_id
         )
-        SELECT d.root_node, crs.id FROM descendants d
+        SELECT d.root_node, crs.id
+        FROM descendants d
           JOIN policy_element_associations pea
-            ON pea.object_attribute_id = d.child_id OR pea.object_attribute_id = d.parent_id
+          ON pea.object_attribute_id = d.child_id
+            OR pea.object_attribute_id = d.parent_id
           JOIN policy_elements as ra
-            ON ra.id = pea.user_attribute_id
+          ON ra.id = pea.user_attribute_id
           JOIN policy_elements as os
-            ON pea.operation_set_id = os.id
+          ON pea.operation_set_id = os.id
           JOIN assignments as bb_a
-            ON os.id = bb_a.parent_id
+          ON os.id = bb_a.parent_id
           JOIN assignments as crs_a
-            ON bb_a.child_id = crs_a.child_id
+          ON bb_a.child_id = crs_a.child_id
           JOIN policy_elements AS crs
-            ON crs_a.parent_id = crs.id
+          ON crs_a.parent_id = crs.id
         WHERE ra.operator_uri = '#{operator_uri}'
           AND crs.active_policy_element_type = 'ConflictingRolesSet'
           AND (pea.object_attribute_id = d.child_id
@@ -219,26 +227,30 @@ module PolicyMachineStorageAdapter
 
       ancestors_query = <<-SQL
         WITH RECURSIVE ancestors AS (
-        SELECT child_id, parent_id, child_id AS root_node FROM assignments
+        SELECT child_id, parent_id, child_id AS root_node
+        FROM assignments
         WHERE child_id IN (#{operable_ids.join(", ")})
         UNION ALL
-        SELECT a.child_id, a.parent_id, root_node FROM assignments a
-        INNER JOIN ancestors ans
+        SELECT a.child_id, a.parent_id, root_node
+        FROM assignments a
+          INNER JOIN ancestors ans
           ON ans.parent_id = a.child_id
-          WHERE ans.parent_id = a.child_id
+        WHERE ans.parent_id = a.child_id
         )
-        SELECT ans.root_node, crs.id FROM ancestors ans
-        JOIN policy_element_associations pea
-          ON pea.object_attribute_id = ans.child_id OR pea.object_attribute_id = ans.parent_id
-        JOIN policy_elements as ra
+        SELECT ans.root_node, crs.id
+        FROM ancestors ans
+          JOIN policy_element_associations pea
+          ON pea.object_attribute_id = ans.child_id
+            OR pea.object_attribute_id = ans.parent_id
+          JOIN policy_elements as ra
           ON ra.id = pea.user_attribute_id
-        JOIN policy_elements as os
+          JOIN policy_elements as os
           ON pea.operation_set_id = os.id
-        JOIN assignments as bb_a
+          JOIN assignments as bb_a
           ON os.id = bb_a.parent_id
-        JOIN assignments as crs_a
+          JOIN assignments as crs_a
           ON bb_a.child_id = crs_a.child_id
-        JOIN policy_elements AS crs
+          JOIN policy_elements AS crs
           ON crs_a.parent_id = crs.id
         WHERE ra.operator_uri = '#{operator_uri}'
           AND crs.active_policy_element_type = 'ConflictingRolesSet'
