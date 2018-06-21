@@ -99,10 +99,12 @@ module PolicyMachineStorageAdapter
     def self.conflicts_for_operables(operable_ids, crs_ids)
       descendants_query = <<-SQL
         WITH RECURSIVE descendants AS (
-          SELECT parent_id, child_id, parent_id as root_node FROM assignments
-          WHERE parent_id IN (#{operable_ids.join(", ")})
+          SELECT parent_id, child_id, parent_id as root_node
+          FROM assignments
+            WHERE parent_id IN (#{operable_ids.join(", ")})
           UNION ALL
-          SELECT a.parent_id, a.child_id, root_node FROM assignments a
+          SELECT a.parent_id, a.child_id, root_node
+          FROM assignments a
           INNER JOIN descendants d 
             ON a.parent_id = d.child_id
             WHERE a.parent_id = d.child_id
@@ -136,13 +138,15 @@ module PolicyMachineStorageAdapter
 
       ancestors_query = <<-SQL
         WITH RECURSIVE ancestors AS (
-          SELECT child_id, parent_id, child_id AS root_node FROM assignments
-          WHERE child_id IN (#{operable_ids.join(", ")})
+          SELECT child_id, parent_id, child_id AS root_node
+          FROM assignments
+            WHERE child_id IN (#{operable_ids.join(", ")})
           UNION ALL
-          SELECT a.child_id, a.parent_id, root_node FROM assignments a
+          SELECT a.child_id, a.parent_id, root_node
+          FROM assignments a
           INNER JOIN ancestors ans
             ON ans.parent_id = a.child_id
-            WHERE ans.parent_id = a.child_id
+          WHERE ans.parent_id = a.child_id
         )
         SELECT ans.root_node, ra.operator_uri, crs.id FROM ancestors ans
         JOIN policy_element_associations pea
