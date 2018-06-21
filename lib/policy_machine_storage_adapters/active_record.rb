@@ -175,7 +175,7 @@ module PolicyMachineStorageAdapter
     end
 
     # Check conflicts for Grant updates
-    def self.conflicts_for_operators_and_operables(operator_uri, operable_ids)
+    def self.conflicts_for_operators_and_operables(operator_uri, operable_ids, crs_ids)
       descendants_query = <<-SQL
         WITH RECURSIVE descendants AS (
           SELECT parent_id, child_id, parent_id AS root_node FROM assignments
@@ -208,6 +208,7 @@ module PolicyMachineStorageAdapter
           AND os.id = bb_a.parent_id
           AND bb_a.child_id = crs_a.child_id
           AND crs_a.parent_id = crs.id
+          AND crs_a.parent_id IN (#{crs_ids.join(", ")})
         GROUP BY root_node, crs.id
         HAVING COUNT(DISTINCT bb_a.child_id) > 1
       SQL
@@ -242,6 +243,7 @@ module PolicyMachineStorageAdapter
           AND os.id = bb_a.parent_id
           AND bb_a.child_id = crs_a.child_id
           AND crs_a.parent_id = crs.id
+          AND crs_a.parent_id IN (#{crs_ids.join(", ")})
         GROUP BY root_node, crs.id
         HAVING COUNT(DISTINCT bb_a.child_id) > 1
       SQL
