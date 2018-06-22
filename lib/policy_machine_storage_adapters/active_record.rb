@@ -109,7 +109,7 @@ module PolicyMachineStorageAdapter
             ON a.parent_id = d.child_id
           WHERE a.parent_id = d.child_id
         )
-        SELECT root_node, ra.operator_uri, crs.id
+        SELECT root_node, ra.operator_uri, crs.id AS crs_id
         FROM descendants d
           JOIN policy_element_associations AS pea
           ON pea.object_attribute_id = d.child_id
@@ -150,7 +150,7 @@ module PolicyMachineStorageAdapter
             ON ans.parent_id = a.child_id
           WHERE ans.parent_id = a.child_id
         )
-        SELECT ans.root_node, ra.operator_uri, crs.id
+        SELECT ans.root_node, ra.operator_uri, crs.id AS crs_id
         FROM ancestors ans
           JOIN policy_element_associations pea
           ON pea.object_attribute_id = ans.child_id
@@ -178,8 +178,21 @@ module PolicyMachineStorageAdapter
         HAVING COUNT(DISTINCT bb_a.child_id) > 1
       SQL
 
-      result = PolicyElement.connection.exec_query(descendants_query).rows.flatten.map(&:to_i)
-      result.concat(PolicyElement.connection.exec_query(ancestors_query).rows.flatten.map(&:to_i))
+      combined_query = <<-SQL
+        WITH descendants_query AS (
+          #{descendants_query}
+        ),
+        ancestors_query AS (
+          #{ancestors_query}
+        )
+        SELECT root_node, operator_uri, crs_id
+        FROM descendants_query
+        UNION ALL
+        SELECT root_node, operator_uri, crs_id
+        FROM ancestors_query
+      SQL
+
+      result = PolicyElement.connection.exec_query(combined_query).rows.flatten.map(&:to_i)
     end
 
     # Check conflicts for Grant updates
@@ -196,7 +209,7 @@ module PolicyMachineStorageAdapter
             ON a.parent_id = d.child_id
           WHERE a.parent_id = d.child_id
         )
-        SELECT d.root_node, crs.id
+        SELECT d.root_node, crs.id AS crs_id
         FROM descendants d
           JOIN policy_element_associations pea
           ON pea.object_attribute_id = d.child_id
@@ -237,7 +250,7 @@ module PolicyMachineStorageAdapter
           ON ans.parent_id = a.child_id
         WHERE ans.parent_id = a.child_id
         )
-        SELECT ans.root_node, crs.id
+        SELECT ans.root_node, crs.id AS crs_id
         FROM ancestors ans
           JOIN policy_element_associations pea
           ON pea.object_attribute_id = ans.child_id
@@ -264,8 +277,21 @@ module PolicyMachineStorageAdapter
         HAVING COUNT(DISTINCT bb_a.child_id) > 1
       SQL
 
-      result = PolicyElement.connection.exec_query(descendants_query).rows.flatten.map(&:to_i)
-      result.concat(PolicyElement.connection.exec_query(ancestors_query).rows.flatten.map(&:to_i))
+      combined_query = <<-SQL
+        WITH descendants_query AS (
+          #{descendants_query}
+        ),
+        ancestors_query AS (
+          #{ancestors_query}
+        )
+        SELECT root_node, crs_id
+        FROM descendants_query
+        UNION ALL
+        SELECT root_node, crs_id
+        FROM ancestors_query
+      SQL
+
+      result = PolicyElement.connection.exec_query(combined_query).rows.flatten.map(&:to_i)
     end
 
     class PolicyElement < ::ActiveRecord::Base
