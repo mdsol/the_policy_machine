@@ -37,6 +37,7 @@ module PolicyMachineStorageAdapter
 
     end
     def add_operation_set(unique_identifier, policy_machine_uuid, extra_attributes = {})
+
     end
     def add_policy_class(unique_identifier, policy_machine_uuid, extra_attributes = {})
 

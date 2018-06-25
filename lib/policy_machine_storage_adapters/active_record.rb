@@ -95,6 +95,215 @@ module PolicyMachineStorageAdapter
       true #TODO: More useful return value?
     end
 
+    # Check conflicts roles on a configuration type role update. Starting from all the operables assigned to a given configuration type role,
+    # we find the ancestors and descendants of those operables and track their paths. For each of these operables, we join role assignments,
+    # the associated operation set, the associated building block operation sets, and the conflicting roles sets.
+    # If we find that on any given path, we have an operator assigned two distinct building blocks that are part of
+    # the same conflicting roles set, we determine that a conflict exists.
+    # The array returned is in the form of [path_id, operator_uri, conflicting_roles_set_id]
+    def self.conflicts_for_operables(operable_ids, conflicting_roles_set_ids)
+      descendants_query = <<-SQL
+        WITH RECURSIVE descendants AS (
+          SELECT parent_id, child_id, parent_id AS root_node
+          FROM assignments
+          WHERE parent_id IN (#{operable_ids.join(", ")})
+          UNION ALL
+          SELECT a.parent_id, a.child_id, root_node
+          FROM assignments a
+            INNER JOIN descendants d 
+            ON a.parent_id = d.child_id
+          WHERE a.parent_id = d.child_id
+        )
+        SELECT root_node, role_assignment.operator_uri, conflicting_roles_set.id AS conflicting_roles_set_id
+        FROM descendants d
+          JOIN policy_element_associations AS pea
+          ON pea.object_attribute_id = d.child_id
+            OR pea.object_attribute_id = d.parent_id
+          JOIN policy_elements AS role_assignment
+          ON role_assignment.id = pea.user_attribute_id
+          JOIN policy_elements AS operation_set
+          ON pea.operation_set_id = operation_set.id
+          JOIN assignments AS building_block_assignment
+          ON operation_set.id = building_block_assignment.parent_id
+          JOIN assignments AS conflicint_roles_set_assignment
+          ON building_block_assignment.child_id = conflicint_roles_set_assignment.child_id
+          JOIN policy_elements AS conflicting_roles_set
+          ON conflicint_roles_set_assignment.parent_id = conflicting_roles_set.id
+            AND conflicting_roles_set.active_policy_element_type = 'ConflictingRolesSet'
+        WHERE conflicting_roles_set.active_policy_element_type = 'ConflictingRolesSet'
+          AND (pea.object_attribute_id = d.child_id
+            OR pea.object_attribute_id = d.parent_id)
+          AND role_assignment.id = pea.user_attribute_id
+          AND pea.operation_set_id = operation_set.id
+          AND operation_set.id = building_block_assignment.parent_id
+          AND building_block_assignment.child_id = conflicint_roles_set_assignment.child_id
+          AND conflicint_roles_set_assignment.parent_id = conflicting_roles_set.id
+          AND conflicint_roles_set_assignment.parent_id IN (#{conflicting_roles_set_ids.join(", ")})
+        GROUP BY root_node, role_assignment.operator_uri, conflicting_roles_set.id
+        HAVING COUNT(DISTINCT building_block_assignment.child_id) > 1
+      SQL
+
+      ancestors_query = <<-SQL
+        WITH RECURSIVE ancestors AS (
+          SELECT child_id, parent_id, child_id AS root_node
+          FROM assignments
+          WHERE child_id IN (#{operable_ids.join(", ")})
+          UNION ALL
+          SELECT a.child_id, a.parent_id, root_node
+          FROM assignments a
+            INNER JOIN ancestors ans
+            ON ans.parent_id = a.child_id
+          WHERE ans.parent_id = a.child_id
+        )
+        SELECT ans.root_node, role_assignment.operator_uri, conflicting_roles_set.id AS conflicting_roles_set_id
+        FROM ancestors ans
+          JOIN policy_element_associations pea
+          ON pea.object_attribute_id = ans.child_id
+            OR pea.object_attribute_id = ans.parent_id
+          JOIN policy_elements AS role_assignment
+          ON role_assignment.id = pea.user_attribute_id
+          JOIN policy_elements AS operation_set
+          ON pea.operation_set_id = operation_set.id
+          JOIN assignments AS building_block_assignment
+          ON operation_set.id = building_block_assignment.parent_id
+          JOIN assignments AS conflicint_roles_set_assignment
+          ON building_block_assignment.child_id = conflicint_roles_set_assignment.child_id
+          JOIN policy_elements AS conflicting_roles_set
+          ON conflicint_roles_set_assignment.parent_id = conflicting_roles_set.id
+        WHERE conflicting_roles_set.active_policy_element_type = 'ConflictingRolesSet'
+          AND (pea.object_attribute_id = ans.child_id
+            OR pea.object_attribute_id = ans.parent_id)
+          AND role_assignment.id = pea.user_attribute_id
+          AND pea.operation_set_id = operation_set.id
+          AND operation_set.id = building_block_assignment.parent_id
+          AND building_block_assignment.child_id = conflicint_roles_set_assignment.child_id
+          AND conflicint_roles_set_assignment.parent_id = conflicting_roles_set.id
+          AND conflicint_roles_set_assignment.parent_id IN (#{conflicting_roles_set_ids.join(", ")})
+        GROUP BY root_node, role_assignment.operator_uri, conflicting_roles_set.id
+        HAVING COUNT(DISTINCT building_block_assignment.child_id) > 1
+      SQL
+
+      combined_query = <<-SQL
+        WITH descendants_query AS (
+          #{descendants_query}
+        ),
+        ancestors_query AS (
+          #{ancestors_query}
+        )
+        SELECT root_node, operator_uri, conflicting_roles_set_id
+        FROM descendants_query
+        UNION ALL
+        SELECT root_node, operator_uri, conflicting_roles_set_id
+        FROM ancestors_query
+      SQL
+
+      result = PolicyElement.connection.exec_query(combined_query).rows.flatten.map(&:to_i)
+    end
+
+    # Check conflicts for Grant updates. Starting from all the operables being assigned to a given operator in a grant,
+    # we find the ancestors and descendants of those operables and track their paths. For each of these operables, we join role assignments,
+    # the associated operation set, the associated building block operation sets, and the conflicting roles sets.
+    # If we find that on any given path, we have a given operator assigned two distinct building blocks that are part of
+    # the same conflicting roles set, we determine that a conflict exists.
+    # The array returned is in the form of [path_id, conflicting_roles_set_id]
+    def self.conflicts_for_operator_and_operables(operator_uri, operable_ids, conflicting_roles_set_ids)
+      descendants_query = <<-SQL
+        WITH RECURSIVE descendants AS (
+          SELECT parent_id, child_id, parent_id AS root_node
+          FROM assignments
+          WHERE parent_id IN (#{operable_ids.join(", ")})
+          UNION ALL
+          SELECT a.parent_id, a.child_id, root_node
+          FROM assignments a
+            INNER JOIN descendants d
+            ON a.parent_id = d.child_id
+          WHERE a.parent_id = d.child_id
+        )
+        SELECT d.root_node, conflicting_roles_set.id AS conflicting_roles_set_id
+        FROM descendants d
+          JOIN policy_element_associations pea
+          ON pea.object_attribute_id = d.child_id
+            OR pea.object_attribute_id = d.parent_id
+          JOIN policy_elements AS role_assignment
+          ON role_assignment.id = pea.user_attribute_id
+          JOIN policy_elements AS operation_set
+          ON pea.operation_set_id = operation_set.id
+          JOIN assignments AS building_block_assignment
+          ON operation_set.id = building_block_assignment.parent_id
+          JOIN assignments AS conflicint_roles_set_assignment
+          ON building_block_assignment.child_id = conflicint_roles_set_assignment.child_id
+          JOIN policy_elements AS conflicting_roles_set
+          ON conflicint_roles_set_assignment.parent_id = conflicting_roles_set.id
+        WHERE role_assignment.operator_uri = '#{operator_uri}'
+          AND conflicting_roles_set.active_policy_element_type = 'ConflictingRolesSet'
+          AND (pea.object_attribute_id = d.child_id
+            OR pea.object_attribute_id = d.parent_id)
+          AND role_assignment.id = pea.user_attribute_id
+          AND pea.operation_set_id = operation_set.id
+          AND operation_set.id = building_block_assignment.parent_id
+          AND building_block_assignment.child_id = conflicint_roles_set_assignment.child_id
+          AND conflicint_roles_set_assignment.parent_id = conflicting_roles_set.id
+          AND conflicint_roles_set_assignment.parent_id IN (#{conflicting_roles_set_ids.join(", ")})
+        GROUP BY root_node, conflicting_roles_set.id
+        HAVING COUNT(DISTINCT building_block_assignment.child_id) > 1
+      SQL
+
+      ancestors_query = <<-SQL
+        WITH RECURSIVE ancestors AS (
+        SELECT child_id, parent_id, child_id AS root_node
+        FROM assignments
+        WHERE child_id IN (#{operable_ids.join(", ")})
+        UNION ALL
+        SELECT a.child_id, a.parent_id, root_node
+        FROM assignments a
+          INNER JOIN ancestors ans
+          ON ans.parent_id = a.child_id
+        WHERE ans.parent_id = a.child_id
+        )
+        SELECT ans.root_node, conflicting_roles_set.id AS conflicting_roles_set_id
+        FROM ancestors ans
+          JOIN policy_element_associations pea
+          ON pea.object_attribute_id = ans.child_id
+            OR pea.object_attribute_id = ans.parent_id
+          JOIN policy_elements AS role_assignment
+          ON role_assignment.id = pea.user_attribute_id
+          JOIN policy_elements AS operation_set
+          ON pea.operation_set_id = operation_set.id
+          JOIN assignments AS building_block_assignment
+          ON operation_set.id = building_block_assignment.parent_id
+          JOIN assignments AS conflicint_roles_set_assignment
+          ON building_block_assignment.child_id = conflicint_roles_set_assignment.child_id
+          JOIN policy_elements AS conflicting_roles_set
+          ON conflicint_roles_set_assignment.parent_id = conflicting_roles_set.id
+        WHERE role_assignment.operator_uri = '#{operator_uri}'
+          AND conflicting_roles_set.active_policy_element_type = 'ConflictingRolesSet'
+          AND role_assignment.id = pea.user_attribute_id
+          AND pea.operation_set_id = operation_set.id
+          AND operation_set.id = building_block_assignment.parent_id
+          AND building_block_assignment.child_id = conflicint_roles_set_assignment.child_id
+          AND conflicint_roles_set_assignment.parent_id = conflicting_roles_set.id
+          AND conflicint_roles_set_assignment.parent_id IN (#{conflicting_roles_set_ids.join(", ")})
+        GROUP BY root_node, conflicting_roles_set.id
+        HAVING COUNT(DISTINCT building_block_assignment.child_id) > 1
+      SQL
+
+      combined_query = <<-SQL
+        WITH descendants_query AS (
+          #{descendants_query}
+        ),
+        ancestors_query AS (
+          #{ancestors_query}
+        )
+        SELECT root_node, conflicting_roles_set_id
+        FROM descendants_query
+        UNION ALL
+        SELECT root_node, conflicting_roles_set_id
+        FROM ancestors_query
+      SQL
+
+      result = PolicyElement.connection.exec_query(combined_query).rows.flatten.map(&:to_i)
+    end
+
     class PolicyElement < ::ActiveRecord::Base
       alias_method :persisted, :persisted?
       singleton_class.send(:alias_method, :active_record_serialize, :serialize)
