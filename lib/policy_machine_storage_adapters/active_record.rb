@@ -441,8 +441,6 @@ module PolicyMachineStorageAdapter
         # Generated PolicyElement class
         pe_class = class_for_type(pe_type)
 
-        # binding.pry
-
         # Arel matches provides agnostic case insensitive sql for mysql and postgres
         # If :ignore_case is not falsey..
         all = if options[:ignore_case]
