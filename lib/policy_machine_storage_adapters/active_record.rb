@@ -432,33 +432,49 @@ module PolicyMachineStorageAdapter
       end
 
       define_method("find_all_of_type_#{pe_type}") do |options = {}|
+        # conditions: { "column": "matching value"} or {"column": ["matching 1", "matching 2"] }
         conditions = options.slice!(:per_page, :page, :ignore_case).stringify_keys
+        # extra_attribute_conditions: like conditions, but attributes stored on :extra_attributes columns
         extra_attribute_conditions = conditions.slice!(*PolicyElement.column_names)
+        # TODO: Figure out what include_conditions does
         include_conditions, conditions = conditions.partition { |k,v| include_condition?(k,v) }
+        # Generated PolicyElement class
         pe_class = class_for_type(pe_type)
 
+        # binding.pry
+
         # Arel matches provides agnostic case insensitive sql for mysql and postgres
+        # If :ignore_case is not falsey..
         all = if options[:ignore_case]
+                # map over each condition..
                 conditions.map do |k,v|
+                  # if the ignore_case should apply to this condition..
                   if ignore_case_applies?(options[:ignore_case], k)
+                    # use case-insensitive SQL matching..
                     pe_class.arel_table[k].matches(v)
                   else
+                    # use case-sensitive SQL matching..
                     pe_class.arel_table[k].eq(v)
                   end
+                # and reduce mapping of condition results to those that appear in every condition result.
                 end.reduce(pe_class.where(nil)) { |rel, e| rel.where(e) }
+              # If :ignore_case is falsey..
               else
+                # use case-sensitive SQL matching.
                 pe_class.where(conditions.to_h)
               end
 
+        # TODO: Figure out what include_conditions does
         include_conditions.each do |key, value|
           all = Adapter.apply_include_condition(scope: all, key: key, value: value[:include], klass: class_for_type(pe_type))
         end
 
+        # Iterate over all variable to select only results that match every key/value pair in extra_attribute_conditions.
         extra_attribute_conditions.each do |key, value|
           Warn.once("WARNING: #{self.class} is filtering #{pe_type} on #{key} in memory, which won't scale well. " \
                     "To move this query to the database, add a '#{key}' column to the policy_elements table " \
                     "and re-save existing records")
-          all.to_a.select! { |pe| pe_matches_extra_attributes?(pe, key, value, options[:ignore_case]) }
+          all = all.select { |pe| pe_matches_extra_attributes?(pe, key, value, options[:ignore_case]) }
         end
 
         # Default to first page if not specified
@@ -498,10 +514,20 @@ module PolicyMachineStorageAdapter
       if policy_element.store_attributes
         attr_value = policy_element.extra_attributes_hash[key]
 
-        if ignore_case_applies?(ignore_case, key) && attr_value.is_a?(String) && value.is_a?(String)
-          attr_value.downcase == value.downcase
+        if value.is_a?(Array)
+          value.any? do |v|
+            if ignore_case_applies?(ignore_case, key) && attr_value.is_a?(String) && v.is_a?(String)
+              attr_value.downcase == v.downcase
+            else
+              attr_value == v
+            end
+          end
         else
-          attr_value == value
+          if ignore_case_applies?(ignore_case, key) && attr_value.is_a?(String) && value.is_a?(String)
+            attr_value.downcase == value.downcase
+          else
+            attr_value == value
+          end
         end
       end
     end
@@ -509,7 +535,16 @@ module PolicyMachineStorageAdapter
     # Allow ignore_case to be a boolean, string, symbol, or array of symbols or strings
     def ignore_case_applies?(ignore_case, key)
       return false if key == 'policy_machine_uuid'
-      ignore_case == true || ignore_case.to_s == key || ( ignore_case.respond_to?(:any?) && ignore_case.any? { |k| k.to_s == key } )
+
+      return true if ignore_case == true
+
+      # i.e. ignore_case = :name, key = 'name'
+      return true if ignore_case.to_s == key
+
+      # i.e. ignore_case = [:name, :parent_uri], key = 'name'
+      return true if ignore_case.respond_to?(:any?) && ignore_case.any? { |k| k.to_s == key }
+
+      return false
     end
 
     ##

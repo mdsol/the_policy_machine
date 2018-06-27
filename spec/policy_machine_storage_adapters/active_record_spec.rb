@@ -34,11 +34,39 @@ describe 'ActiveRecord' do
         end
       end
 
+      it 'accepts an array parameter on a column attribute' do
+        search_uuids = ['some_uuid1', 'some_uuid2']
+        policy_machine_storage_adapter.add_object(search_uuids[0], 'some_policy_machine_uuid1')
+        policy_machine_storage_adapter.add_object(search_uuids[1], 'some_policy_machine_uuid1')
+        policy_machine_storage_adapter.add_object('some_uuid3', 'some_policy_machine_uuid1')
+
+        expect(
+          policy_machine_storage_adapter.find_all_of_type_object(
+            unique_identifier: search_uuids
+          ).count
+        ).to eq(2)
+      end
+
       context 'an extra attribute column has been added to the database' do
 
         it 'does not warn' do
           expect(Warn).to_not receive(:warn)
           expect(policy_machine_storage_adapter.find_all_of_type_user(color: 'red')).to be_empty
+        end
+
+        it 'accepts an array parameter' do
+          foos = ['bar', 'baz']
+          foos.each do |foo|
+            policy_machine_storage_adapter.add_object(SecureRandom.uuid, SecureRandom.uuid, foo: foo)
+          end
+          policy_machine_storage_adapter.add_object(SecureRandom.uuid, SecureRandom.uuid, foo: nil)
+
+          result = policy_machine_storage_adapter.find_all_of_type_object(foo: foos)
+
+          expect(result.count).to eq(2)
+          foos.each do |foo|
+            expect(result.map(&:foo)).to include(foo)
+          end
         end
 
         it 'only returns elements that match the hash' do
