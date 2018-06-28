@@ -481,7 +481,12 @@ module PolicyMachineStorageAdapter
           Warn.once("WARNING: #{self.class} is filtering #{pe_type} on #{key} in memory, which won't scale well. " \
                     "To move this query to the database, add a '#{key}' column to the policy_elements table " \
                     "and re-save existing records")
-          all = all.select { |pe| pe_matches_extra_attributes?(pe, key, value, options[:ignore_case]) }
+
+          ids = all.select do |pe|
+            pe_matches_extra_attributes?(pe, key, value, options[:ignore_case])
+          end.map(&:id)
+
+          all = pe_class.where(id: ids)
         end
 
         # Default to first page if not specified
