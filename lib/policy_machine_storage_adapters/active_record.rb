@@ -448,8 +448,15 @@ module PolicyMachineStorageAdapter
                 conditions.map do |k,v|
                   # if the ignore_case should apply to this condition..
                   if ignore_case_applies?(options[:ignore_case], k)
-                    # use case-insensitive SQL matching..
-                    pe_class.arel_table[k].matches(v)
+                    # and the passed parameter is not an array..
+                    unless v.is_a?(Array)
+                      # use case-insensitive SQL matching..
+                      pe_class.arel_table[k].matches(v)
+                    # and the passed parameter is an array..
+                    else
+                      # use case-insensitive SQL matching to the array..
+                      pe_class.arel_table[k].matches_any(v)
+                    end
                   else
                     # use case-sensitive SQL matching..
                     pe_class.arel_table[k].eq(v)

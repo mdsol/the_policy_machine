@@ -47,8 +47,23 @@ describe 'ActiveRecord' do
         ).to eq(2)
       end
 
-      context 'an extra attribute column has been added to the database' do
+      context 'when case insensitive' do
+        it 'accepts an array parameter on a column attribute' do
+          colors = ['some_uuid1', 'some_uuid2']
+          policy_machine_storage_adapter.add_object('some_uuid1', 'some_policy_machine_uuid1', color: colors[0])
+          policy_machine_storage_adapter.add_object('some_uuid2', 'some_policy_machine_uuid1', color: colors[1])
+          policy_machine_storage_adapter.add_object('some_uuid3', 'some_policy_machine_uuid1', color: nil)
 
+          expect(
+            policy_machine_storage_adapter.find_all_of_type_object(
+              color: colors,
+              ignore_case: true
+            ).count
+          ).to eq(2)
+        end
+      end
+
+      context 'an extra attribute column has been added to the database' do
         it 'does not warn' do
           expect(Warn).to_not receive(:warn)
           expect(policy_machine_storage_adapter.find_all_of_type_user(color: 'red')).to be_empty
