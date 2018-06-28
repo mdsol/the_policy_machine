@@ -63,6 +63,15 @@ describe 'ActiveRecord' do
         end
       end
 
+      it 'allows uuid as a parameter' do
+        uuid = 'some_uuid'
+        policy_machine_storage_adapter.add_object(uuid, 'some_policy_machine_uuid')
+
+        expect(
+          policy_machine_storage_adapter.find_all_of_type_object(uuid: uuid).count
+        ).to eq(1)
+      end
+
       context 'an extra attribute column has been added to the database' do
         it 'does not warn' do
           expect(Warn).to_not receive(:warn)

@@ -432,6 +432,8 @@ module PolicyMachineStorageAdapter
       end
 
       define_method("find_all_of_type_#{pe_type}") do |options = {}|
+        # Map :uuid parameter to :unique_identifier
+        options[:unique_identifier] = options.delete(:uuid) if options[:uuid]
         # conditions: { "column": "matching value"} or {"column": ["matching 1", "matching 2"] }
         conditions = options.slice!(:per_page, :page, :ignore_case).stringify_keys
         # extra_attribute_conditions: like conditions, but attributes stored on :extra_attributes columns
