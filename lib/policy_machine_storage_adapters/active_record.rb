@@ -521,19 +521,29 @@ module PolicyMachineStorageAdapter
 
         if value.is_a?(Array)
           value.any? do |v|
-            if ignore_case_applies?(ignore_case, key) && attr_value.is_a?(String) && v.is_a?(String)
-              attr_value.downcase == v.downcase
-            else
-              attr_value == v
-            end
+            extra_attribute_match(
+              ignore_case: ignore_case,
+              key: key,
+              value_1: attr_value,
+              value_2: v
+            )
           end
         else
-          if ignore_case_applies?(ignore_case, key) && attr_value.is_a?(String) && value.is_a?(String)
-            attr_value.downcase == value.downcase
-          else
-            attr_value == value
-          end
+          extra_attribute_match(
+            ignore_case: ignore_case,
+            key: key,
+            value_1: attr_value,
+            value_2: value
+          )
         end
+      end
+    end
+
+    def extra_attribute_match(ignore_case:, key:, value_1:, value_2:)
+      if ignore_case_applies?(ignore_case, key) && value_1.is_a?(String) && value_2.is_a?(String)
+        value_1.downcase == value_2.downcase
+      else
+        value_1 == value_2
       end
     end
 
