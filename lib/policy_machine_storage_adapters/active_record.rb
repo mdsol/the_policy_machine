@@ -566,7 +566,7 @@ module PolicyMachineStorageAdapter
       # i.e. ignore_case = [:name, :parent_uri], key = 'name'
       return true if ignore_case.respond_to?(:any?) && ignore_case.any? { |k| k.to_s == key }
 
-      return false
+      false
     end
 
     ##
