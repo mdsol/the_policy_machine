@@ -443,7 +443,8 @@ module PolicyMachineStorageAdapter
         # Generated PolicyElement class
         pe_class = class_for_type(pe_type)
 
-        # Arel matches provides agnostic case insensitive sql for mysql and postgres
+        # Arel matches provides agnostic case insensitive sql for MySQL and
+        # Postgres. This should always evaluate to an ActiveRecord_Relation.
         # If :ignore_case is not falsey..
         all = if options[:ignore_case]
                 # map over each condition..
