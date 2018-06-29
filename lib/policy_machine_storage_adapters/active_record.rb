@@ -460,8 +460,21 @@ module PolicyMachineStorageAdapter
                       pe_class.arel_table[k].matches_any(v)
                     end
                   else
-                    # use case-sensitive SQL matching..
-                    pe_class.arel_table[k].eq(v)
+                    # and the passed parameter is not an array..
+                    unless v.is_a?(Array)
+                      # use case-sensitive SQL matching..
+                      pe_class.arel_table[k].eq(v)
+                    # and the passed parameter is an array..
+                    else
+                      if v.count > 0
+                        # use case-sensitive SQL matching to the array..
+                        pe_class.arel_table[k].eq_any(v)
+                      else
+                        # Arel blows up with empty array passed to eq_any
+                        # See: https://github.com/rails/arel/issues/368
+                        ::Arel::Nodes::SqlLiteral.new("(NULL)")
+                      end
+                    end
                   end
                 # and reduce mapping of condition results to those that appear in every condition result.
                 end.reduce(pe_class.where(nil)) { |rel, e| rel.where(e) }
