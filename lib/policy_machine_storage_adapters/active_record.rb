@@ -459,10 +459,7 @@ module PolicyMachineStorageAdapter
                     ignore_case: options[:ignore_case]
                   )
 
-        results = paginate_scope(
-                    scope: results,
-                    options: options
-                  )
+        results = paginate_scope(scope: results, options: options)
 
         # TODO: Look into moving this block into previous pagination conditional and test in consuming app
         unless results.respond_to? :total_entries
