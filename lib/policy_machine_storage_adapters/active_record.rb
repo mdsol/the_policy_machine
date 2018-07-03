@@ -518,7 +518,7 @@ module PolicyMachineStorageAdapter
       unless value.is_a?(Array)
         pe_class.arel_table[key].eq(value)
       else
-        if value.count > 0
+        unless value.empty?
           pe_class.arel_table[key].eq_any(value)
         else
           # Arel blows up with empty array passed to eq_any
@@ -531,7 +531,7 @@ module PolicyMachineStorageAdapter
     # Iterate over the input scope and return elements that match the extra
     # attribute conditions
     def filter_by_extra_attributes(scope:, extra_attribute_conditions:, pe_class:, ignore_case:)
-      if extra_attribute_conditions.count > 0
+      unless extra_attribute_conditions.empty?
         ids = scope.select do |pe|
           pe_within_scope = true
 
