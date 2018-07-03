@@ -505,7 +505,7 @@ module PolicyMachineStorageAdapter
       end
     end
 
-    # Build arel nodes using case-sensitive equality checking
+    # Build Arel nodes using case-sensitive equality checking
     def build_arel_sensitive(pe_class:, key:, value:)
       unless value.is_a?(Array)
         pe_class.arel_table[key].eq(value)
