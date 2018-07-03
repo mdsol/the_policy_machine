@@ -438,83 +438,41 @@ module PolicyMachineStorageAdapter
         conditions = options.slice!(:per_page, :page, :ignore_case).stringify_keys
         # extra_attribute_conditions: like conditions, but attributes stored on :extra_attributes columns
         extra_attribute_conditions = conditions.slice!(*PolicyElement.column_names)
-        # TODO: Figure out what include_conditions does
+        # Extract conditions and inclusion conditions
         include_conditions, conditions = conditions.partition { |k,v| include_condition?(k,v) }
         # Generated PolicyElement class
         pe_class = class_for_type(pe_type)
 
-        # Arel matches provides agnostic case insensitive sql for MySQL and
-        # Postgres. This should always evaluate to an ActiveRecord_Relation.
-        # If :ignore_case is not falsey..
-        all = if options[:ignore_case]
-                # map over each condition..
-                conditions.map do |k,v|
-                  # if the ignore_case should apply to this condition..
-                  if ignore_case_applies?(options[:ignore_case], k)
-                    # and the passed parameter is not an array..
-                    unless v.is_a?(Array)
-                      # use case-insensitive SQL matching..
-                      pe_class.arel_table[k].matches(v)
-                    # and the passed parameter is an array..
-                    else
-                      # use case-insensitive SQL matching to the array..
-                      pe_class.arel_table[k].matches_any(v)
-                    end
-                  else
-                    # and the passed parameter is not an array..
-                    unless v.is_a?(Array)
-                      # use case-sensitive SQL matching..
-                      pe_class.arel_table[k].eq(v)
-                    # and the passed parameter is an array..
-                    else
-                      if v.count > 0
-                        # use case-sensitive SQL matching to the array..
-                        pe_class.arel_table[k].eq_any(v)
-                      else
-                        # Arel blows up with empty array passed to eq_any
-                        # See: https://github.com/rails/arel/issues/368
-                        ::Arel::Nodes::SqlLiteral.new("(NULL)")
-                      end
-                    end
-                  end
-                # and reduce mapping of condition results to those that appear in every condition result.
-                end.reduce(pe_class.where(nil)) { |rel, e| rel.where(e) }
-              # If :ignore_case is falsey..
-              else
-                # use case-sensitive SQL matching.
-                pe_class.where(conditions.to_h)
-              end
+        results = build_active_record_relation(
+                    pe_class: pe_class,
+                    conditions: conditions,
+                    ignore_case: options[:ignore_case]
+                  )
 
-        # TODO: Figure out what include_conditions does
-        include_conditions.each do |key, value|
-          all = Adapter.apply_include_condition(scope: all, key: key, value: value[:include], klass: class_for_type(pe_type))
-        end
+        results = filter_by_include_conditions(
+                    scope: results,
+                    include_conditions: include_conditions,
+                    klass: class_for_type(pe_type)
+                  )
 
-        # Iterate over all variable to select only results that match every key/value pair in extra_attribute_conditions.
-        extra_attribute_conditions.each do |key, value|
-          Warn.once("WARNING: #{self.class} is filtering #{pe_type} on #{key} in memory, which won't scale well. " \
-                    "To move this query to the database, add a '#{key}' column to the policy_elements table " \
-                    "and re-save existing records")
+        results = filter_by_extra_attributes(
+                    scope: results,
+                    extra_attribute_conditions: extra_attribute_conditions,
+                    pe_class: pe_class,
+                    ignore_case: options[:ignore_case]
+                  )
 
-          ids = all.select do |pe|
-            pe_matches_extra_attributes?(pe, key, value, options[:ignore_case])
-          end.map(&:id)
-
-          all = pe_class.where(id: ids)
-        end
-
-        # Default to first page if not specified
-        if options[:per_page]
-          page = options[:page] ? options[:page] : 1
-          all = all.order(:id).paginate(page: page, per_page: options[:per_page])
-        end
+        results = paginate_scope(
+                    scope: results,
+                    options: options
+                  )
 
         # TODO: Look into moving this block into previous pagination conditional and test in consuming app
-        unless all.respond_to? :total_entries
-          all.define_singleton_method(:total_entries) { all.size }
+        unless results.respond_to? :total_entries
+          results.define_singleton_method(:total_entries) { results.size }
         end
 
-        all
+        results
       end
 
       define_method("pluck_all_of_type_#{pe_type}") do |fields:, options: {}|
@@ -523,6 +481,97 @@ module PolicyMachineStorageAdapter
         method("find_all_of_type_#{pe_type}").call(options).select(*fields)
       end
     end # End of POLICY_ELEMENT_TYPES iteration
+
+    # Arel matches provides agnostic case insensitive sql for MySQL and
+    # Postgres. This should always evaluate to an ActiveRecord_Relation.
+    def build_active_record_relation(pe_class:, conditions:, ignore_case:)
+      # If we have to worry about a condition being case insensitive, we need
+      # to map over all the conditions and build the nodes manually in arel
+      if ignore_case
+        conditions.map do |k, v|
+          # should the matching be case insensitive?
+          if ignore_case_applies?(ignore_case, k)
+            build_arel_matching(pe_class: pe_class, key: k, value: v)
+          else
+            build_arel_equality(pe_class: pe_class, key: k, value: v)
+          end
+        # reduce arel nodes into ActiveRecord_Relation
+        end.reduce(pe_class.where(nil)) { |rel, e| rel.where(e) }
+      else
+        # If we don't have to worry about any condition being case insensitive,
+        # we can just use a normal where call
+        pe_class.where(conditions.to_h)
+      end
+    end
+
+    # Build arel nodes using case-insensitive matching
+    def build_arel_matching(pe_class:, key:, value:)
+      unless value.is_a?(Array)
+        pe_class.arel_table[key].matches(value)
+      else
+        pe_class.arel_table[key].matches_any(value)
+      end
+    end
+
+    # Build arel nodes using case-sensitive equality checking
+    def build_arel_equality(pe_class:, key:, value:)
+      unless value.is_a?(Array)
+        pe_class.arel_table[key].eq(value)
+      else
+        if value.count > 0
+          pe_class.arel_table[key].eq_any(value)
+        else
+          # Arel blows up with empty array passed to eq_any
+          # See: https://github.com/rails/arel/issues/368
+          ::Arel::Nodes::SqlLiteral.new("(NULL)")
+        end
+      end
+    end
+
+    # Iterate over the input scope and return elements that match the extra
+    # attribute conditions
+    def filter_by_extra_attributes(scope:, extra_attribute_conditions:, pe_class:, ignore_case:)
+      if extra_attribute_conditions.count > 0
+        ids = scope.select do |pe|
+          pe_within_scope = true
+
+          extra_attribute_conditions.each do |key, value|
+            unless pe_matches_extra_attributes?(pe, key, value, ignore_case)
+              pe_within_scope = false
+            end
+          end
+
+          pe_within_scope
+        end.map(&:id)
+
+        pe_class.where(id: ids)
+      else
+        scope
+      end
+    end
+
+    # Check inclusion for each include condition using the adapter
+    def filter_by_include_conditions(scope:, include_conditions:, klass:)
+      include_conditions.each do |key, value|
+        scope = Adapter.apply_include_condition(
+          scope: scope,
+          key: key,
+          value: value[:include],
+          klass: klass
+        )
+      end
+      scope
+    end
+
+    # Paginate the scope if options hash has pagination information
+    def paginate_scope(scope:, options:)
+      # Default to first page if not specified
+      if options[:per_page]
+        page = options[:page] ? options[:page] : 1
+        scope = scope.order(:id).paginate(page: page, per_page: options[:per_page])
+      end
+      scope
+    end
 
     # A value hash where the only key is :include is special.
     # Note: If we start accepting literal hash values this may need to start checking the key's column type
