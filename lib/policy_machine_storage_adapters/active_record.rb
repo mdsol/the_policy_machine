@@ -476,13 +476,15 @@ module PolicyMachineStorageAdapter
       end
     end # End of POLICY_ELEMENT_TYPES iteration
 
-    # Arel matches provides agnostic case insensitive sql for MySQL and
-    # Postgres. This should always evaluate to an ActiveRecord_Relation.
+    # Given a policy element class and a set of conditions, returns an
+    # ActiveRecord_Relation with those conditions applied
     def build_active_record_relation(pe_class:, conditions:, ignore_case:)
       # If any condition is case-insensitive, the nodes need to be built
       # individually with Arel.
       if ignore_case
         conditions.map do |k, v|
+          # Arel matches provides agnostic case insensitive sql for MySQL and
+          # Postgres. This should always evaluate to an ActiveRecord_Relation.
           if ignore_case_applies?(ignore_case, k)
             build_arel_insensitive(pe_class: pe_class, key: k, value: v)
           else
