@@ -432,13 +432,10 @@ module PolicyMachineStorageAdapter
       end
 
       define_method("find_all_of_type_#{pe_type}") do |options = {}|
-        # Map :uuid parameter to :unique_identifier
         options[:unique_identifier] = options.delete(:uuid) if options[:uuid]
-        # conditions: { "column": "matching value"} or {"column": ["matching 1", "matching 2"] }
         conditions = options.slice!(:per_page, :page, :ignore_case).stringify_keys
-        # extra_attribute_conditions: like conditions, but attributes stored on :extra_attributes columns
+        # Separate conditions on PolicyElement columns from conditions on the extra_attributes column
         extra_attribute_conditions = conditions.slice!(*PolicyElement.column_names)
-        # Extract conditions and inclusion conditions
         include_conditions, conditions = conditions.partition { |k,v| include_condition?(k,v) }
         # Generated PolicyElement class
         pe_class = class_for_type(pe_type)
@@ -485,27 +482,25 @@ module PolicyMachineStorageAdapter
     # Arel matches provides agnostic case insensitive sql for MySQL and
     # Postgres. This should always evaluate to an ActiveRecord_Relation.
     def build_active_record_relation(pe_class:, conditions:, ignore_case:)
-      # If we have to worry about a condition being case insensitive, we need
-      # to map over all the conditions and build the nodes manually in arel
+      # If any condition is case-insensitive, the nodes need to be built
+      # individually with Arel.
       if ignore_case
         conditions.map do |k, v|
-          # should the matching be case insensitive?
           if ignore_case_applies?(ignore_case, k)
-            build_arel_matching(pe_class: pe_class, key: k, value: v)
+            build_arel_insensitive(pe_class: pe_class, key: k, value: v)
           else
-            build_arel_equality(pe_class: pe_class, key: k, value: v)
+            build_arel_sensitive(pe_class: pe_class, key: k, value: v)
           end
-        # reduce arel nodes into ActiveRecord_Relation
+        # Reduce Arel nodes into ActiveRecord_Relation
         end.reduce(pe_class.where(nil)) { |rel, e| rel.where(e) }
       else
-        # If we don't have to worry about any condition being case insensitive,
-        # we can just use a normal where call
+        # If all conditions are case-sensitive, a direct where call can be used.
         pe_class.where(conditions.to_h)
       end
     end
 
-    # Build arel nodes using case-insensitive matching
-    def build_arel_matching(pe_class:, key:, value:)
+    # Build Arel nodes using case-insensitive matching
+    def build_arel_insensitive(pe_class:, key:, value:)
       unless value.is_a?(Array)
         pe_class.arel_table[key].matches(value)
       else
@@ -514,7 +509,7 @@ module PolicyMachineStorageAdapter
     end
 
     # Build arel nodes using case-sensitive equality checking
-    def build_arel_equality(pe_class:, key:, value:)
+    def build_arel_sensitive(pe_class:, key:, value:)
       unless value.is_a?(Array)
         pe_class.arel_table[key].eq(value)
       else
@@ -550,7 +545,7 @@ module PolicyMachineStorageAdapter
       end
     end
 
-    # Check inclusion for each include condition using the adapter
+    # Check inclusion for each include condition using the Adapter
     def filter_by_include_conditions(scope:, include_conditions:, klass:)
       include_conditions.each do |key, value|
         scope = Adapter.apply_include_condition(
@@ -565,7 +560,6 @@ module PolicyMachineStorageAdapter
 
     # Paginate the scope if options hash has pagination information
     def paginate_scope(scope:, options:)
-      # Default to first page if not specified
       if options[:per_page]
         page = options[:page] ? options[:page] : 1
         scope = scope.order(:id).paginate(page: page, per_page: options[:per_page])
@@ -584,7 +578,8 @@ module PolicyMachineStorageAdapter
       @pe_type_class_hash[pe_type]
     end
 
-    # Do the pe's stored attributes match the extra_attributes provided in the query
+    # Check if the PolicyElement's extra_attributes column includes the passed
+    # key and value
     def pe_matches_extra_attributes?(policy_element, key, value, ignore_case)
       if policy_element.store_attributes
         attr_value = policy_element.extra_attributes_hash[key]
@@ -623,10 +618,10 @@ module PolicyMachineStorageAdapter
 
       return true if ignore_case == true
 
-      # i.e. ignore_case = :name, key = 'name'
+      # e.g. ignore_case = :name
       return true if ignore_case.to_s == key
 
-      # i.e. ignore_case = [:name, :parent_uri], key = 'name'
+      # e.g. ignore_case = [:name, :parent_uri]
       return true if ignore_case.respond_to?(:any?) && ignore_case.any? { |k| k.to_s == key }
 
       false
