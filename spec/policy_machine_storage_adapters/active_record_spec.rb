@@ -26,14 +26,6 @@ describe 'ActiveRecord' do
     let(:policy_machine_storage_adapter) { described_class.new }
 
     describe 'find_all_of_type' do
-
-      it 'warns once when filtering on an extra attribute' do
-        expect(Warn).to receive(:warn).once
-        2.times do
-          expect(policy_machine_storage_adapter.find_all_of_type_user(foo: 'bar')).to be_empty
-        end
-      end
-
       it 'accepts an array parameter on a column attribute' do
         search_uuids = ['some_uuid1', 'some_uuid2']
         policy_machine_storage_adapter.add_object(search_uuids[0], 'some_policy_machine_uuid1')
