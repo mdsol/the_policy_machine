@@ -784,25 +784,23 @@ module PolicyMachineStorageAdapter
 
     # Build Arel nodes using case-insensitive matching
     def build_arel_insensitive(pe_class:, key:, value:)
-      unless value.is_a?(Array)
-        pe_class.arel_table[key].matches(value)
-      else
+      if value.is_a?(Array)
         pe_class.arel_table[key].matches_any(value)
+      else
+        pe_class.arel_table[key].matches(value)
       end
     end
 
     # Build Arel nodes using case-sensitive equality checking
     def build_arel_sensitive(pe_class:, key:, value:)
-      unless value.is_a?(Array)
-        pe_class.arel_table[key].eq(value)
+      # Arel blows up with empty array passed to eq_any
+      # See: https://github.com/rails/arel/issues/368
+      if value.is_a?(Array) && value.present?
+        pe_class.arel_table[key].eq_any(value)
+      elsif value.is_a?(Array)
+        ::Arel::Nodes::SqlLiteral.new("(NULL)")
       else
-        unless value.empty?
-          pe_class.arel_table[key].eq_any(value)
-        else
-          # Arel blows up with empty array passed to eq_any
-          # See: https://github.com/rails/arel/issues/368
-          ::Arel::Nodes::SqlLiteral.new("(NULL)")
-        end
+        pe_class.arel_table[key].eq(value)
       end
     end
 
