@@ -775,17 +775,34 @@ module PolicyMachineStorageAdapter
       # If any condition is case-insensitive, the nodes need to be built
       # individually with Arel.
       if ignore_case
-        conditions.map do |k, v|
-          if ignore_case_applies?(ignore_case, k)
-            build_arel_insensitive(pe_class: pe_class, key: k, value: v)
-          else
-            build_arel_sensitive(pe_class: pe_class, key: k, value: v)
-          end
-        # Reduce Arel nodes into ActiveRecord_Relation
-        end.reduce(pe_class.where(nil)) { |rel, e| rel.where(e) }
+        build_ignore_case_relation(
+          pe_class: pe_class,
+          conditions: conditions,
+          ignore_case: ignore_case
+        )
       else
         # If all conditions are case-sensitive, a direct where call can be used.
         pe_class.where(conditions.to_h)
+      end
+    end
+
+    def build_ignore_case_relation(pe_class:, conditions:, ignore_case:)
+      # Conditions hash to array so it can be reduced
+      condition_array = conditions.to_a
+      # Initialize an "empty" relation
+      starting_relation = pe_class.where(nil)
+
+      # Reduce the conditions array to a single relation by building Arel nodes
+      condition_array.reduce(starting_relation) do |relation, condition_pair|
+        key, value = condition_pair
+
+        arel_node = if ignore_case_applies?(ignore_case, key)
+                      build_arel_insensitive(pe_class: pe_class, key: key, value: value)
+                    else
+                      build_arel_sensitive(pe_class: pe_class, key: key, value: value)
+                    end
+
+        relation.where(arel_node)
       end
     end
 
@@ -804,7 +821,7 @@ module PolicyMachineStorageAdapter
       # See: https://github.com/rails/arel/issues/368
       if value.is_a?(Array) && value.present?
         pe_class.arel_table[key].eq_any(value)
-      elsif value.is_a?(Array) && value.empty? 
+      elsif value.is_a?(Array) && value.empty?
         ::Arel::Nodes::SqlLiteral.new("(NULL)")
       else
         pe_class.arel_table[key].eq(value)
