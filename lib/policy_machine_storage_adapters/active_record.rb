@@ -440,33 +440,33 @@ module PolicyMachineStorageAdapter
         # Generated PolicyElement class
         pe_class = class_for_type(pe_type)
 
-        results = build_active_record_relation(
+        relation = build_active_record_relation(
                     pe_class: pe_class,
                     conditions: conditions,
                     ignore_case: options[:ignore_case]
                   )
 
-        results = filter_by_include_conditions(
-                    scope: results,
+        relation = filter_by_include_conditions(
+                    scope: relation,
                     include_conditions: include_conditions,
                     klass: class_for_type(pe_type)
                   )
 
-        results = filter_by_extra_attributes(
-                    scope: results,
+        relation = filter_by_extra_attributes(
+                    scope: relation,
                     extra_attribute_conditions: extra_attribute_conditions,
                     pe_class: pe_class,
                     ignore_case: options[:ignore_case]
                   )
 
-        results = paginate_scope(scope: results, options: options)
+        relation = paginate_scope(scope: relation, options: options)
 
         # TODO: Look into moving this block into previous pagination conditional and test in consuming app
-        unless results.respond_to? :total_entries
-          results.define_singleton_method(:total_entries) { results.size }
+        unless relation.respond_to? :total_entries
+          relation.define_singleton_method(:total_entries) { relation.size }
         end
 
-        results
+        relation
       end
 
       define_method("pluck_all_of_type_#{pe_type}") do |fields:, options: {}|
@@ -769,8 +769,6 @@ module PolicyMachineStorageAdapter
       # individually with Arel.
       if ignore_case
         conditions.map do |k, v|
-          # Arel matches provides agnostic case insensitive sql for MySQL and
-          # Postgres. This should always evaluate to an ActiveRecord_Relation.
           if ignore_case_applies?(ignore_case, k)
             build_arel_insensitive(pe_class: pe_class, key: k, value: v)
           else
