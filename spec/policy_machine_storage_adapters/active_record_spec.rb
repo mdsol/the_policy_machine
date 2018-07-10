@@ -43,7 +43,6 @@ describe 'ActiveRecord' do
 
       context 'when case insensitive' do
         it 'accepts an array parameter on a column attribute' do
-          pm_uuid = SecureRandom.uuid
           colors = ['burnt_umber', 'mauve']
           policy_machine_storage_adapter.add_object(SecureRandom.uuid, pm_uuid, color: colors[0])
           policy_machine_storage_adapter.add_object(SecureRandom.uuid, pm_uuid, color: colors[1])
