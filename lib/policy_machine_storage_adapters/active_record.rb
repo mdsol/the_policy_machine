@@ -432,11 +432,18 @@ module PolicyMachineStorageAdapter
       end
 
       define_method("find_all_of_type_#{pe_type}") do |options = {}|
+        # Change :uuid key to :unique_identifier (the real column name)
         options[:unique_identifier] = options.delete(:uuid) if options[:uuid]
+
+        # Build the primary hash of find_all conditions
         conditions = options.slice!(:per_page, :page, :ignore_case).stringify_keys
+
         # Separate conditions on PolicyElement columns from conditions on the extra_attributes column
         extra_attribute_conditions = conditions.slice!(*PolicyElement.column_names)
+
+        # Partition strict conditions and inclusion conditions
         include_conditions, conditions = conditions.partition { |k,v| include_condition?(k,v) }
+
         # Generated PolicyElement class
         pe_class = class_for_type(pe_type)
 
@@ -797,7 +804,7 @@ module PolicyMachineStorageAdapter
       # See: https://github.com/rails/arel/issues/368
       if value.is_a?(Array) && value.present?
         pe_class.arel_table[key].eq_any(value)
-      elsif value.is_a?(Array)
+      elsif value.is_a?(Array) && value.empty? 
         ::Arel::Nodes::SqlLiteral.new("(NULL)")
       else
         pe_class.arel_table[key].eq(value)
@@ -840,7 +847,7 @@ module PolicyMachineStorageAdapter
     # Paginate the scope if options hash has pagination information
     def paginate_scope(scope:, options:)
       if options[:per_page]
-        page = options[:page] ? options[:page] : 1
+        page = options[:page] || 1
         scope = scope.order(:id).paginate(page: page, per_page: options[:per_page])
       end
       scope
