@@ -772,9 +772,9 @@ module PolicyMachineStorageAdapter
     # Given a policy element class and a set of conditions, returns an
     # ActiveRecord_Relation with those conditions applied
     def build_active_record_relation(pe_class:, conditions:, ignore_case:)
-      # If any condition is case-insensitive, the nodes need to be built
-      # individually with Arel.
       if ignore_case
+        # If any condition is case-insensitive, the nodes need to be built
+        # individually with Arel.
         build_ignore_case_relation(
           pe_class: pe_class,
           conditions: conditions,
