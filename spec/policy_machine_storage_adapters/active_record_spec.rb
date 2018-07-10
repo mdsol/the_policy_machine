@@ -27,10 +27,10 @@ describe 'ActiveRecord' do
 
     describe 'find_all_of_type' do
       it 'accepts an array parameter on a column attribute' do
-        search_uuids = ['some_uuid1', 'some_uuid2']
+        search_uuids = [SecureRandom.uuid, SecureRandom.uuid]
         policy_machine_storage_adapter.add_object(search_uuids[0], 'some_policy_machine_uuid1')
         policy_machine_storage_adapter.add_object(search_uuids[1], 'some_policy_machine_uuid1')
-        policy_machine_storage_adapter.add_object('some_uuid3', 'some_policy_machine_uuid1')
+        policy_machine_storage_adapter.add_object(SecureRandom.uuid, 'some_policy_machine_uuid1')
 
         expect(
           policy_machine_storage_adapter.find_all_of_type_object(
@@ -41,10 +41,11 @@ describe 'ActiveRecord' do
 
       context 'when case insensitive' do
         it 'accepts an array parameter on a column attribute' do
+          pm_uuid = SecureRandom.uuid
           colors = ['burnt_umber', 'mauve']
-          policy_machine_storage_adapter.add_object('some_uuid1', 'some_policy_machine_uuid1', color: colors[0])
-          policy_machine_storage_adapter.add_object('some_uuid2', 'some_policy_machine_uuid1', color: colors[1])
-          policy_machine_storage_adapter.add_object('some_uuid3', 'some_policy_machine_uuid1', color: nil)
+          policy_machine_storage_adapter.add_object(SecureRandom.uuid, pm_uuid, color: colors[0])
+          policy_machine_storage_adapter.add_object(SecureRandom.uuid, pm_uuid, color: colors[1])
+          policy_machine_storage_adapter.add_object(SecureRandom.uuid, pm_uuid, color: nil)
 
           expect(
             policy_machine_storage_adapter.find_all_of_type_object(
@@ -56,8 +57,8 @@ describe 'ActiveRecord' do
       end
 
       it 'allows uuid as a parameter' do
-        uuid = 'some_uuid'
-        policy_machine_storage_adapter.add_object(uuid, 'some_policy_machine_uuid')
+        uuid = SecureRandom.uuid
+        policy_machine_storage_adapter.add_object(uuid, SecureRandom.uuid)
 
         expect(
           policy_machine_storage_adapter.find_all_of_type_object(uuid: uuid).count
@@ -86,9 +87,10 @@ describe 'ActiveRecord' do
         end
 
         it 'only returns elements that match the hash' do
-          policy_machine_storage_adapter.add_object('some_uuid1', 'some_policy_machine_uuid1')
-          policy_machine_storage_adapter.add_object('some_uuid2', 'some_policy_machine_uuid1', color: 'red')
-          policy_machine_storage_adapter.add_object('some_uuid3', 'some_policy_machine_uuid1', color: 'blue')
+          pm_uuid = SecureRandom.uuid
+          policy_machine_storage_adapter.add_object(SecureRandom.uuid, pm_uuid)
+          policy_machine_storage_adapter.add_object(SecureRandom.uuid, pm_uuid, color: 'red')
+          policy_machine_storage_adapter.add_object(SecureRandom.uuid, pm_uuid, color: 'blue')
           expect(policy_machine_storage_adapter.find_all_of_type_object(color: 'red')).to be_one
           expect(policy_machine_storage_adapter.find_all_of_type_object(color: nil)).to be_one
           expect(policy_machine_storage_adapter.find_all_of_type_object(color: 'green')).to be_none
