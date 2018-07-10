@@ -26,11 +26,13 @@ describe 'ActiveRecord' do
     let(:policy_machine_storage_adapter) { described_class.new }
 
     describe 'find_all_of_type' do
+      let(:pm_uuid) { SecureRandom.uuid }
+
       it 'accepts an array parameter on a column attribute' do
         search_uuids = [SecureRandom.uuid, SecureRandom.uuid]
-        policy_machine_storage_adapter.add_object(search_uuids[0], 'some_policy_machine_uuid1')
-        policy_machine_storage_adapter.add_object(search_uuids[1], 'some_policy_machine_uuid1')
-        policy_machine_storage_adapter.add_object(SecureRandom.uuid, 'some_policy_machine_uuid1')
+        policy_machine_storage_adapter.add_object(search_uuids[0], pm_uuid)
+        policy_machine_storage_adapter.add_object(search_uuids[1], pm_uuid)
+        policy_machine_storage_adapter.add_object(SecureRandom.uuid, pm_uuid)
 
         expect(
           policy_machine_storage_adapter.find_all_of_type_object(
@@ -58,7 +60,7 @@ describe 'ActiveRecord' do
 
       it 'allows uuid as a parameter' do
         uuid = SecureRandom.uuid
-        policy_machine_storage_adapter.add_object(uuid, SecureRandom.uuid)
+        policy_machine_storage_adapter.add_object(uuid, pm_uuid)
 
         expect(
           policy_machine_storage_adapter.find_all_of_type_object(uuid: uuid).count
@@ -74,9 +76,9 @@ describe 'ActiveRecord' do
         it 'accepts an array parameter' do
           foos = ['bar', 'baz']
           foos.each do |foo|
-            policy_machine_storage_adapter.add_object(SecureRandom.uuid, SecureRandom.uuid, foo: foo)
+            policy_machine_storage_adapter.add_object(SecureRandom.uuid, pm_uuid, foo: foo)
           end
-          policy_machine_storage_adapter.add_object(SecureRandom.uuid, SecureRandom.uuid, foo: nil)
+          policy_machine_storage_adapter.add_object(SecureRandom.uuid, pm_uuid, foo: nil)
 
           result = policy_machine_storage_adapter.find_all_of_type_object(foo: foos)
 
@@ -87,7 +89,6 @@ describe 'ActiveRecord' do
         end
 
         it 'only returns elements that match the hash' do
-          pm_uuid = SecureRandom.uuid
           policy_machine_storage_adapter.add_object(SecureRandom.uuid, pm_uuid)
           policy_machine_storage_adapter.add_object(SecureRandom.uuid, pm_uuid, color: 'red')
           policy_machine_storage_adapter.add_object(SecureRandom.uuid, pm_uuid, color: 'blue')
@@ -99,7 +100,7 @@ describe 'ActiveRecord' do
 
         context 'pagination' do
           before do
-            10.times {|i| policy_machine_storage_adapter.add_object("uuid_#{i}", 'some_policy_machine_uuid1', color: 'red') }
+            10.times {|i| policy_machine_storage_adapter.add_object("uuid_#{i}", pm_uuid, color: 'red') }
           end
 
           it 'paginates the results based on page and per_page' do
