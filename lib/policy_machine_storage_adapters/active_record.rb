@@ -807,22 +807,20 @@ module PolicyMachineStorageAdapter
     # Iterate over the input scope and return elements that match the extra
     # attribute conditions
     def filter_by_extra_attributes(scope:, extra_attribute_conditions:, pe_class:, ignore_case:)
-      unless extra_attribute_conditions.empty?
-        ids = scope.select do |pe|
-          pe_within_scope = true
-
-          extra_attribute_conditions.each do |key, value|
-            unless pe_matches_extra_attributes?(pe, key, value, ignore_case)
-              pe_within_scope = false
-            end
+      if extra_attribute_conditions.empty?
+        scope
+      else
+        ids = scope.reduce([]) do |memo, policy_element|
+          pe_within_scope = extra_attribute_conditions.all? do |key, value|
+            pe_matches_extra_attributes?(policy_element, key, value, ignore_case)
           end
 
-          pe_within_scope
-        end.map(&:id)
+          memo.push(policy_element.id) if pe_within_scope
+          memo
+        end
+
 
         pe_class.where(id: ids)
-      else
-        scope
       end
     end
 
