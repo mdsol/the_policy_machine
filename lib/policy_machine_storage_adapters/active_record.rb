@@ -839,8 +839,7 @@ module PolicyMachineStorageAdapter
             pe_matches_extra_attributes?(policy_element, key, value, ignore_case)
           end
 
-          memo.push(policy_element.id) if pe_within_scope
-          memo
+          pe_within_scope ? memo.push(policy_element.id) : memo
         end
 
         pe_class.where(id: ids)
