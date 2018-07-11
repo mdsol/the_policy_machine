@@ -843,7 +843,6 @@ module PolicyMachineStorageAdapter
           memo
         end
 
-
         pe_class.where(id: ids)
       end
     end
