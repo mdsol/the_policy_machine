@@ -26,25 +26,71 @@ describe 'ActiveRecord' do
     let(:policy_machine_storage_adapter) { described_class.new }
 
     describe 'find_all_of_type' do
+      let(:pm_uuid) { SecureRandom.uuid }
 
-      it 'warns once when filtering on an extra attribute' do
-        expect(Warn).to receive(:warn).once
-        2.times do
-          expect(policy_machine_storage_adapter.find_all_of_type_user(foo: 'bar')).to be_empty
+      it 'accepts an array parameter on a column attribute' do
+        search_uuids = [SecureRandom.uuid, SecureRandom.uuid]
+        policy_machine_storage_adapter.add_object(search_uuids[0], pm_uuid)
+        policy_machine_storage_adapter.add_object(search_uuids[1], pm_uuid)
+        policy_machine_storage_adapter.add_object(SecureRandom.uuid, pm_uuid)
+
+        expect(
+          policy_machine_storage_adapter.find_all_of_type_object(
+            unique_identifier: search_uuids
+          ).count
+        ).to eq(2)
+      end
+
+      context 'when case insensitive' do
+        it 'accepts an array parameter on a column attribute' do
+          colors = ['burnt_umber', 'mauve']
+          policy_machine_storage_adapter.add_object(SecureRandom.uuid, pm_uuid, color: colors[0])
+          policy_machine_storage_adapter.add_object(SecureRandom.uuid, pm_uuid, color: colors[1])
+          policy_machine_storage_adapter.add_object(SecureRandom.uuid, pm_uuid, color: nil)
+
+          expect(
+            policy_machine_storage_adapter.find_all_of_type_object(
+              color: colors,
+              ignore_case: true
+            ).count
+          ).to eq(2)
         end
       end
 
-      context 'an extra attribute column has been added to the database' do
+      it 'allows uuid as a parameter' do
+        uuid = SecureRandom.uuid
+        policy_machine_storage_adapter.add_object(uuid, pm_uuid)
 
+        expect(
+          policy_machine_storage_adapter.find_all_of_type_object(uuid: uuid).count
+        ).to eq(1)
+      end
+
+      context 'when an extra attribute is used' do
         it 'does not warn' do
           expect(Warn).to_not receive(:warn)
           expect(policy_machine_storage_adapter.find_all_of_type_user(color: 'red')).to be_empty
         end
 
+        it 'accepts an array parameter' do
+          foos = ['bar', 'baz']
+          foos.each do |foo|
+            policy_machine_storage_adapter.add_object(SecureRandom.uuid, pm_uuid, foo: foo)
+          end
+          policy_machine_storage_adapter.add_object(SecureRandom.uuid, pm_uuid, foo: nil)
+
+          result = policy_machine_storage_adapter.find_all_of_type_object(foo: foos)
+
+          expect(result.count).to eq(2)
+          foos.each do |foo|
+            expect(result.map(&:foo)).to include(foo)
+          end
+        end
+
         it 'only returns elements that match the hash' do
-          policy_machine_storage_adapter.add_object('some_uuid1', 'some_policy_machine_uuid1')
-          policy_machine_storage_adapter.add_object('some_uuid2', 'some_policy_machine_uuid1', color: 'red')
-          policy_machine_storage_adapter.add_object('some_uuid3', 'some_policy_machine_uuid1', color: 'blue')
+          policy_machine_storage_adapter.add_object(SecureRandom.uuid, pm_uuid)
+          policy_machine_storage_adapter.add_object(SecureRandom.uuid, pm_uuid, color: 'red')
+          policy_machine_storage_adapter.add_object(SecureRandom.uuid, pm_uuid, color: 'blue')
           expect(policy_machine_storage_adapter.find_all_of_type_object(color: 'red')).to be_one
           expect(policy_machine_storage_adapter.find_all_of_type_object(color: nil)).to be_one
           expect(policy_machine_storage_adapter.find_all_of_type_object(color: 'green')).to be_none
@@ -53,7 +99,7 @@ describe 'ActiveRecord' do
 
         context 'pagination' do
           before do
-            10.times {|i| policy_machine_storage_adapter.add_object("uuid_#{i}", 'some_policy_machine_uuid1', color: 'red') }
+            10.times {|i| policy_machine_storage_adapter.add_object("uuid_#{i}", pm_uuid, color: 'red') }
           end
 
           it 'paginates the results based on page and per_page' do
