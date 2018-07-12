@@ -807,7 +807,7 @@ module PolicyMachineStorageAdapter
 
       # Short-circuit and return all ancestors (minus prohibitions), if authorized on the root node
       if is_privilege?(user_or_attribute, operation, root_object_pe)
-        if options[:ignore_prohibitions]
+        if options[:ignore_prohibitions] || !(prohibition = prohibition_for(operation))
           if inclusion = options[:includes]
             return ancestor_objects.select { |obj| obj.send(options[:key].to_sym).include?(inclusion) }
           else
@@ -837,9 +837,6 @@ module PolicyMachineStorageAdapter
           filtered_operation_set_ids.include?(association.operation_set_id)
         end
 
-      # TODO: Add a filter here to limit the list of permitting OAs to the set of ancestor objects
-      # Complication: an object may be accessible from ancestors not in the set
-      # i.e. how interconnected are subgraphs?
       permitting_oa_ids = filtered_associations.map(&:object_attribute_id)
       permitting_oas = PolicyElement.where(id: permitting_oa_ids)
 
