@@ -432,47 +432,48 @@ module PolicyMachineStorageAdapter
       end
 
       define_method("find_all_of_type_#{pe_type}") do |options = {}|
+        # Change :uuid key to :unique_identifier (the real column name)
+        options[:unique_identifier] = options.delete(:uuid) if options[:uuid]
+
+        # Build the primary hash of find_all conditions
         conditions = options.slice!(:per_page, :page, :ignore_case).stringify_keys
+
+        # Separate conditions on PolicyElement columns from conditions on the extra_attributes column
         extra_attribute_conditions = conditions.slice!(*PolicyElement.column_names)
+
+        # Partition strict conditions and inclusion conditions
         include_conditions, conditions = conditions.partition { |k,v| include_condition?(k,v) }
+
+        # Generated PolicyElement class
         pe_class = class_for_type(pe_type)
 
-        # Arel matches provides agnostic case insensitive sql for mysql and postgres
-        all = if options[:ignore_case]
-                conditions.map do |k,v|
-                  if ignore_case_applies?(options[:ignore_case], k)
-                    pe_class.arel_table[k].matches(v)
-                  else
-                    pe_class.arel_table[k].eq(v)
-                  end
-                end.reduce(pe_class.where(nil)) { |rel, e| rel.where(e) }
-              else
-                pe_class.where(conditions.to_h)
-              end
+        relation = build_active_record_relation(
+                    pe_class: pe_class,
+                    conditions: conditions,
+                    ignore_case: options[:ignore_case]
+                  )
 
-        include_conditions.each do |key, value|
-          all = Adapter.apply_include_condition(scope: all, key: key, value: value[:include], klass: class_for_type(pe_type))
-        end
+        relation = filter_by_include_conditions(
+                    scope: relation,
+                    include_conditions: include_conditions,
+                    klass: class_for_type(pe_type)
+                  )
 
-        extra_attribute_conditions.each do |key, value|
-          Warn.once("WARNING: #{self.class} is filtering #{pe_type} on #{key} in memory, which won't scale well. " \
-                    "To move this query to the database, add a '#{key}' column to the policy_elements table " \
-                    "and re-save existing records")
-          all.to_a.select! { |pe| pe_matches_extra_attributes?(pe, key, value, options[:ignore_case]) }
-        end
+        relation = filter_by_extra_attributes(
+                    scope: relation,
+                    extra_attribute_conditions: extra_attribute_conditions,
+                    pe_class: pe_class,
+                    ignore_case: options[:ignore_case]
+                  )
 
-        # Default to first page if not specified
-        if options[:per_page]
-          page = options[:page] ? options[:page] : 1
-          all = all.order(:id).paginate(page: page, per_page: options[:per_page])
-        end
+        relation = paginate_scope(scope: relation, options: options)
 
         # TODO: Look into moving this block into previous pagination conditional and test in consuming app
-        unless all.respond_to? :total_entries
-          all.define_singleton_method(:total_entries) { all.size }
+        unless relation.respond_to? :total_entries
+          relation.define_singleton_method(:total_entries) { relation.size }
         end
 
-        all
+        relation
       end
 
       define_method("pluck_all_of_type_#{pe_type}") do |fields:, options: {}|
@@ -481,36 +482,6 @@ module PolicyMachineStorageAdapter
         method("find_all_of_type_#{pe_type}").call(options).select(*fields)
       end
     end # End of POLICY_ELEMENT_TYPES iteration
-
-    # A value hash where the only key is :include is special.
-    # Note: If we start accepting literal hash values this may need to start checking the key's column type
-    def include_condition?(key, value)
-      value.respond_to?(:keys) && value.keys.map(&:to_sym) == [:include]
-    end
-
-    def class_for_type(pe_type)
-      @pe_type_class_hash ||= Hash.new { |h,k| h[k] = "PolicyMachineStorageAdapter::ActiveRecord::#{k.camelize}".constantize }
-      @pe_type_class_hash[pe_type]
-    end
-
-    # Do the pe's stored attributes match the extra_attributes provided in the query
-    def pe_matches_extra_attributes?(policy_element, key, value, ignore_case)
-      if policy_element.store_attributes
-        attr_value = policy_element.extra_attributes_hash[key]
-
-        if ignore_case_applies?(ignore_case, key) && attr_value.is_a?(String) && value.is_a?(String)
-          attr_value.downcase == value.downcase
-        else
-          attr_value == value
-        end
-      end
-    end
-
-    # Allow ignore_case to be a boolean, string, symbol, or array of symbols or strings
-    def ignore_case_applies?(ignore_case, key)
-      return false if key == 'policy_machine_uuid'
-      ignore_case == true || ignore_case.to_s == key || ( ignore_case.respond_to?(:any?) && ignore_case.any? { |k| k.to_s == key } )
-    end
 
     ##
     # Assign src to dst in policy machine.
@@ -797,6 +768,166 @@ module PolicyMachineStorageAdapter
     end
 
     private
+
+    # Given a policy element class and a set of conditions, returns an
+    # ActiveRecord_Relation with those conditions applied
+    def build_active_record_relation(pe_class:, conditions:, ignore_case:)
+      if ignore_case
+        # If any condition is case-insensitive, the nodes need to be built
+        # individually with Arel.
+        build_ignore_case_relation(
+          pe_class: pe_class,
+          conditions: conditions,
+          ignore_case: ignore_case
+        )
+      else
+        # If all conditions are case-sensitive, a direct where call can be used.
+        pe_class.where(conditions.to_h)
+      end
+    end
+
+    def build_ignore_case_relation(pe_class:, conditions:, ignore_case:)
+      # Conditions hash to array so it can be reduced
+      condition_array = conditions.to_a
+      # Initialize an "empty" relation
+      starting_relation = pe_class.where(nil)
+
+      # Reduce the conditions array to a single relation by building Arel nodes
+      condition_array.reduce(starting_relation) do |relation, condition_pair|
+        key, value = condition_pair
+
+        arel_node = if ignore_case_applies?(ignore_case, key)
+                      build_arel_insensitive(pe_class: pe_class, key: key, value: value)
+                    else
+                      build_arel_sensitive(pe_class: pe_class, key: key, value: value)
+                    end
+
+        relation.where(arel_node)
+      end
+    end
+
+    # Build Arel nodes using case-insensitive matching
+    def build_arel_insensitive(pe_class:, key:, value:)
+      if value.is_a?(Array)
+        pe_class.arel_table[key].matches_any(value)
+      else
+        pe_class.arel_table[key].matches(value)
+      end
+    end
+
+    # Build Arel nodes using case-sensitive equality checking
+    def build_arel_sensitive(pe_class:, key:, value:)
+      # Arel blows up with empty array passed to eq_any
+      # See: https://github.com/rails/arel/issues/368
+      if value.is_a?(Array) && value.present?
+        pe_class.arel_table[key].eq_any(value)
+      elsif value.is_a?(Array) && value.empty?
+        ::Arel::Nodes::SqlLiteral.new("(NULL)")
+      else
+        pe_class.arel_table[key].eq(value)
+      end
+    end
+
+    # Iterate over the input scope and return elements that match the extra
+    # attribute conditions
+    def filter_by_extra_attributes(scope:, extra_attribute_conditions:, pe_class:, ignore_case:)
+      if extra_attribute_conditions.empty?
+        scope
+      else
+        ids = scope.reduce([]) do |memo, policy_element|
+          pe_within_scope = extra_attribute_conditions.all? do |key, value|
+            pe_matches_extra_attributes?(policy_element, key, value, ignore_case)
+          end
+
+          pe_within_scope ? memo.push(policy_element.id) : memo
+        end
+
+        pe_class.where(id: ids)
+      end
+    end
+
+    # Check inclusion for each include condition using the Adapter
+    def filter_by_include_conditions(scope:, include_conditions:, klass:)
+      include_conditions.each do |key, value|
+        scope = Adapter.apply_include_condition(
+          scope: scope,
+          key: key,
+          value: value[:include],
+          klass: klass
+        )
+      end
+      scope
+    end
+
+    # Paginate the scope if options hash has pagination information
+    def paginate_scope(scope:, options:)
+      if options[:per_page]
+        page = options[:page] || 1
+        scope = scope.order(:id).paginate(page: page, per_page: options[:per_page])
+      end
+      scope
+    end
+
+    # A value hash where the only key is :include is special.
+    # Note: If we start accepting literal hash values this may need to start checking the key's column type
+    def include_condition?(key, value)
+      value.respond_to?(:keys) && value.keys.map(&:to_sym) == [:include]
+    end
+
+    def class_for_type(pe_type)
+      @pe_type_class_hash ||= Hash.new { |h,k| h[k] = "PolicyMachineStorageAdapter::ActiveRecord::#{k.camelize}".constantize }
+      @pe_type_class_hash[pe_type]
+    end
+
+    # Check if the PolicyElement's extra_attributes column includes the passed
+    # key and value
+    def pe_matches_extra_attributes?(policy_element, key, value, ignore_case)
+      if policy_element.store_attributes
+        attr_value = policy_element.extra_attributes_hash[key]
+
+        if value.is_a?(Array)
+          value.any? do |v|
+            extra_attribute_match(
+              ignore_case: ignore_case,
+              key: key,
+              value_1: attr_value,
+              value_2: v
+            )
+          end
+        else
+          extra_attribute_match(
+            ignore_case: ignore_case,
+            key: key,
+            value_1: attr_value,
+            value_2: value
+          )
+        end
+      end
+    end
+
+    def extra_attribute_match(ignore_case:, key:, value_1:, value_2:)
+      if ignore_case_applies?(ignore_case, key) && value_1.is_a?(String) && value_2.is_a?(String)
+        value_1.downcase == value_2.downcase
+      else
+        value_1 == value_2
+      end
+    end
+
+    # Allow ignore_case to be a boolean, string, symbol, or array of symbols or strings
+    def ignore_case_applies?(ignore_case, key)
+      return false if key == 'policy_machine_uuid'
+
+      return true if ignore_case == true
+
+      # e.g. ignore_case = :name
+      return true if ignore_case.to_s == key
+
+      # e.g. ignore_case = [:name, :parent_uri]
+      return true if ignore_case.respond_to?(:any?) && ignore_case.any? { |k| k.to_s == key }
+
+      false
+    end
+
 
     def prohibition_for(operation)
       operation_id = operation.try(:unique_identifier) || operation.to_s
