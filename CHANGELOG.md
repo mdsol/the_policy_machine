@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.7.3
+* Improve find_all_of_type_* functionality. This allows for properly passing
+  arrays as arguments as well as making the ignore_case parameter work as
+  intended. 
+
 ## 1.7.2
 * Loosen 'pg' gem restriction to '< 1.0.0'.
 
