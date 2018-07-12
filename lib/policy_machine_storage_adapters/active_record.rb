@@ -483,6 +483,11 @@ module PolicyMachineStorageAdapter
       end
     end # End of POLICY_ELEMENT_TYPES iteration
 
+    def class_for_type(pe_type)
+      @pe_type_class_hash ||= Hash.new { |h,k| h[k] = "PolicyMachineStorageAdapter::ActiveRecord::#{k.camelize}".constantize }
+      @pe_type_class_hash[pe_type]
+    end
+
     ##
     # Assign src to dst in policy machine.
     # The two policy elements must be persisted policy elements
@@ -931,11 +936,6 @@ module PolicyMachineStorageAdapter
     # Note: If we start accepting literal hash values this may need to start checking the key's column type
     def include_condition?(key, value)
       value.respond_to?(:keys) && value.keys.map(&:to_sym) == [:include]
-    end
-
-    def class_for_type(pe_type)
-      @pe_type_class_hash ||= Hash.new { |h,k| h[k] = "PolicyMachineStorageAdapter::ActiveRecord::#{k.camelize}".constantize }
-      @pe_type_class_hash[pe_type]
     end
 
     # Check if the PolicyElement's extra_attributes column includes the passed
