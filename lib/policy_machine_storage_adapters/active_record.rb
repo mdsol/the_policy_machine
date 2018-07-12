@@ -803,10 +803,7 @@ module PolicyMachineStorageAdapter
       # Narrow the list of PEAs to just those containing the specified operation
       operation_id = operation.try(:unique_identifier) || operation.to_s
       filtered_operation_set_ids = Assignment.filter_operation_set_list_by_assigned_operation(operation_set_ids, operation_id)
-      filtered_associations =
-        associations.select do |association|
-          filtered_operation_set_ids.include?(association.operation_set_id)
-        end
+      filtered_associations = associations.where(operation_set_id: filtered_operation_set_ids)
 
       permitting_oa_ids = filtered_associations.map(&:object_attribute_id)
       permitting_oas = PolicyElement.where(id: permitting_oa_ids)
