@@ -539,7 +539,7 @@ describe 'ActiveRecord' do
           .to contain_exactly('child_fish_1')
       end
 
-      it 'does not return objects which prohibited by an out-of-scope descendant' do
+      it 'does not return objects which are prohibited by an out-of-scope descendant' do
         ado_pm.add_association(ua, not_reader, grandparent_fish)
 
         expect(ado_pm.accessible_ancestor_objects(u1, read, parent_fish, key: :unique_identifier).map(&:unique_identifier))

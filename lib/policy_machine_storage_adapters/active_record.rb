@@ -775,28 +775,26 @@ module PolicyMachineStorageAdapter
     # Version of accessible_objects which only returns objects that are
     # ancestors of a specified root object or the object itself
     def accessible_ancestor_objects(user_or_attribute, operation, root_object, options = {})
-      # Drop down to the root's stored policy element if not already there
-      root_object_pe = root_object.respond_to?(:stored_pe) ? root_object.stored_pe : root_object
+      # If the root_object is a generic PM::Object, convert it the appropriate storage adapter Object
+      root_object_stored_pe = root_object.try(:stored_pe) || root_object
 
-      # The final set of accessible objects must be contained in the following set
-      ancestor_objects = root_object_pe.ancestors(type: class_for_type('object')) + [root_object_pe]
+      # The final set of accessible objects must be ancestors of the root_object
+      ancestor_objects = root_object_stored_pe.ancestors(type: class_for_type('object')) + [root_object_stored_pe]
 
-      # Short-circuit and return all ancestors (minus prohibitions), if authorized on the root node
-      if is_privilege?(user_or_attribute, operation, root_object_pe)
-        if options[:ignore_prohibitions] || !(prohibition = prohibition_for(operation))
-          if inclusion = options[:includes]
-            return ancestor_objects.select { |obj| obj.send(options[:key].to_sym).include?(inclusion) }
-          else
-            return ancestor_objects
-          end
+      # Short-circuit and return all ancestors (minus prohibitions) if the user_or_attribute is authorized on the root node
+      if is_privilege?(user_or_attribute, operation, root_object_stored_pe)
+        apply_include_condition!(ancestor_objects, options[:key], options[:includes])
+
+        if !options[:ignore_prohibitions] && prohibition = prohibition_for(operation)
+          prohibited_ancestor_objects = accessible_ancestor_objects(
+            user_or_attribute,
+            prohibition,
+            root_object_stored_pe,
+            options.merge(ignore_prohibitions: true)
+          )
+          return ancestor_objects - prohibited_ancestor_objects
         else
-          ancestor_objects_minus_prohibitions = ancestor_objects - accessible_ancestor_objects(user_or_attribute, prohibition_for(operation), root_object_pe)
-
-          if inclusion = options[:includes]
-            return ancestor_objects_minus_prohibitions.select { |obj| obj.send(options[:key].to_sym).include?(inclusion) }
-          else
-            return ancestor_objects_minus_prohibitions
-          end
+          return ancestor_objects
         end
       end
 
@@ -938,6 +936,15 @@ module PolicyMachineStorageAdapter
       value.respond_to?(:keys) && value.keys.map(&:to_sym) == [:include]
     end
 
+    # Reduce a set of objects to those including a specific value for a specified key
+    # e.g. includes_key = 'name', includes_value = 'example_name'
+    def apply_include_condition!(objects, includes_key, includes_value)
+      if includes_key && includes_value
+        objects.select! { |obj| obj.send(includes_key.to_sym).include?(includes_value) }
+      end
+      objects
+    end
+
     # Check if the PolicyElement's extra_attributes column includes the passed
     # key and value
     def pe_matches_extra_attributes?(policy_element, key, value, ignore_case)
@@ -987,7 +994,6 @@ module PolicyMachineStorageAdapter
       false
     end
 
-
     def prohibition_for(operation)
       operation_id = operation.try(:unique_identifier) || operation.to_s
       PolicyMachineStorageAdapter::ActiveRecord::Operation.find_by_unique_identifier("~#{operation_id}")
@@ -1027,6 +1033,5 @@ module PolicyMachineStorageAdapter
         yield
       end
     end
-
   end
 end unless active_record_unavailable
