@@ -779,7 +779,8 @@ module PolicyMachineStorageAdapter
       root_object_stored_pe = root_object.try(:stored_pe) || root_object
 
       # The final set of accessible objects must be ancestors of the root_object
-      ancestor_objects = root_object_stored_pe.ancestors(type: class_for_type('object')) + [root_object_stored_pe]
+      ancestor_objects = options[:ancestor_objects]
+      ancestor_objects ||= root_object_stored_pe.ancestors(type: class_for_type('object')) + [root_object_stored_pe]
 
       # Short-circuit and return all ancestors (minus prohibitions) if the user_or_attribute
       # is authorized on the root node
@@ -818,7 +819,8 @@ module PolicyMachineStorageAdapter
       if options[:ignore_prohibitions] || !(prohibition = prohibition_for(operation_id))
         candidates
       else
-        candidates - accessible_ancestor_objects(user_or_attribute, prohibition, root_object, options.merge(ignore_prohibitions: true))
+        preloaded_options = options.merge(ignore_prohibitions: true, ancestor_objects: ancestor_objects)
+        candidates - accessible_ancestor_objects(user_or_attribute, prohibition, root_object, preloaded_options)
       end
     end
 
@@ -1009,7 +1011,7 @@ module PolicyMachineStorageAdapter
           user_or_attribute,
           prohibition,
           root_object,
-          options.merge(ignore_prohibitions: true)
+          options.merge(ignore_prohibitions: true, ancestor_objects: ancestor_objects)
         )
         ancestor_objects - prohibited_ancestor_objects
       else
