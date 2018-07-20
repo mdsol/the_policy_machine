@@ -778,7 +778,8 @@ module PolicyMachineStorageAdapter
       # If the root_object is a generic PM::Object, convert it the appropriate storage adapter Object
       root_object_stored_pe = root_object.try(:stored_pe) || root_object
 
-      # The final set of accessible objects must be ancestors of the root_object
+      # The final set of accessible objects must be ancestors of the root_object; avoid
+      # duplicate ancestor calls when possible
       ancestor_objects = options[:ancestor_objects]
       ancestor_objects ||= root_object_stored_pe.ancestors(type: class_for_type('object')) + [root_object_stored_pe]
 
@@ -1003,6 +1004,8 @@ module PolicyMachineStorageAdapter
       end
     end
 
+    # Filter all ancestor objects from a common root by the provided include condition
+    # and/or pre-existing prohibitions
     def all_ancestor_objects(user_or_attribute, operation, root_object, ancestor_objects, options)
       apply_include_condition!(ancestor_objects, options[:key], options[:includes])
 
