@@ -1011,9 +1011,9 @@ module PolicyMachineStorageAdapter
           root_object,
           options.merge(ignore_prohibitions: true)
         )
-        return ancestor_objects - prohibited_ancestor_objects
+        ancestor_objects - prohibited_ancestor_objects
       else
-        return ancestor_objects
+        ancestor_objects
       end
     end
 
