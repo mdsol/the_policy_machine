@@ -772,6 +772,59 @@ module PolicyMachineStorageAdapter
       end
     end
 
+    # Version of accessible_objects which only returns objects that are
+    # ancestors of a specified root object or the object itself
+    def accessible_ancestor_objects(user_or_attribute, operation, root_object, options = {})
+      # If the root_object is a generic PM::Object, convert it the appropriate storage adapter Object
+      root_object_stored_pe = root_object.try(:stored_pe) || root_object
+
+      # The final set of accessible objects must be ancestors of the root_object; avoid
+      # duplicate ancestor calls when possible
+      ancestor_objects = options[:ancestor_objects]
+      ancestor_objects ||= root_object_stored_pe.ancestors(type: class_for_type('object')) + [root_object_stored_pe]
+
+      # Short-circuit and return all ancestors (minus prohibitions) if the user_or_attribute
+      # is authorized on the root node
+      if is_privilege?(user_or_attribute, operation, root_object_stored_pe)
+        return all_ancestor_objects(user_or_attribute, operation, root_object_stored_pe, ancestor_objects, options)
+      end
+
+      # Fetch all of the PEAs using the given UA or its descendants
+      user_attribute_ids = user_or_attribute.descendants.pluck(:id) | [user_or_attribute.id]
+      associations = PolicyElementAssociation.where(user_attribute_id: user_attribute_ids)
+      operation_set_ids = associations.pluck(:operation_set_id)
+
+      # Narrow the list of PEAs to just those containing the specified operation
+      operation_id = operation.try(:unique_identifier) || operation.to_s
+      filtered_operation_set_ids = Assignment.filter_operation_set_list_by_assigned_operation(operation_set_ids, operation_id)
+      filtered_associations = associations.where(operation_set_id: filtered_operation_set_ids)
+
+      permitting_oa_ids = filtered_associations.pluck(:object_attribute_id)
+      permitting_oas = PolicyElement.where(id: permitting_oa_ids)
+
+      # Direct scope: the set of objects on which the operator is directly assigned
+      # Indirect scope: the set of objects which the operator can access via ancestral hierarchy
+      direct_scope = permitting_oas.where(type: class_for_type('object'))
+      indirect_scope = Assignment.ancestors_of(permitting_oas).where(type: class_for_type('object'))
+
+      # If an includes: condition has been provided, reduce the set of objects to those containing the
+      # specified value (options[:includes]) for the specified key (options[:key])
+      if inclusion = options[:includes]
+        direct_scope = Adapter.apply_include_condition(scope: direct_scope, key: options[:key], value: inclusion, klass: class_for_type('object'))
+        indirect_scope = Adapter.apply_include_condition(scope: indirect_scope, key: options[:key], value: inclusion, klass: class_for_type('object'))
+      end
+
+      # Ensure all candidates are ancestors of the specified root_object
+      candidates = (direct_scope | indirect_scope) & ancestor_objects
+
+      if options[:ignore_prohibitions] || !(prohibition = prohibition_for(operation_id))
+        candidates
+      else
+        preloaded_options = options.merge(ignore_prohibitions: true, ancestor_objects: ancestor_objects)
+        candidates - accessible_ancestor_objects(user_or_attribute, prohibition, root_object, preloaded_options)
+      end
+    end
+
     private
 
     # Given a policy element class and a set of conditions, returns an
@@ -928,7 +981,6 @@ module PolicyMachineStorageAdapter
       false
     end
 
-
     def prohibition_for(operation)
       operation_id = operation.try(:unique_identifier) || operation.to_s
       PolicyMachineStorageAdapter::ActiveRecord::Operation.find_by_unique_identifier("~#{operation_id}")
@@ -952,6 +1004,33 @@ module PolicyMachineStorageAdapter
       end
     end
 
+    # Filter all ancestor objects from a common root by the provided include condition
+    # and/or pre-existing prohibitions
+    def all_ancestor_objects(user_or_attribute, operation, root_object, ancestor_objects, options)
+      apply_include_condition!(ancestor_objects, options[:key], options[:includes])
+
+      if !options[:ignore_prohibitions] && prohibition = prohibition_for(operation)
+        prohibited_ancestor_objects = accessible_ancestor_objects(
+          user_or_attribute,
+          prohibition,
+          root_object,
+          options.merge(ignore_prohibitions: true, ancestor_objects: ancestor_objects)
+        )
+        ancestor_objects - prohibited_ancestor_objects
+      else
+        ancestor_objects
+      end
+    end
+
+    # Reduce a set of objects to those including a specific value for a specified key
+    # e.g. includes_key = 'name', includes_value = 'example_name'
+    def apply_include_condition!(objects, includes_key, includes_value)
+      if includes_key && includes_value
+        objects.select! { |obj| obj.send(includes_key.to_sym).include?(includes_value) }
+      end
+      objects
+    end
+
     def assert_persisted_policy_element(*arguments)
       arguments.each do |argument|
         raise ArgumentError, "expected policy elements, got #{argument}" unless argument.is_a?(PolicyElement)
@@ -968,6 +1047,5 @@ module PolicyMachineStorageAdapter
         yield
       end
     end
-
   end
 end unless active_record_unavailable
