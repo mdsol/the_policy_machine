@@ -425,8 +425,32 @@ describe 'ActiveRecord' do
     context 'when an operation set is soft deleted' do
       before { @op_set.update(deleted_at: Time.now) }
 
-      it 'does not grant a privilege' do
-        expect(@pm.is_privilege?(@u1, @op, @o)).to be_falsey
+      describe '.is_privilege?' do
+        it 'does not grant a privilege via the operation set' do
+          expect(@pm.is_privilege?(@u1, @op, @o)).to be_falsey
+        end
+      end
+
+      describe '.is_privilege_ignoring_prohibitions?' do
+        it 'does not grant a privilege via the operation set' do
+          expect(@pm.is_privilege_ignoring_prohibitions?(@u1, @op, @o)).to be_falsey
+        end
+      end
+
+      context 'when use_soft_deleted_data is passed' do
+        let(:options) { { use_soft_deleted_data: true } }
+
+        describe '.is_privilege?' do
+          it 'grants a privilege via the soft deleted operation set' do
+            expect(@pm.is_privilege?(@u1, @op, @o, options)).to be_truthy
+          end
+        end
+
+        describe '.is_privilege_ignoring_prohibitions?' do
+          it 'grants a privilege via the soft deleted operation set' do
+            expect(@pm.is_privilege_ignoring_prohibitions?(@u1, @op, @o, options)).to be_truthy 
+          end
+        end
       end
     end
   end
