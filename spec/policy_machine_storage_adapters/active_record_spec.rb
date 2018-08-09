@@ -407,6 +407,30 @@ describe 'ActiveRecord' do
     end
   end
 
+  describe 'special privilege checks' do
+    before do
+      @pm = PolicyMachine.new(:name => 'ActiveRecord PM', :storage_adapter => PolicyMachineStorageAdapter::ActiveRecord)
+      @u1 = @pm.create_user('u1')
+      @op = @pm.create_operation('own')
+      @op_set = @pm.create_operation_set('owner')
+      @ua = @pm.create_user_attribute('ua')
+      @oa = @pm.create_object_attribute('oa')
+      @o = @pm.create_object('o')
+      @pm.add_assignment(@u1, @ua)
+      @pm.add_assignment(@op_set, @op)
+      @pm.add_association(@ua, @op_set, @oa)
+      @pm.add_assignment(@o, @oa)
+    end
+
+    context 'when an operation set is soft deleted' do
+      before { @op_set.update(deleted_at: Time.now) }
+
+      it 'does not grant a privilege' do
+        expect(@pm.is_privilege?(@u1, @op, @o)).to be_falsey
+      end
+    end
+  end
+
   describe '#accessible_ancestor_objects' do
     let(:ado_pm) { PolicyMachine.new(name: 'ADO ActiveRecord PM', storage_adapter: PolicyMachineStorageAdapter::ActiveRecord) }
 
@@ -457,7 +481,7 @@ describe 'ActiveRecord' do
     it 'lists all objects with the given privilege provided by an out-of-scope descendant' do
       wrestle = ado_pm.create_operation('wrestle')
       wrestler = ado_pm.create_operation_set('wrestler')
-      ado_pm.add_assignment(wrestler, wrestle) 
+      ado_pm.add_assignment(wrestler, wrestle)
 
       # Give the user 'wrestle' on the highest, out-of-scope node
       ado_pm.add_association(ua, wrestler, grandparent_fish)
