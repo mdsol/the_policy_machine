@@ -696,15 +696,15 @@ module PolicyMachineStorageAdapter
 
     ## Optimized version of PolicyMachine#is_privilege?
     # Returns true if the user has the operation on the object
-    def is_privilege?(user_or_attribute, operation, object_or_attribute)
+    def is_privilege?(user_or_attribute, operation, object_or_attribute, options = {})
       policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
       operation_id = operation.try(:unique_identifier) || operation.to_s
 
       if policy_classes_containing_object.size < 2
-        !accessible_operations(user_or_attribute, object_or_attribute, operation_id).empty?
+        !accessible_operations(user_or_attribute, object_or_attribute, operation_id, options).empty?
       else
         policy_classes_containing_object.all? do |policy_class|
-          !accessible_operations(user_or_attribute, object_or_attribute, operation_id).empty?
+          !accessible_operations(user_or_attribute, object_or_attribute, operation_id, options).empty?
         end
       end
     end
@@ -716,10 +716,10 @@ module PolicyMachineStorageAdapter
 
       operations =
         if policy_classes_containing_object.size < 2
-          accessible_operations(user_or_attribute, object_or_attribute)
+          accessible_operations(user_or_attribute, object_or_attribute, nil, options)
         else
           policy_classes_containing_object.flat_map do |policy_class|
-            accessible_operations(user_or_attribute, policy_class.ancestors)
+            accessible_operations(user_or_attribute, policy_class.ancestors, nil, options)
           end
         end
 
@@ -745,7 +745,11 @@ module PolicyMachineStorageAdapter
 
       user_attributes = user_or_attribute.descendants | [user_or_attribute]
       associations = PolicyElementAssociation.where(user_attribute_id: user_attributes.map(&:id))
-      operation_set_ids = associations.pluck(:operation_set_id)
+      operation_set_ids = if options[:use_soft_deleted_data]
+                            associations.pluck(:operation_set_id)
+                          else
+                            OperationSet.where(id: associations.select(:operation_set_id), deleted_at: nil).pluck(:id)
+                          end
 
       filtered_operation_set_ids = Assignment.filter_operation_set_list_by_assigned_operation(operation_set_ids, operation_id)
       filtered_associations =
@@ -785,14 +789,18 @@ module PolicyMachineStorageAdapter
 
       # Short-circuit and return all ancestors (minus prohibitions) if the user_or_attribute
       # is authorized on the root node
-      if is_privilege?(user_or_attribute, operation, root_object_stored_pe)
+      if is_privilege?(user_or_attribute, operation, root_object_stored_pe, options)
         return all_ancestor_objects(user_or_attribute, operation, root_object_stored_pe, ancestor_objects, options)
       end
 
       # Fetch all of the PEAs using the given UA or its descendants
       user_attribute_ids = user_or_attribute.descendants.pluck(:id) | [user_or_attribute.id]
       associations = PolicyElementAssociation.where(user_attribute_id: user_attribute_ids)
-      operation_set_ids = associations.pluck(:operation_set_id)
+      operation_set_ids = if options[:use_soft_deleted_data]
+                            associations.pluck(:operation_set_id)
+                          else
+                            OperationSet.where(id: associations.select(:operation_set_id), deleted_at: nil).pluck(:id)
+                          end
 
       # Narrow the list of PEAs to just those containing the specified operation
       operation_id = operation.try(:unique_identifier) || operation.to_s
@@ -986,7 +994,7 @@ module PolicyMachineStorageAdapter
       PolicyMachineStorageAdapter::ActiveRecord::Operation.find_by_unique_identifier("~#{operation_id}")
     end
 
-    def accessible_operations(user_or_attribute, object_or_attribute, operation_id = nil)
+    def accessible_operations(user_or_attribute, object_or_attribute, operation_id = nil, options = {})
       transaction_without_mergejoin do
         user_attribute_ids = Assignment.descendants_of(user_or_attribute).pluck(:id) | [user_or_attribute.id]
         object_attribute_ids = Assignment.descendants_of(object_or_attribute).pluck(:id) | [object_or_attribute.id]
@@ -996,11 +1004,16 @@ module PolicyMachineStorageAdapter
             user_attribute_id: user_attribute_ids,
             object_attribute_id: object_attribute_ids
           )
-
         prms = { type: PolicyMachineStorageAdapter::ActiveRecord::Operation.to_s }
         prms.merge!(unique_identifier: operation_id) if operation_id
 
-        Assignment.descendants_of(associations.map(&:operation_set)).where(prms)
+        operation_sets = if options[:use_soft_deleted_data]
+                           associations.map(&:operation_set)
+                         else
+                           OperationSet.where(id: associations.select(:operation_set_id), deleted_at: nil)
+                         end
+
+        Assignment.descendants_of(operation_sets).where(prms)
       end
     end
 

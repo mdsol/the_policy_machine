@@ -1,10 +1,13 @@
 # Changelog
 
+## 1.8.1
+* Add soft deletion support to the ActiveRecord storage adapter.
+
 ## 1.8.0
 * Add accessible_ancestor_objects method to ActiveRecord storage adapter.
 
 ## 1.7.4
-* Re-expose the 'class_for_type' method to the public interface. 
+* Re-expose the 'class_for_type' method to the public interface.
 
 ## 1.7.3
 * Improve find_all_of_type_* functionality. This allows for properly passing
