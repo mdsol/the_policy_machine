@@ -1008,10 +1008,10 @@ module PolicyMachineStorageAdapter
         prms.merge!(unique_identifier: operation_id) if operation_id
 
         operation_sets = if options[:use_soft_deleted_data]
-          associations.map(&:operation_sets)
-        else
-          OperationSet.where(id: associations.select(:operation_set_id), deleted_at: nil)
-        end
+                           associations.map(&:operation_set)
+                         else
+                           OperationSet.where(id: associations.select(:operation_set_id), deleted_at: nil)
+                         end
 
         Assignment.descendants_of(operation_sets).where(prms)
       end
