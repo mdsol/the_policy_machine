@@ -448,7 +448,7 @@ describe 'ActiveRecord' do
 
         describe '.is_privilege_ignoring_prohibitions?' do
           it 'grants a privilege via the soft deleted operation set' do
-            expect(@pm.is_privilege_ignoring_prohibitions?(@u1, @op, @o, options)).to be_truthy 
+            expect(@pm.is_privilege_ignoring_prohibitions?(@u1, @op, @o, options)).to be_truthy
           end
         end
       end
@@ -520,6 +520,14 @@ describe 'ActiveRecord' do
       all_accessible_from_uncle = ado_pm.accessible_ancestor_objects(u1, read, uncle_fish, key: :unique_identifier)
 
       expect(all_accessible_from_uncle.map(&:unique_identifier)).to contain_exactly('uncle_fish', 'cousin_fish')
+    end
+
+    context 'when the operation set is soft deleted' do
+      before { writer.update(deleted_at: Time.now) }
+
+      it 'does not list objects with the privilege given by the operation set' do
+        expect(ado_pm.accessible_ancestor_objects(u1, write, grandparent_fish, key: :unique_identifier).map(&:unique_identifier)).to be_empty 
+      end
     end
 
     it 'lists objects with the given privilege even if the privilege is not present on an intermediate object' do
