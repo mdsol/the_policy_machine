@@ -114,6 +114,12 @@ module PolicyMachineStorageAdapter
 
       active_record_serialize :extra_attributes, JSON
 
+      default_scope {
+        if PolicyMachine.configuration.policy_element_default_scope
+          where(PolicyMachine.configuration.policy_element_default_scope => nil)
+        end
+      }
+
       def method_missing(meth, *args, &block)
         store_attributes
         if respond_to?(meth)
@@ -792,7 +798,7 @@ module PolicyMachineStorageAdapter
       # Fetch all of the PEAs using the given UA or its descendants
       user_attribute_ids = user_or_attribute.descendants.pluck(:id) | [user_or_attribute.id]
       associations = PolicyElementAssociation.where(user_attribute_id: user_attribute_ids)
-      operation_set_ids = associations.pluck(:operation_set_id)
+      operation_set_ids = OperationSet.where(id: associations.select(:operation_set_id)).pluck(:id)
 
       # Narrow the list of PEAs to just those containing the specified operation
       operation_id = operation.try(:unique_identifier) || operation.to_s
@@ -1000,7 +1006,9 @@ module PolicyMachineStorageAdapter
         prms = { type: PolicyMachineStorageAdapter::ActiveRecord::Operation.to_s }
         prms.merge!(unique_identifier: operation_id) if operation_id
 
-        Assignment.descendants_of(associations.map(&:operation_set)).where(prms)
+        operation_sets = OperationSet.where(id: associations.select(:operation_set_id))
+
+        Assignment.descendants_of(operation_sets).where(prms)
       end
     end
 

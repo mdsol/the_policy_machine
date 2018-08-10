@@ -114,11 +114,21 @@ module PolicyMachineStorageAdapter
           FROM assignments_recursive
           JOIN policy_elements
           ON policy_elements.id = assignments_recursive.child_id
+          #{self.policy_element_default_scope_modifier}
           WHERE #{sanitize_sql_for_conditions(["policy_elements.unique_identifier=:op_id", op_id: operation_id])}
           AND type = 'PolicyMachineStorageAdapter::ActiveRecord::Operation'
+          #{self.policy_element_default_scope_modifier}
         SQL
 
         PolicyElement.connection.exec_query(query).rows.flatten.map(&:to_i)
+      end
+
+      def self.policy_element_default_scope_modifier
+        if PolicyMachine.configuration.policy_element_default_scope
+          "AND policy_elements.#{PolicyMachine.configuration.policy_element_default_scope.to_s} IS NULL"
+        else
+          ''
+        end
       end
     end
 
