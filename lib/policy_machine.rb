@@ -20,12 +20,15 @@ class PolicyMachine
   class << self
     attr_accessor :configuration
 
+    def configuration
+      @configuration ||= ::PolicyMachine::Configuration.new
+    end
+
     def configure
-      self.configuration ||= Configuration.new
       yield(configuration)
     end
 
-    class Configuration
+    class ::PolicyMachine::Configuration
       attr_accessor :policy_element_default_scope
     end
   end
