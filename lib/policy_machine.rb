@@ -17,6 +17,19 @@ class PolicyMachine
   attr_reader   :uuid
   attr_reader   :policy_machine_storage_adapter
 
+  class << self
+    attr_accessor :configuration
+
+    def configure
+      self.configuration ||= Configuration.new
+      yield(configuration)
+    end
+
+    class Configuration
+      attr_accessor :policy_element_default_scope
+    end
+  end
+
   def initialize(options = {})
     @name = (options[:name] || options['name'] || 'default_policy_machine').to_s.strip
     @uuid = (options[:uuid] || options['uuid'] || SecureRandom.uuid).to_s.strip
