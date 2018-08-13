@@ -1212,7 +1212,11 @@ describe 'ActiveRecord' do
         let(:scope_sql) { '"policy_elements"."color" IS NULL' }
 
         context 'when a default scope is provided' do
-          before { PolicyMachine.configure { |c| c.policy_element_default_scope = :color } }
+          before do
+            policy_machine.class.configure do |config|
+              config.policy_element_default_scope = lambda { self.where(color: nil) }
+            end
+          end
 
           it 'creates a default scope for PolicyElement' do
             expect(klass.where(nil).to_sql).to include(scope_sql)
