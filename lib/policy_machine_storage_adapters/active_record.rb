@@ -114,11 +114,7 @@ module PolicyMachineStorageAdapter
 
       active_record_serialize :extra_attributes, JSON
 
-      default_scope {
-        if PolicyMachine.configuration.policy_element_default_scope
-          where(PolicyMachine.configuration.policy_element_default_scope => nil)
-        end
-      }
+      default_scope { PolicyMachine.configuration.policy_element_default_scope }
 
       def method_missing(meth, *args, &block)
         store_attributes
