@@ -204,16 +204,31 @@ module PolicyMachineStorageAdapter
     end
 
     module SQLHelpers
+
+      # Dynamically generates PolicyElement's default scope (if one is set) as an
+      # AND clause
+      # e.g. "AND 'policy_elements'.'color' IS NULL"
       def self.default_scope_modifier
         if PolicyMachine.configuration.policy_element_default_scope
-          # Dynamically generate PolicyElement's default scope as an AND clause
-          # e.g. "AND 'policy_elements'.'color' IS NULL"
           "AND #{PolicyElement.where(nil).to_sql.split("WHERE ")[1]}"
         else
           ''
         end
       end
 
+      # Dynamically generates PolicyElement's default scope (if one is set) for
+      # injection into recursive queries. Pass in the recursive table name and
+      # the id column that is being built.
+      # e.g.
+      # recursive_default_scope_modifier('assignments_recursive', 'child_id')
+      # => """
+      # WHERE assignments_recursive.child_id in (
+      # SELECT id
+      # FROM policy_elements
+      # WHERE 1=1
+      # AND 'policy_elements'.'color' IS NULL
+      # )
+      # """
       def self.recursive_default_scope_modifier(table, id_column)
         if PolicyMachine.configuration.policy_element_default_scope
           # Dynamically generate PolicyElement's default scope as a clause for recursive queries
