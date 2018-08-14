@@ -30,8 +30,8 @@ class PolicyMachine
 
     class ::PolicyMachine::Configuration
       # policy_element_default_scope sets the default scoping for PolicyElement.
-      # You must pass a lambda that calls an ActiveRecord relation on self during configuration.
-      # e.g. PolicyMachine.configure { |c| c.policy_element_default_scope = lambda { self.where(color: nil) } }
+      # You must pass a hash that is used as the argument in a 'where' call.
+      # e.g. PolicyMachine.configure { |c| c.policy_element_default_scope = { color: nil }
       attr_accessor :policy_element_default_scope
     end
   end
