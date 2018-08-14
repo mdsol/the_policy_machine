@@ -1214,7 +1214,7 @@ describe 'ActiveRecord' do
         context 'when a default scope is provided' do
           before do
             policy_machine.class.configure do |config|
-              config.policy_element_default_scope = lambda { self.where(color: nil) }
+              config.policy_element_default_scope = { color: nil }
             end
           end
 
