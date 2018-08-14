@@ -142,42 +142,42 @@ module PolicyMachineStorageAdapter
 
       def descendants(filters = {})
         assert_valid_attributes!(filters.keys)
-        Assignment.descendants_of(self).where(filters.merge(default_scope_conditions))
+        Assignment.descendants_of(self).where(filters)
       end
 
       def ancestors(filters = {})
         assert_valid_attributes!(filters.keys)
-        Assignment.ancestors_of(self).where(filters.merge(default_scope_conditions))
+        Assignment.ancestors_of(self).where(filters)
       end
 
       def parents(filters = {})
         assert_valid_attributes!(filters.keys)
-        unfiltered_parents.where(filters.merge(default_scope_conditions))
+        unfiltered_parents.where(filters)
       end
 
       def children(filters = {})
         assert_valid_attributes!(filters.keys)
-        unfiltered_children.where(filters.merge(default_scope_conditions))
+        unfiltered_children.where(filters)
       end
 
       def link_descendants(filters = {})
         assert_valid_attributes!(filters.keys)
-        LogicalLink.descendants_of(self).where(filters.merge(default_scope_conditions))
+        LogicalLink.descendants_of(self).where(filters)
       end
 
       def link_ancestors(filters = {})
         assert_valid_attributes!(filters.keys)
-        LogicalLink.ancestors_of(self).where(filters.merge(default_scope_conditions))
+        LogicalLink.ancestors_of(self).where(filters)
       end
 
       def link_parents(filters = {})
         assert_valid_attributes!(filters.keys)
-        unfiltered_link_parents.where(filters.merge(default_scope_conditions))
+        unfiltered_link_parents.where(filters)
       end
 
       def link_children(filters = {})
         assert_valid_attributes!(filters.keys)
-        unfiltered_link_children.where(filters.merge(default_scope_conditions))
+        unfiltered_link_children.where(filters)
       end
 
       # A series of methods of the form "pluck_from_graph_traversal" which pluck the specified
@@ -313,10 +313,6 @@ module PolicyMachineStorageAdapter
       end
 
       private
-
-      def default_scope_conditions
-        PolicyMachine.configuration.policy_element_default_scope ? PolicyMachine.configuration.policy_element_default_scope : {}
-      end
 
       def assert_valid_attributes!(attributes)
         unless (attributes.map(&:to_sym) - PolicyElement.column_names.map(&:to_sym)).empty?
