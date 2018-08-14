@@ -125,7 +125,9 @@ module PolicyMachineStorageAdapter
 
       def self.policy_element_default_scope_modifier
         if PolicyMachine.configuration.policy_element_default_scope
-          "AND policy_elements.#{PolicyMachine.configuration.policy_element_default_scope.to_s} IS NULL"
+          # Dynamically generate PolicyElement's default scope as an AND clause
+          # e.g. "AND 'policy_elements'.'color' IS NULL"
+          "AND #{PolicyElement.where(nil).to_sql.split("WHERE ")[1]}"
         else
           ''
         end
