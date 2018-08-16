@@ -26,6 +26,7 @@ module PolicyMachineStorageAdapter
                 FROM assignments
                 INNER JOIN assignments_recursive
                 ON assignments_recursive.child_id = assignments.parent_id
+                #{::PolicyMachineStorageAdapter::ActiveRecord::SQLHelpers.recursive_default_scope_modifier('assignments_recursive', 'child_id')}
               )
             )
 
@@ -52,6 +53,7 @@ module PolicyMachineStorageAdapter
                 FROM assignments
                 INNER JOIN assignments_recursive
                 ON assignments_recursive.parent_id = assignments.child_id
+                #{::PolicyMachineStorageAdapter::ActiveRecord::SQLHelpers.recursive_default_scope_modifier('assignments_recursive', 'parent_id')}
               )
             )
 
@@ -79,6 +81,7 @@ module PolicyMachineStorageAdapter
               FROM assignments
               INNER JOIN assignments_recursive
               ON assignments_recursive.parent_id = assignments.child_id
+              #{::PolicyMachineStorageAdapter::ActiveRecord::SQLHelpers.recursive_default_scope_modifier('assignments_recursive', 'parent_id')}
             )
           )
 
@@ -107,6 +110,7 @@ module PolicyMachineStorageAdapter
               FROM assignments
               INNER JOIN assignments_recursive
               ON assignments_recursive.child_id = assignments.parent_id
+              #{::PolicyMachineStorageAdapter::ActiveRecord::SQLHelpers.recursive_default_scope_modifier('assignments_recursive', 'child_id')}
             )
           )
 
@@ -114,8 +118,10 @@ module PolicyMachineStorageAdapter
           FROM assignments_recursive
           JOIN policy_elements
           ON policy_elements.id = assignments_recursive.child_id
+          #{::PolicyMachineStorageAdapter::ActiveRecord::SQLHelpers.default_scope_modifier}
           WHERE #{sanitize_sql_for_conditions(["policy_elements.unique_identifier=:op_id", op_id: operation_id])}
           AND type = 'PolicyMachineStorageAdapter::ActiveRecord::Operation'
+          #{::PolicyMachineStorageAdapter::ActiveRecord::SQLHelpers.default_scope_modifier}
         SQL
 
         PolicyElement.connection.exec_query(query).rows.flatten.map(&:to_i)
@@ -146,6 +152,7 @@ module PolicyMachineStorageAdapter
                 FROM logical_links
                 INNER JOIN logical_links_recursive
                 ON logical_links_recursive.link_child_id = logical_links.link_parent_id
+                #{::PolicyMachineStorageAdapter::ActiveRecord::SQLHelpers.recursive_default_scope_modifier('logical_links_recursive', 'link_child_id')}
               )
             )
 
@@ -172,6 +179,7 @@ module PolicyMachineStorageAdapter
                 FROM logical_links
                 INNER JOIN logical_links_recursive
                 ON logical_links_recursive.link_parent_id = logical_links.link_child_id
+                #{::PolicyMachineStorageAdapter::ActiveRecord::SQLHelpers.recursive_default_scope_modifier('logical_links_recursive', 'link_parent_id')}
               )
             )
 
@@ -191,6 +199,49 @@ module PolicyMachineStorageAdapter
           [*value].reduce(scope) { |rel, val| rel.where("? = ANY(#{key})", val) }
         else
           scope.where("#{key} LIKE '%#{value.to_s.gsub(/([%_])/, '\\\\\0')}%'", )
+        end
+      end
+    end
+
+    module SQLHelpers
+
+      # Dynamically generates PolicyElement's default scope (if one is set) as an
+      # AND clause
+      # e.g. "AND 'policy_elements'.'color' IS NULL"
+      def self.default_scope_modifier
+        if PolicyMachine.configuration.policy_element_default_scope
+          "AND #{PolicyElement.where(nil).to_sql.split("WHERE ")[1]}"
+        else
+          ''
+        end
+      end
+
+      # Dynamically generates PolicyElement's default scope (if one is set) for
+      # injection into recursive queries. Pass in the recursive table name and
+      # the id column that is being built.
+      # e.g.
+      # recursive_default_scope_modifier('assignments_recursive', 'child_id')
+      # => """
+      # WHERE assignments_recursive.child_id in (
+      # SELECT id
+      # FROM policy_elements
+      # WHERE 1=1
+      # AND 'policy_elements'.'color' IS NULL
+      # )
+      # """
+      def self.recursive_default_scope_modifier(table, id_column)
+        if PolicyMachine.configuration.policy_element_default_scope
+          # Dynamically generate PolicyElement's default scope as a clause for recursive queries
+          """
+          WHERE #{table}.#{id_column} in (
+            SELECT id
+            FROM policy_elements
+            WHERE 1=1
+              #{default_scope_modifier}
+          )
+          """
+        else
+          ''
         end
       end
     end

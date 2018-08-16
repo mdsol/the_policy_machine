@@ -17,6 +17,25 @@ class PolicyMachine
   attr_reader   :uuid
   attr_reader   :policy_machine_storage_adapter
 
+  class << self
+    attr_accessor :configuration
+
+    def configuration
+      @configuration ||= ::PolicyMachine::Configuration.new
+    end
+
+    def configure
+      yield(configuration)
+    end
+
+    class ::PolicyMachine::Configuration
+      # policy_element_default_scope sets the default scoping for PolicyElement.
+      # You must pass a hash that is used as the argument in a 'where' call.
+      # e.g. PolicyMachine.configure { |c| c.policy_element_default_scope = { color: nil }
+      attr_accessor :policy_element_default_scope
+    end
+  end
+
   def initialize(options = {})
     @name = (options[:name] || options['name'] || 'default_policy_machine').to_s.strip
     @uuid = (options[:uuid] || options['uuid'] || SecureRandom.uuid).to_s.strip

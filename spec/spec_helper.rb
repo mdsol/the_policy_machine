@@ -24,3 +24,10 @@ Dir["./spec/support/**/*.rb"].each {|f| require f}
 RSpec.configure do |config|
   config.mock_with :rspec
 end
+
+RSpec.configure do |config|
+  config.after(:each) do
+    # Reset the PM configuration after each spec 
+    PolicyMachine.configuration = PolicyMachine::Configuration.new
+  end
+end

@@ -457,7 +457,7 @@ describe 'ActiveRecord' do
     it 'lists all objects with the given privilege provided by an out-of-scope descendant' do
       wrestle = ado_pm.create_operation('wrestle')
       wrestler = ado_pm.create_operation_set('wrestler')
-      ado_pm.add_assignment(wrestler, wrestle) 
+      ado_pm.add_assignment(wrestler, wrestle)
 
       # Give the user 'wrestle' on the highest, out-of-scope node
       ado_pm.add_association(ua, wrestler, grandparent_fish)
@@ -1205,6 +1205,29 @@ describe 'ActiveRecord' do
     it_behaves_like 'a policy machine' do
       let(:policy_machine) do
         PolicyMachine.new(name: 'ActiveRecord PM', storage_adapter: PolicyMachineStorageAdapter::ActiveRecord)
+      end
+
+      describe 'default scope injection' do
+        let(:klass) { PolicyMachineStorageAdapter::ActiveRecord::PolicyElement }
+        let(:scope_sql) { '"policy_elements"."color" IS NULL' }
+
+        context 'when a default scope is provided' do
+          before do
+            policy_machine.class.configure do |config|
+              config.policy_element_default_scope = { color: nil }
+            end
+          end
+
+          it 'creates a default scope for PolicyElement' do
+            expect(klass.where(nil).to_sql).to include(scope_sql)
+          end
+        end
+
+        context 'when a default scope is not provided' do
+          it 'does not create a default scope for PolicyElement' do
+            expect(klass.where(nil).to_sql).to_not include(scope_sql)
+          end
+        end
       end
 
       #TODO: move to shared example group when in memory equivalent exists
