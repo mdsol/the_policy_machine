@@ -1,8 +1,8 @@
 # Changelog
 
 ## 1.9.0
-* Add optional configuration object to the Policy Machine
-* Implement a default scope for Policy Elements
+* Add optional configuration object to the Policy Machine.
+* Implement a default scope for Policy Elements.
 
 ## 1.8.0
 * Add accessible_ancestor_objects method to ActiveRecord storage adapter.
