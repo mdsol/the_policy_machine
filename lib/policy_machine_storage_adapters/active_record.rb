@@ -95,7 +95,22 @@ module PolicyMachineStorageAdapter
       true #TODO: More useful return value?
     end
 
-    class PolicyElement < ::ActiveRecord::Base
+    class HashSerializer
+      def self.dump(hash)
+        hash.to_json
+      end
+
+      def self.load(hash)
+        hash.is_a?(String) ? JSON.parse(hash) : hash || {}
+      end
+    end
+
+    class ApplicationRecord < ::ActiveRecord::Base
+      require 'will_paginate/active_record'
+      self.abstract_class = true
+    end
+
+    class PolicyElement < ApplicationRecord
       alias_method :persisted, :persisted?
       singleton_class.send(:alias_method, :active_record_serialize, :serialize)
 
@@ -112,7 +127,7 @@ module PolicyMachineStorageAdapter
 
       attr_accessor :extra_attributes_hash
 
-      active_record_serialize :extra_attributes, JSON
+      active_record_serialize :extra_attributes, HashSerializer
 
       def method_missing(meth, *args, &block)
         store_attributes
@@ -235,8 +250,6 @@ module PolicyMachineStorageAdapter
       end
 
       def self.serialize(store:, name:, serializer: nil)
-        active_record_serialize store, serializer
-
         store_accessor store, name
       end
 
@@ -324,7 +337,7 @@ module PolicyMachineStorageAdapter
         Assignment.find_ancestor_ids(root_nodes).each_with_object({}) do |row, ancestor_id_tree|
           id_array = row['ancestor_ids'].tr('{}','').split(',')
           id_array.each { |ancestor_id| ancestor_id_tree[ancestor_id] ||= [] }
-          ancestor_id_tree[row['id']] = id_array
+          ancestor_id_tree[row['id'].to_s] = id_array
         end
       end
 
@@ -377,7 +390,7 @@ module PolicyMachineStorageAdapter
     class PolicyClass < PolicyElement
     end
 
-    class PolicyElementAssociation < ::ActiveRecord::Base
+    class PolicyElementAssociation < ApplicationRecord
       # The index predicate is effectively the 'where' clause of the partial index on policy element associations
       DUPLICATE_KEY_UPDATE_PARAMS = { conflict_target: [:user_attribute_id, :object_attribute_id, :operation_set_id],
                                       index_predicate: 'operation_set_id IS NOT NULL',
@@ -668,7 +681,7 @@ module PolicyMachineStorageAdapter
       assocs = PolicyElementAssociation.where(operation_set_id: operation_sets.pluck(:id))
 
       assocs.map do |assoc|
-        assoc.clear_association_cache #TODO Either do this better (touch through HABTM on bulk insert?) or dont do this?
+        assoc.send(:clear_association_cache) #TODO Either do this better (touch through HABTM on bulk insert?) or dont do this?
         [assoc.user_attribute, assoc.operation_set, assoc.object_attribute]
       end
     end
@@ -677,14 +690,14 @@ module PolicyMachineStorageAdapter
     # Return array of all policy classes which contain the given object_attribute (or object).
     # Return empty array if no such policy classes found.
     def policy_classes_for_object_attribute(object_attribute)
-      object_attribute.descendants.merge(PolicyElement.where(type: class_for_type('policy_class')))
+      object_attribute.descendants.merge(PolicyElement.where(type: class_for_type('policy_class').name))
     end
 
     ##
     # Return array of all user attributes which contain the given user.
     # Return empty array if no such user attributes are found.
     def user_attributes_for_user(user)
-      user.descendants.merge(PolicyElement.where(type: class_for_type('user_attribute')))
+      user.descendants.merge(PolicyElement.where(type: class_for_type('user_attribute').name))
     end
 
     ##
@@ -755,8 +768,8 @@ module PolicyMachineStorageAdapter
 
       permitting_oas = PolicyElement.where(id: filtered_associations.map(&:object_attribute_id))
 
-      direct_scope = permitting_oas.where(type: class_for_type('object'))
-      indirect_scope = Assignment.ancestors_of(permitting_oas).where(type: class_for_type('object'))
+      direct_scope = permitting_oas.where(type: class_for_type('object').name)
+      indirect_scope = Assignment.ancestors_of(permitting_oas).where(type: class_for_type('object').name)
 
       if inclusion = options[:includes]
         direct_scope = Adapter.apply_include_condition(scope: direct_scope, key: options[:key], value: inclusion, klass: class_for_type('object'))
@@ -781,7 +794,7 @@ module PolicyMachineStorageAdapter
       # The final set of accessible objects must be ancestors of the root_object; avoid
       # duplicate ancestor calls when possible
       ancestor_objects = options[:ancestor_objects]
-      ancestor_objects ||= root_object_stored_pe.ancestors(type: class_for_type('object')) + [root_object_stored_pe]
+      ancestor_objects ||= root_object_stored_pe.ancestors(type: class_for_type('object').name) + [root_object_stored_pe]
 
       # Short-circuit and return all ancestors (minus prohibitions) if the user_or_attribute
       # is authorized on the root node
@@ -804,8 +817,8 @@ module PolicyMachineStorageAdapter
 
       # Direct scope: the set of objects on which the operator is directly assigned
       # Indirect scope: the set of objects which the operator can access via ancestral hierarchy
-      direct_scope = permitting_oas.where(type: class_for_type('object'))
-      indirect_scope = Assignment.ancestors_of(permitting_oas).where(type: class_for_type('object'))
+      direct_scope = permitting_oas.where(type: class_for_type('object').name)
+      indirect_scope = Assignment.ancestors_of(permitting_oas).where(type: class_for_type('object').name)
 
       # If an includes: condition has been provided, reduce the set of objects to those containing the
       # specified value (options[:includes]) for the specified key (options[:key])

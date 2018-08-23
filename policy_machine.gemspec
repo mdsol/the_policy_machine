@@ -13,9 +13,11 @@ Gem::Specification.new do |s|
   s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
   s.require_paths = ["lib"]
 
-  s.add_dependency('activesupport', '~> 4.1')
-  s.add_dependency('activerecord', '~> 4.1') #TODO optional dependency when not using active record adapter
+  s.add_dependency('activesupport')
+  s.add_dependency('activerecord') #TODO optional dependency when not using active record adapter
   s.add_dependency('will_paginate')
+  s.add_dependency('bootsnap')
+  s.add_dependency('listen')
 
   # Only required in ActiveRecord mode
   s.add_dependency('activerecord-import', '~> 0.12')
@@ -25,13 +27,13 @@ Gem::Specification.new do |s|
     s.add_dependency('pg', '< 1.0.0')
     s.add_dependency('activerecord-hierarchical_query', '~> 0.0')
 
-  s.add_development_dependency('rspec', '~> 3.5.0')
+  s.add_development_dependency('rspec')
   s.add_development_dependency('simplecov', '~> 0.7.1')
   s.add_development_dependency('pry')
   s.add_development_dependency('pry-nav')
   s.add_development_dependency('byebug')
   s.add_development_dependency('neography', '~> 1.1')
   s.add_development_dependency('database_cleaner')
-  s.add_development_dependency('rails', '~> 4.2')
+  s.add_development_dependency('rails', '~> 5.2')
 
 end
