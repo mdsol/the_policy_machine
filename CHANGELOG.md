@@ -1,7 +1,7 @@
 # Changelog
 
 ## 2.0.0
-* Upgrade the Policy Machine to support Rails 5.2
+* Upgrade the Policy Machine to support Rails 5.2.
 
 ## 1.8.0
 * Add accessible_ancestor_objects method to ActiveRecord storage adapter.
