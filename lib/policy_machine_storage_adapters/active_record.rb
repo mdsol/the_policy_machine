@@ -250,6 +250,8 @@ module PolicyMachineStorageAdapter
       end
 
       def self.serialize(store:, name:, serializer: nil)
+        active_record_serialize store, serializer
+
         store_accessor store, name
       end
 
