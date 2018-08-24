@@ -101,7 +101,7 @@ module PolicyMachineStorageAdapter
       end
 
       def self.load(hash)
-        hash.is_a?(String) ? JSON.parse(hash) : hash || {}
+        hash.is_a?(String) ? JSON.parse(hash) : hash.try(:symbolize_keys) || {}
       end
     end
 
