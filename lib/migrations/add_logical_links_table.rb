@@ -1,4 +1,4 @@
-class AddLogicalLinksTable < ActiveRecord::Migration[5.0]
+class AddLogicalLinksTable < ActiveRecord::Migration[5.2]
   def change
     create_table :logical_links do |t|
       t.integer :link_parent_id, null: false
