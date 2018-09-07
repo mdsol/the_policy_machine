@@ -811,9 +811,9 @@ module PolicyMachineStorageAdapter
     def build_accessible_object_scope(associations, options = {})
       permitting_oas = PolicyElement.where(id: associations.map(&:object_attribute_id))
 
-      # Directly-assigned objects
+      # Direct scope: the set of objects on which the operator is directly assigned
       direct_scope = permitting_oas.where(type: class_for_type('object'))
-      # Implicitly-assigned objects
+      # Indirect scope: the set of objects which the operator can access via ancestral hierarchy
       indirect_scope = Assignment.ancestors_of(permitting_oas).where(type: class_for_type('object'))
 
       if inclusion = options[:includes]
