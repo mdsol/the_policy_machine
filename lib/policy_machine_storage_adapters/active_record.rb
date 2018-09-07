@@ -741,11 +741,7 @@ module PolicyMachineStorageAdapter
     # Returns all objects the user has the given operation on
     # TODO: Support multiple policy classes here
     def accessible_objects(user_or_attribute, operation, options = {})
-      associations = associations_for_user_or_attribute(user_or_attribute)
-
-      filtered_associations = associations_filtered_by_operation(associations, operation)
-
-      candidates = build_accessible_object_scope(filtered_associations, options)
+      candidates = object_scope_for_user_and_operation(user_or_attribute, operation, options)
 
       if options[:ignore_prohibitions] || !(prohibition = prohibition_for(operation))
         candidates
@@ -758,27 +754,21 @@ module PolicyMachineStorageAdapter
     # ancestors of a specified root object or the object itself
     def accessible_ancestor_objects(user_or_attribute, operation, root_object, options = {})
       # If the root_object is a generic PM::Object, convert it the appropriate storage adapter Object
-      root_object_stored_pe = root_object.try(:stored_pe) || root_object
+      root_object = root_object.try(:stored_pe) || root_object
 
       # The final set of accessible objects must be ancestors of the root_object; avoid
       # duplicate ancestor calls when possible
       ancestor_objects = options[:ancestor_objects]
-      ancestor_objects ||= root_object_stored_pe.ancestors(type: class_for_type('object')) + [root_object_stored_pe]
+      ancestor_objects ||= root_object.ancestors(type: class_for_type('object')) + [root_object]
 
       # Short-circuit and return all ancestors (minus prohibitions) if the user_or_attribute
       # is authorized on the root node
-      if is_privilege?(user_or_attribute, operation, root_object_stored_pe)
-        return all_ancestor_objects(user_or_attribute, operation, root_object_stored_pe, ancestor_objects, options)
+      if is_privilege?(user_or_attribute, operation, root_object)
+        return all_ancestor_objects(user_or_attribute, operation, root_object, ancestor_objects, options)
       end
 
-      # Fetch all of the PEAs using the given UA or its descendants
-      associations = associations_for_user_or_attribute(user_or_attribute)
-
-      # Narrow the list of PEAs to just those containing the specified operation
-      filtered_associations = associations_filtered_by_operation(associations, operation)
-
-      full_scope_of_objects = build_accessible_object_scope(filtered_associations, options)
-      candidates = full_scope_of_objects & ancestor_objects
+      full_scope = object_scope_for_user_and_operation(user_or_attribute, operation, options)
+      candidates = full_scope & ancestor_objects
 
       if options[:ignore_prohibitions] || !(prohibition = prohibition_for(operation))
         candidates
@@ -789,6 +779,12 @@ module PolicyMachineStorageAdapter
     end
 
     private
+
+    def object_scope_for_user_and_operation(user_or_attribute, operation, options)
+      associations = associations_for_user_or_attribute(user_or_attribute)
+      filtered_associations = associations_filtered_by_operation(associations, operation)
+      build_accessible_object_scope(filtered_associations, options)
+    end
 
     # Gets the associations related to the given user or its descendants
     def associations_for_user_or_attribute(user_or_attribute)
