@@ -772,34 +772,15 @@ module PolicyMachineStorageAdapter
       end
 
       # Fetch all of the PEAs using the given UA or its descendants
-      user_attribute_ids = user_or_attribute.descendants.pluck(:id) | [user_or_attribute.id]
-      associations = PolicyElementAssociation.where(user_attribute_id: user_attribute_ids)
-      operation_set_ids = associations.pluck(:operation_set_id)
+      associations = associations_for_user_or_attribute(user_or_attribute)
 
       # Narrow the list of PEAs to just those containing the specified operation
-      operation_id = operation.try(:unique_identifier) || operation.to_s
-      filtered_operation_set_ids = Assignment.filter_operation_set_list_by_assigned_operation(operation_set_ids, operation_id)
-      filtered_associations = associations.where(operation_set_id: filtered_operation_set_ids)
+      filtered_associations = associations_filtered_by_operation(associations, operation)
 
-      permitting_oa_ids = filtered_associations.pluck(:object_attribute_id)
-      permitting_oas = PolicyElement.where(id: permitting_oa_ids)
+      full_scope_of_objects = build_accessible_object_scope(filtered_associations, options)
+      candidates = full_scope_of_objects & ancestor_objects
 
-      # Direct scope: the set of objects on which the operator is directly assigned
-      # Indirect scope: the set of objects which the operator can access via ancestral hierarchy
-      direct_scope = permitting_oas.where(type: class_for_type('object'))
-      indirect_scope = Assignment.ancestors_of(permitting_oas).where(type: class_for_type('object'))
-
-      # If an includes: condition has been provided, reduce the set of objects to those containing the
-      # specified value (options[:includes]) for the specified key (options[:key])
-      if inclusion = options[:includes]
-        direct_scope = Adapter.apply_include_condition(scope: direct_scope, key: options[:key], value: inclusion, klass: class_for_type('object'))
-        indirect_scope = Adapter.apply_include_condition(scope: indirect_scope, key: options[:key], value: inclusion, klass: class_for_type('object'))
-      end
-
-      # Ensure all candidates are ancestors of the specified root_object
-      candidates = (direct_scope | indirect_scope) & ancestor_objects
-
-      if options[:ignore_prohibitions] || !(prohibition = prohibition_for(operation_id))
+      if options[:ignore_prohibitions] || !(prohibition = prohibition_for(operation))
         candidates
       else
         preloaded_options = options.merge(ignore_prohibitions: true, ancestor_objects: ancestor_objects)
