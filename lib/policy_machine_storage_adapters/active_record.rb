@@ -741,7 +741,7 @@ module PolicyMachineStorageAdapter
     # Returns all objects the user has the given operation on
     # TODO: Support multiple policy classes here
     def accessible_objects(user_or_attribute, operation, options = {})
-      candidates = object_scope_for_user_and_operation(user_or_attribute, operation, options)
+      candidates = objects_for_user_and_operation(user_or_attribute, operation, options)
 
       if options[:ignore_prohibitions] || !(prohibition = prohibition_for(operation))
         candidates
@@ -767,7 +767,7 @@ module PolicyMachineStorageAdapter
         return all_ancestor_objects(user_or_attribute, operation, root_object, ancestor_objects, options)
       end
 
-      full_scope = object_scope_for_user_and_operation(user_or_attribute, operation, options)
+      full_scope = objects_for_user_and_operation(user_or_attribute, operation, options)
       candidates = full_scope & ancestor_objects
 
       if options[:ignore_prohibitions] || !(prohibition = prohibition_for(operation))
@@ -780,7 +780,8 @@ module PolicyMachineStorageAdapter
 
     private
 
-    def object_scope_for_user_and_operation(user_or_attribute, operation, options)
+    # Returns an array of all the objects accessible for a given user and operation
+    def objects_for_user_and_operation(user_or_attribute, operation, options)
       associations = associations_for_user_or_attribute(user_or_attribute)
       filtered_associations = associations_filtered_by_operation(associations, operation)
       build_accessible_object_scope(filtered_associations, options)
