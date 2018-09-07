@@ -276,6 +276,19 @@ class PolicyMachine
     end
   end
 
+  def is_privilege_in_role?(user_or_attribute, operation, object_or_attribute, user_attribute_scope, options = {})
+    is_privilege_in_role_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute, user_attribute_scope) && (options[:ignore_prohibitions] || !is_privilege_in_role_ignoring_prohibitions?(user_or_attribute, PM::Prohibition.on(operation), object_or_attribute, user_attribute_scope))
+  end
+
+  def is_privilege_in_role_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute, user_attribute_scope)
+    if policy_machine_storage_adapter.respond_to?(:is_privilege_in_role?)
+      policy_machine_storage_adapter.is_privilege_in_role?(user_or_attribute, operation, object_or_attribute, user_attribute_scope)
+    else
+      raise NoMethodError, "is_privilege_in_role? is not implemented for storage adapter " \
+        "#{policy_machine_storage_adapter.class}"
+    end
+  end
+
   ##
   # Returns an array of all user_attributes a PM::User is assigned to,
   # directly or indirectly.
