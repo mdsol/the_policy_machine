@@ -741,31 +741,13 @@ module PolicyMachineStorageAdapter
     # Returns all objects the user has the given operation on
     # TODO: Support multiple policy classes here
     def accessible_objects(user_or_attribute, operation, options = {})
-      operation_id = operation.try(:unique_identifier) || operation.to_s
+      associations = associations_for_user_or_attribute(user_or_attribute)
 
-      user_attributes = user_or_attribute.descendants | [user_or_attribute]
-      associations = PolicyElementAssociation.where(user_attribute_id: user_attributes.map(&:id))
-      operation_set_ids = associations.pluck(:operation_set_id)
+      filtered_associations = associations_filtered_by_operation(associations, operation)
 
-      filtered_operation_set_ids = Assignment.filter_operation_set_list_by_assigned_operation(operation_set_ids, operation_id)
-      filtered_associations =
-        associations.select do |association|
-          filtered_operation_set_ids.include?(association.operation_set_id)
-        end
+      candidates = build_accessible_object_scope(filtered_associations, options)
 
-      permitting_oas = PolicyElement.where(id: filtered_associations.map(&:object_attribute_id))
-
-      direct_scope = permitting_oas.where(type: class_for_type('object'))
-      indirect_scope = Assignment.ancestors_of(permitting_oas).where(type: class_for_type('object'))
-
-      if inclusion = options[:includes]
-        direct_scope = Adapter.apply_include_condition(scope: direct_scope, key: options[:key], value: inclusion, klass: class_for_type('object'))
-        indirect_scope = Adapter.apply_include_condition(scope: indirect_scope, key: options[:key], value: inclusion, klass: class_for_type('object'))
-      end
-
-      candidates = direct_scope | indirect_scope
-
-      if options[:ignore_prohibitions] || !(prohibition = prohibition_for(operation_id))
+      if options[:ignore_prohibitions] || !(prohibition = prohibition_for(operation))
         candidates
       else
         candidates - accessible_objects(user_or_attribute, prohibition, options.merge(ignore_prohibitions: true))
@@ -826,6 +808,47 @@ module PolicyMachineStorageAdapter
     end
 
     private
+
+    # Gets the associations related to the given user or its descendants
+    def associations_for_user_or_attribute(user_or_attribute)
+      user_attributes = user_or_attribute.descendants | [user_or_attribute]
+      PolicyElementAssociation.where(user_attribute_id: user_attributes.map(&:id))
+    end
+
+    # Filters a list of associations to those associated with a given operation
+    def associations_filtered_by_operation(associations, operation)
+      operation_id = operation.try(:unique_identifier) || operation.to_s
+
+      operation_set_ids = associations.pluck(:operation_set_id)
+
+      filtered_operation_set_ids = Assignment.filter_operation_set_list_by_assigned_operation(operation_set_ids, operation_id)
+
+      associations.select do |association|
+        filtered_operation_set_ids.include?(association.operation_set_id)
+      end
+    end
+
+    # Builds an array of PolicyElement objects within the scope of a given
+    # array of associations
+    def build_accessible_object_scope(associations, options = {})
+      permitting_oas = PolicyElement.where(id: associations.map(&:object_attribute_id))
+
+      # Directly-assigned objects
+      direct_scope = permitting_oas.where(type: class_for_type('object'))
+      # Implicitly-assigned objects
+      indirect_scope = Assignment.ancestors_of(permitting_oas).where(type: class_for_type('object'))
+
+      if inclusion = options[:includes]
+        direct_scope = build_inclusion_scope(direct_scope, options[:key], inclusion)
+        indirect_scope = build_inclusion_scope(indirect_scope, options[:key], inclusion)
+      end
+
+      direct_scope | indirect_scope
+    end
+
+    def build_inclusion_scope(scope, key, value)
+      Adapter.apply_include_condition(scope: scope, key: key, value: value, klass: class_for_type('object'))
+    end
 
     # Given a policy element class and a set of conditions, returns an
     # ActiveRecord_Relation with those conditions applied
