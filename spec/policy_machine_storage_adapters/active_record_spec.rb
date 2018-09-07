@@ -25,15 +25,18 @@ describe 'ActiveRecord' do
     it_behaves_like 'a policy machine storage adapter'
     let(:policy_machine_storage_adapter) { described_class.new }
 
-    describe 'is_privilege_in_role?' do
+    describe 'scoping privileges by role' do
       let(:candy_pm) { PolicyMachine.new(name: 'Candy Machine', storage_adapter: PolicyMachineStorageAdapter::ActiveRecord)}
 
       let(:frank) { candy_pm.create_user('frank') }
       let(:employee) { candy_pm.create_user_attribute('employee') }
-      let(:engineer) { candy_pm.create_user_attribute('engineer') }
+      let(:cheese_engineer) { candy_pm.create_user_attribute('cheese_engineer') }
+      let(:ice_cream_engineer) { candy_pm.create_user_attribute('ice_cream_engineer') }
 
       let(:chocolate) { candy_pm.create_object('chocolate') }
       let(:vanilla) { candy_pm.create_object('vanilla') }
+      let(:french_vanilla) { candy_pm.create_object('french_vanilla') }
+      let(:american_vanilla) { candy_pm.create_object('american_vanilla') }
       let(:ice_creams) { candy_pm.create_object_attribute('ice_creams') }
 
       let(:brie) { candy_pm.create_object('brie') }
@@ -54,19 +57,23 @@ describe 'ActiveRecord' do
       let(:create) { candy_pm.create_operation('create') }
 
       before do
-        # Frank is an engineer
-        candy_pm.add_assignment(frank, engineer)
+        # Frank is an engineer for cheese and ice cream
+        candy_pm.add_assignment(frank, cheese_engineer)
+        candy_pm.add_assignment(frank, ice_cream_engineer)
 
         # Engineers are employees
-        candy_pm.add_assignment(engineer, employee)
+        candy_pm.add_assignment(cheese_engineer, employee)
+        candy_pm.add_assignment(ice_cream_engineer, employee)
 
         # Establish the official ice creams and cheeses
         candy_pm.add_assignment(chocolate, ice_creams)
         candy_pm.add_assignment(vanilla, ice_creams)
+        candy_pm.add_assignment(french_vanilla, vanilla)
+        candy_pm.add_assignment(american_vanilla, vanilla)
         candy_pm.add_assignment(brie, cheeses)
         candy_pm.add_assignment(swiss, cheeses)
 
-        # Forbidden objects
+        # Forbidden business things
         candy_pm.add_assignment(money, finances)
 
         # Cheeses and ice creams are products
@@ -81,29 +88,144 @@ describe 'ActiveRecord' do
         candy_pm.add_assignment(creator, create)
         candy_pm.add_assignment(taster, taste)
 
-        # Engineers can create cheeses, employees can taste products
+        # Engineers can create, employees can taste products
         candy_pm.add_association(employee, taster, products)
-        candy_pm.add_association(engineer, creator, cheeses)
+        candy_pm.add_association(cheese_engineer, creator, cheeses)
+        candy_pm.add_association(ice_cream_engineer, creator, ice_creams)
       end
 
-      context 'when no operation set is passed' do
-        it 'returns true on a normal privilege call' do
-        end
-      end
-
-      context 'when an operation set is passed' do
-        context 'when the user has access via that set' do
+      describe 'is_privilege_in_role?' do
+        context 'when the user has access via an operation set' do
           it 'returns true' do
+            expect(
+              candy_pm.is_privilege_in_role?(frank, create, brie, cheese_engineer)
+            ).to be_truthy
+          end
+
+          context 'and a prohibition is set' do
+            let(:cant_create) { candy_pm.create_operation_set('cant_create') }
+
+            before do
+              candy_pm.add_assignment(cant_create, create.prohibition)
+              candy_pm.add_association(cheese_engineer, cant_create, brie)
+            end
+
+            it 'returns false' do
+              expect(
+                candy_pm.is_privilege_in_role?(frank, create, brie, cheese_engineer)
+              ).to be_falsey
+            end
           end
         end
 
-        context 'when the user has access via a different set' do
-          it 'returns false' do
+        context 'when the user has access via cascading operation sets' do
+          let(:money_handling) { candy_pm.create_operation_set('money_handling') }
+
+          before do
+            candy_pm.add_assignment(money_handling, creator)
+            candy_pm.add_association(cheese_engineer, money_handling, finances)
+          end
+
+          it 'returns true' do
+            expect(
+              candy_pm.is_privilege_in_role?(frank, create, money, cheese_engineer)
+            ).to be_truthy
           end
         end
 
-        context 'when the user does not have access via any set' do
+        context 'when the user has access via a different operation set' do
           it 'returns false' do
+            expect(
+              candy_pm.is_privilege_in_role?(frank, create, brie, employee)
+            ).to be_falsey
+          end
+        end
+
+        context 'when the user does not have access via any operation set' do
+          it 'returns false' do
+            expect(
+              candy_pm.is_privilege_in_role?(frank, create, money, cheese_engineer)
+            ).to be_falsey
+          end
+        end
+      end
+
+      describe 'accessible_objects' do
+        it 'returns objects accessible via a role' do
+          expect(
+            candy_pm.accessible_objects(
+              frank,
+              create,
+              user_attribute_scope: cheese_engineer,
+              key: :unique_identifier
+            ).map(&:unique_identifier)
+          ).to match_array(['brie', 'swiss'])
+        end
+
+        it 'does not return objects that are not accessible via a role' do
+          expect(
+            candy_pm.accessible_objects(frank, create, user_attribute_scope: employee)
+          ).to be_empty
+        end
+
+        context 'prohibitions' do
+          let(:cant_create) { candy_pm.create_operation_set('cant_create') }
+
+          before do
+            candy_pm.add_assignment(cant_create, create.prohibition)
+            candy_pm.add_association(cheese_engineer, cant_create, brie)
+          end
+
+          it 'does not return objects with prohibitions' do
+            expect(
+              candy_pm.accessible_objects(
+                frank,
+                create,
+                user_attribute_scope: cheese_engineer,
+                key: :unique_identifier
+              ).map(&:unique_identifier)
+            ).to_not include('brie')
+          end
+        end
+      end
+
+      describe 'accessible_ancestor_objects' do
+        it 'returns objects accessible via a role on an object scope' do
+          expect(
+            candy_pm.accessible_ancestor_objects(
+              frank,
+              create,
+              vanilla,
+              user_attribute_scope: ice_cream_engineer,
+              key: :unique_identifier
+            ).map(&:unique_identifier)
+          ).to match_array(['vanilla', 'french_vanilla', 'american_vanilla'])
+        end
+
+        it 'does not return objects that are not accessible via a role on an object scope' do
+          expect(
+            candy_pm.accessible_ancestor_objects(frank, create, vanilla, user_attribute_scope: employee)
+          ).to be_empty
+        end
+
+        context 'prohibitions' do
+          let(:cant_create) { candy_pm.create_operation_set('cant_create') }
+
+          before do
+            candy_pm.add_assignment(cant_create, create.prohibition)
+            candy_pm.add_association(ice_cream_engineer, cant_create, french_vanilla)
+          end
+
+         it 'does not return objects with prohibitions' do
+           expect(
+             candy_pm.accessible_ancestor_objects(
+               frank,
+               create,
+               vanilla,
+               user_attribute_scope: ice_cream_engineer,
+               key: :unique_identifier
+             ).map(&:unique_identifier)
+           ).to_not include('french_vanilla')
           end
         end
       end
