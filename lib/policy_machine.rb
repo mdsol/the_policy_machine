@@ -115,6 +115,11 @@ class PolicyMachine
       return policy_machine_storage_adapter.is_privilege?(*privilege)
     end
 
+    if (user_attribute_scope = options[:user_attribute_scope]) && policy_machine_storage_adapter.respond_to?(:is_privilege_in_role?)
+      privilege = [user_or_attribute, operation, object_or_attribute, user_attribute_scope].map { |obj| obj.respond_to?(:stored_pe) ? obj.stored_pe : obj }
+      return policy_machine_storage_adapter.is_privilege_in_role?(*privilege)
+    end
+
     unless operation.is_a?(PM::Operation)
       operation = operations(unique_identifier: operation.to_s).first or return false
     end
