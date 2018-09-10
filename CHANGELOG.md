@@ -3,6 +3,7 @@
 ## 1.9.0
 * Add `is_privilege_in_role?` method to ActiveRecord storage adapter.
 * Update `accessible_ancestor_objects`, `accessible_objects`, `scoped_privileges`, and `accessible_operations` methods in the ActiveRecord storage adapter to accept scoping to a user attribute.
+* Update `is_privilege_ignoring_prohibitions?` to accept an optional user attribute scope.
 
 ## 1.8.1
 * Refactor `accessible_ancestor_objects` and `accessible_objects`.
