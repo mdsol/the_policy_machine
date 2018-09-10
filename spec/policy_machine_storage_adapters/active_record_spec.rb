@@ -169,9 +169,9 @@ describe 'ActiveRecord' do
               candy_pm.scoped_privileges(
                 frank,
                 brie,
-                user_attribute_scope: ice_cream_engineer
+                user_attribute_scope: employee
               )
-            ).to_not include([frank, create, brie])
+            ).to match_array([[frank, taste, brie]])
           end
         end
 
