@@ -741,7 +741,7 @@ module PolicyMachineStorageAdapter
     # Returns all objects the user has the given operation on
     # TODO: Support multiple policy classes here
     def accessible_objects(user_or_attribute, operation, options = {})
-      candidates = objects_for_user_and_operation(user_or_attribute, operation, options)
+      candidates = objects_for_user_or_attribute_and_operation(user_or_attribute, operation, options)
 
       if options[:ignore_prohibitions] || !(prohibition = prohibition_for(operation))
         candidates
@@ -767,8 +767,8 @@ module PolicyMachineStorageAdapter
         return all_ancestor_objects(user_or_attribute, operation, root_object, ancestor_objects, options)
       end
 
-      full_scope = objects_for_user_and_operation(user_or_attribute, operation, options)
-      candidates = full_scope & ancestor_objects
+      all_accessible_objects = objects_for_user_or_attribute_and_operation(user_or_attribute, operation, options)
+      candidates = all_accessible_objects & ancestor_objects
 
       if options[:ignore_prohibitions] || !(prohibition = prohibition_for(operation))
         candidates
@@ -780,20 +780,20 @@ module PolicyMachineStorageAdapter
 
     private
 
-    # Returns an array of all the objects accessible for a given user and operation
-    def objects_for_user_and_operation(user_or_attribute, operation, options)
+    # Returns an array of all the objects accessible for a given user or attribute and operation
+    def objects_for_user_or_attribute_and_operation(user_or_attribute, operation, options)
       associations = associations_for_user_or_attribute(user_or_attribute)
       filtered_associations = associations_filtered_by_operation(associations, operation)
       build_accessible_object_scope(filtered_associations, options)
     end
 
-    # Gets the associations related to the given user or its descendants
+    # Gets the associations related to the given user or attribute or its descendants
     def associations_for_user_or_attribute(user_or_attribute)
-      user_attributes = user_or_attribute.descendants | [user_or_attribute]
-      PolicyElementAssociation.where(user_attribute_id: user_attributes.map(&:id))
+      user_attribute_ids = user_or_attribute.descendants.pluck(:id) | [user_or_attribute.id]
+      PolicyElementAssociation.where(user_attribute_id: user_attribute_ids)
     end
 
-    # Filters a list of associations to those associated with a given operation
+    # Filters a list of associations to those related to a given operation
     def associations_filtered_by_operation(associations, operation)
       operation_id = operation.try(:unique_identifier) || operation.to_s
 
@@ -801,15 +801,13 @@ module PolicyMachineStorageAdapter
 
       filtered_operation_set_ids = Assignment.filter_operation_set_list_by_assigned_operation(operation_set_ids, operation_id)
 
-      associations.select do |association|
-        filtered_operation_set_ids.include?(association.operation_set_id)
-      end
+      associations.where(operation_set_id: filtered_operation_set_ids)
     end
 
     # Builds an array of PolicyElement objects within the scope of a given
     # array of associations
     def build_accessible_object_scope(associations, options = {})
-      permitting_oas = PolicyElement.where(id: associations.map(&:object_attribute_id))
+      permitting_oas = PolicyElement.where(id: associations.pluck(:object_attribute_id))
 
       # Direct scope: the set of objects on which the operator is directly assigned
       direct_scope = permitting_oas.where(type: class_for_type('object'))
