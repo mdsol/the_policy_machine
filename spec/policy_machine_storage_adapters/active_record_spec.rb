@@ -188,6 +188,38 @@ describe 'ActiveRecord' do
         end
       end
 
+      describe 'is_privilege_ignoring_prohibitions?' do
+        let(:cant_create) { candy_pm.create_operation_set('cant_create') }
+
+        before do
+          candy_pm.add_assignment(cant_create, create.prohibition)
+          candy_pm.add_association(cheese_engineer, cant_create, brie)
+        end
+
+        context 'when a user_attribute_scope option is passed' do
+          it 'calls is_privilege_in_role?' do
+            expect(candy_pm.policy_machine_storage_adapter).to receive(:is_privilege_in_role?)
+            candy_pm.is_privilege_ignoring_prohibitions?(
+              frank,
+              create,
+              brie,
+              user_attribute_scope: cheese_engineer
+            )
+          end
+
+          it 'ignores prohibitions' do
+            expect(
+              candy_pm.is_privilege_ignoring_prohibitions?(
+                frank,
+                create,
+                brie,
+                user_attribute_scope: cheese_engineer
+              )
+            ).to be_truthy
+          end
+        end
+      end
+
       describe 'accessible_objects' do
         it 'returns objects accessible via a role' do
           expect(
