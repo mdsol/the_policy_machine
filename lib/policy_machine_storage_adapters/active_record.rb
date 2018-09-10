@@ -709,6 +709,8 @@ module PolicyMachineStorageAdapter
       end
     end
 
+    # Returns true if the user has the operation on the object, and that operation is granted by
+    # the user attribute scope or its descendants
     def is_privilege_in_role?(user_or_attribute, operation, object_or_attribute, user_attribute_scope)
       policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
       operation_id = operation.try(:unique_identifier) || operation.to_s
@@ -724,15 +726,20 @@ module PolicyMachineStorageAdapter
 
     ## Optimized version of PolicyMachine#scoped_privileges
     # Returns all operations the user has on the object
+    # A user attribute scope can be passed in the options hash as :user_attribute_scope
+    # The only privileges returns will be those granted by the user attribute scope or its
+    # descendants
     def scoped_privileges(user_or_attribute, object_or_attribute, options = {})
       policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
 
+      user_attribute_scope = options[:user_attribute_scope]
+
       operations =
         if policy_classes_containing_object.size < 2
-          accessible_operations(user_or_attribute, object_or_attribute)
+          accessible_operations(user_or_attribute, object_or_attribute, nil, user_attribute_scope)
         else
           policy_classes_containing_object.flat_map do |policy_class|
-            accessible_operations(user_or_attribute, policy_class.ancestors)
+            accessible_operations(user_or_attribute, policy_class.ancestors, nil, user_attribute_scope)
           end
         end
 
