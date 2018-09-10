@@ -150,6 +150,44 @@ describe 'ActiveRecord' do
         end
       end
 
+      describe 'scoped_privileges' do
+        context 'when the user has access via an operation set' do
+          it 'returns all the privileges granted by that role' do
+            expect(
+              candy_pm.scoped_privileges(
+                frank,
+                brie,
+                user_attribute_scope: cheese_engineer
+              )
+            ).to match_array([[frank, create, brie], [frank, taste, brie]])
+          end
+        end
+
+        context 'when the user has access via a different operation set' do
+          it 'does not return the privilege given by the other operation set' do
+            expect(
+              candy_pm.scoped_privileges(
+                frank,
+                brie,
+                user_attribute_scope: ice_cream_engineer
+              )
+            ).to_not include([frank, create, brie])
+          end
+        end
+
+        context 'when the user does not have access via any operation set' do
+          it 'returns an empty array' do
+            expect(
+              candy_pm.scoped_privileges(
+                frank,
+                money,
+                user_attribute_scope: cheese_engineer
+              )
+            ).to be_empty
+          end
+        end
+      end
+
       describe 'accessible_objects' do
         it 'returns objects accessible via a role' do
           expect(
