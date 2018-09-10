@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.8.1
+* Refactor `accessible_ancestor_objects` and `accessible_objects`.
+
 ## 1.8.0
 * Add accessible_ancestor_objects method to ActiveRecord storage adapter.
 
