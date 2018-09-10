@@ -717,7 +717,7 @@ module PolicyMachineStorageAdapter
         !accessible_operations(user_or_attribute, object_or_attribute, operation_id, user_attribute_scope).empty?
       else
         policy_classes_containing_object.all? do |policy_class|
-          # todo
+          !accessible_operations(user_or_attribute, object_or_attribute, operation_id, user_attribute_scope).empty?
         end
       end
     end
@@ -752,6 +752,8 @@ module PolicyMachineStorageAdapter
 
     ## Optimized version of PolicyMachine#accessible_objects
     # Returns all objects the user has the given operation on
+    # A user attribute scope can be passed in the options hash as :user_attribute_scope
+    # The only objects that will be returned are those that are accessible via the user attribute scope
     # TODO: Support multiple policy classes here
     def accessible_objects(user_or_attribute, operation, options = {})
       candidates = objects_for_user_or_attribute_and_operation(user_or_attribute, operation, options)
@@ -765,6 +767,8 @@ module PolicyMachineStorageAdapter
 
     # Version of accessible_objects which only returns objects that are
     # ancestors of a specified root object or the object itself
+    # A user attribute scope can be passed in the options hash as :user_attribute_scope
+    # The only objects that will be returned are those that are accessible via the user attribute scope
     def accessible_ancestor_objects(user_or_attribute, operation, root_object, options = {})
       # If the root_object is a generic PM::Object, convert it the appropriate storage adapter Object
       root_object = root_object.try(:stored_pe) || root_object
