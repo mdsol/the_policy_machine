@@ -795,8 +795,8 @@ module PolicyMachineStorageAdapter
 
     # Return true if the user_or_attribute is authorized on the root object
     def short_circuit_all_ancestor_objects?(user_or_attribute, operation, root_object, options)
-      if options[:user_attribute_scope]
-        true if is_privilege_in_role?(user_or_attribute, operation, root_object, options[:user_attribute_scope])
+      if user_attribute_scope = options[:user_attribute_scope]
+        true if is_privilege_in_role?(user_or_attribute, operation, root_object, user_attribute_scope)
       else
         true if is_privilege?(user_or_attribute, operation, root_object)
       end
@@ -804,21 +804,21 @@ module PolicyMachineStorageAdapter
 
     # Returns an array of all the objects accessible for a given user or attribute and operation
     def objects_for_user_or_attribute_and_operation(user_or_attribute, operation, options)
-      associations = associations_for_user_or_attribute(user_or_attribute)
+      associations = associations_for_user_or_attribute(user_or_attribute, options)
       filtered_associations = associations_filtered_by_operation(associations, operation)
       build_accessible_object_scope(filtered_associations, options)
     end
 
     # Gets the associations related to the given user or its descendants
     def associations_for_user_or_attribute(user_or_attribute, options)
-      user_attributes = user_or_attribute.descendants | [user_or_attribute]
+      user_attribute_ids = user_or_attribute.descendants.pluck(:id) | [user_or_attribute.id]
 
       if user_attribute_scope = options[:user_attribute_scope]
         scoped_user_attribute_ids = Assignment.descendants_of(user_attribute_scope).pluck(:id) | [user_attribute_scope.id]
-        user_attributes.select! { |attr| scoped_user_attribute_ids.include?(attr.id) }
+        user_attribute_ids = user_attribute_ids & scoped_user_attribute_ids
       end
 
-      PolicyElementAssociation.where(user_attribute_id: user_attributes.map(&:id))
+      PolicyElementAssociation.where(user_attribute_id: user_attribute_ids)
     end
 
     # Filters a list of associations to those related to a given operation
