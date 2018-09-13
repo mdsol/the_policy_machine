@@ -768,6 +768,7 @@ module PolicyMachineStorageAdapter
       if options[:ignore_prohibitions] || !(prohibition = prohibition_for(operation))
         candidates
       else
+        options.delete(:user_attribute_scope)
         candidates - accessible_objects(user_or_attribute, prohibition, options.merge(ignore_prohibitions: true))
       end
     end
@@ -798,6 +799,7 @@ module PolicyMachineStorageAdapter
         candidates
       else
         preloaded_options = options.merge(ignore_prohibitions: true, ancestor_objects: ancestor_objects)
+        preloaded_options.delete(:user_attribute_scope)
         candidates - accessible_ancestor_objects(user_or_attribute, prohibition, root_object, preloaded_options)
       end
     end
