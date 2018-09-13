@@ -282,7 +282,8 @@ class PolicyMachine
   end
 
   def is_privilege_in_role?(user_or_attribute, operation, object_or_attribute, user_attribute_scope, options = {})
-    is_privilege_in_role_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute, user_attribute_scope) && (options[:ignore_prohibitions] || !is_privilege_in_role_ignoring_prohibitions?(user_or_attribute, PM::Prohibition.on(operation), object_or_attribute, user_attribute_scope))
+    # Prohibitions shouldn't ever be scoped to role, so use the normal privilege check for the prohibition
+    is_privilege_in_role_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute, user_attribute_scope) && (options[:ignore_prohibitions] || !is_privilege_ignoring_prohibitions?(user_or_attribute, PM::Prohibition.on(operation), object_or_attribute))
   end
 
   def is_privilege_in_role_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute, user_attribute_scope)
