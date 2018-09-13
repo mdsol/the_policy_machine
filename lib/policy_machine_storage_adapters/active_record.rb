@@ -1056,6 +1056,8 @@ module PolicyMachineStorageAdapter
       apply_include_condition!(ancestor_objects, options[:key], options[:includes])
 
       if !options[:ignore_prohibitions] && prohibition = prohibition_for(operation)
+        options.delete(:user_attribute_scope)
+
         prohibited_ancestor_objects = accessible_ancestor_objects(
           user_or_attribute,
           prohibition,
