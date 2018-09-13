@@ -825,8 +825,8 @@ module PolicyMachineStorageAdapter
       user_attribute_ids = user_or_attribute.descendants.pluck(:id) | [user_or_attribute.id]
 
       if user_attribute_scope = options[:user_attribute_scope]
-        user_attribute_scope_ids = user_attribute_scope.respond_to?(:map) ? user_attribute_scope.map(&:id) : user_attribute_scope.id
-        scoped_user_attribute_ids = Assignment.descendants_of(user_attribute_scope).pluck(:id) | [user_attribute_scope_ids]
+        user_attribute_scope_ids = user_attribute_scope.respond_to?(:map) ? user_attribute_scope.map(&:id) : [user_attribute_scope.id]
+        scoped_user_attribute_ids = Assignment.descendants_of(user_attribute_scope).pluck(:id) | user_attribute_scope_ids
         user_attribute_ids = user_attribute_ids & scoped_user_attribute_ids
       end
 
