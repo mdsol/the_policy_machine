@@ -203,7 +203,13 @@ class PolicyMachine
 
     privs_and_prohibs = scoped_privileges_and_prohibitions(user_or_attribute, object_or_attribute, options)
 
-    prohibitions, privileges = privs_and_prohibs.partition { |_,op,_| op.prohibition? }
+    prohibited_operations = Set.new
+
+    privileges = privs_and_prohibs.reject do |_, op, _|
+      if op.prohibition?
+        prohibited_operations.add(op.operation)
+      end
+    end
 
     if user_attribute_scope
       scoped_privs = scoped_privileges_and_prohibitions(
@@ -212,13 +218,12 @@ class PolicyMachine
         options.merge(user_attribute_scope: user_attribute_scope)
       )
 
-      privileges.select! { |p| scoped_privs.include?(p) }
+      privileges = scoped_privs.reject { |_, op, _| op.prohibition? }
     end
 
     if options[:ignore_prohibitions]
       privileges
     else
-      prohibited_operations = prohibitions.map { |_, prohibition, _| prohibition.operation }
       privileges.reject { |_, op, _| prohibited_operations.include?(op.unique_identifier) }
     end
   end
