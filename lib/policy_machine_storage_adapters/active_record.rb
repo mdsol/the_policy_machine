@@ -665,7 +665,7 @@ module PolicyMachineStorageAdapter
     def associations_with(operation)
       params = { type: PolicyMachineStorageAdapter::ActiveRecord::OperationSet.to_s }
       operation_sets = Assignment.ancestors_of(operation).where(params)
-      assocs = PolicyElementAssociation.where(operation_set_id: operation_sets.pluck(:id))
+      assocs = PolicyElementAssociation.where(operation_set_id: operation_sets.select(:id))
 
       assocs.map do |assoc|
         assoc.clear_association_cache #TODO Either do this better (touch through HABTM on bulk insert?) or dont do this?
@@ -849,7 +849,7 @@ module PolicyMachineStorageAdapter
     # Builds an array of PolicyElement objects within the scope of a given
     # array of associations
     def build_accessible_object_scope(associations, options = {})
-      permitting_oas = PolicyElement.where(id: associations.pluck(:object_attribute_id))
+      permitting_oas = PolicyElement.where(id: associations.select(:object_attribute_id))
 
       # Direct scope: the set of objects on which the operator is directly assigned
       direct_scope = permitting_oas.where(type: class_for_type('object'))
