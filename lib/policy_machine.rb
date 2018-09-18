@@ -212,6 +212,9 @@ class PolicyMachine
     end
 
     if user_attribute_scope
+      # TODO: Surface user attribute origin in scoped_privileges_and_prohibitions
+      # so this call is unnecessary and the user attribute scoping can be done
+      # in-memory while maintaining the full set of prohibitions
       scoped_privs = scoped_privileges_and_prohibitions(
         user_or_attribute,
         object_or_attribute,
