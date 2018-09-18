@@ -665,7 +665,7 @@ module PolicyMachineStorageAdapter
     def associations_with(operation)
       params = { type: PolicyMachineStorageAdapter::ActiveRecord::OperationSet.to_s }
       operation_sets = Assignment.ancestors_of(operation).where(params)
-      assocs = PolicyElementAssociation.where(operation_set_id: operation_sets.select(:id))
+      assocs = PolicyElementAssociation.where(operation_set_id: operation_sets.pluck(:id))
 
       assocs.map do |assoc|
         assoc.clear_association_cache #TODO Either do this better (touch through HABTM on bulk insert?) or dont do this?
