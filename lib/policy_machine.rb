@@ -227,25 +227,17 @@ class PolicyMachine
   #
   # TODO:  might make privilege a class of its own
   def scoped_privileges(user_or_attribute, object_or_attribute, options = {})
+    options = options.dup
     filters = options.delete(:filters)
 
-    privs_and_prohibs = if policy_machine_storage_adapter.respond_to?(:scoped_privileges)
-                          policy_machine_storage_adapter.scoped_privileges(user_or_attribute.stored_pe, object_or_attribute.stored_pe, options).map do |op|
-                            operation = PM::Operation.convert_stored_pe_to_pe(op, policy_machine_storage_adapter, PM::Operation)
-                            [user_or_attribute, operation, object_or_attribute]
-                          end
-                        else
-                          operations.grep(->operation{is_privilege_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute)}) do |op|
-                            [user_or_attribute, op, object_or_attribute]
-                          end
-                        end
-
+    privs_and_prohibs = get_all_scoped_privileges_and_prohibitions(user_or_attribute, object_or_attribute, options)
 
     prohibitions, privileges = privs_and_prohibs.partition { |_,op,_| op.prohibition? }
 
     if filters
       raise NotImplementedError unless policy_machine_storage_adapter.respond_to?(:scoped_privileges)
 
+      # Retrieve all the privileges derived via the specified user attribute filtering
       privileges = policy_machine_storage_adapter.scoped_privileges(user_or_attribute.stored_pe, object_or_attribute.stored_pe, options.merge(filters: filters)).map do |op|
         operation = PM::Operation.convert_stored_pe_to_pe(op, policy_machine_storage_adapter, PM::Operation)
         [user_or_attribute, operation, object_or_attribute]
@@ -394,6 +386,20 @@ class PolicyMachine
   end
 
   private
+
+  # Retrieves all privileges and prohibitions for the given user or attribute on the object or attribute scope
+  def get_all_scoped_privileges_and_prohibitions(user_or_attribute, object_or_attribute, options = {})
+    if policy_machine_storage_adapter.respond_to?(:scoped_privileges)
+      policy_machine_storage_adapter.scoped_privileges(user_or_attribute.stored_pe, object_or_attribute.stored_pe, options).map do |op|
+        operation = PM::Operation.convert_stored_pe_to_pe(op, policy_machine_storage_adapter, PM::Operation)
+        [user_or_attribute, operation, object_or_attribute]
+      end
+    else
+      operations.grep(->operation{is_privilege_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute)}) do |op|
+        [user_or_attribute, op, object_or_attribute]
+      end
+    end
+  end
 
   # Raise unless the argument is a policy element.
   def assert_policy_element_in_machine(arg_pe)
