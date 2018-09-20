@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.9.0
+* Add `is_privilege_with_filters?` method to ActiveRecord storage adapter.
+* Update `scoped_privileges`, `accessible_objects`, `accessible_ancestor_objects`, and `accessible_operations` to accept a user attribute filter.
+
 ## 1.8.0
 * Add accessible_ancestor_objects method to ActiveRecord storage adapter.
 
