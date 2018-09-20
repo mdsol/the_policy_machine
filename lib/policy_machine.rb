@@ -115,12 +115,12 @@ class PolicyMachine
       return policy_machine_storage_adapter.is_privilege?(*privilege)
     end
 
-    if (user_attribute_scope = options[:user_attribute_scope]) && policy_machine_storage_adapter.respond_to?(:is_privilege_in_role?)
+    if (user_attribute_scope = options[:user_attribute_scope]) && policy_machine_storage_adapter.respond_to?(:is_privilege_via_attribute?)
       privilege = [user_or_attribute, operation, object_or_attribute, user_attribute_scope].map do |obj|
         obj.respond_to?(:stored_pe) ? obj.stored_pe : obj
       end
 
-      return policy_machine_storage_adapter.is_privilege_in_role?(*privilege)
+      return policy_machine_storage_adapter.is_privilege_via_attribute?(*privilege)
     end
 
     unless operation.is_a?(PM::Operation)
@@ -299,16 +299,16 @@ class PolicyMachine
     end
   end
 
-  def is_privilege_in_role?(user_or_attribute, operation, object_or_attribute, user_attribute_scope, options = {})
-    # Prohibitions shouldn't ever be scoped to role, so use the normal privilege check for the prohibition
-    is_privilege_in_role_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute, user_attribute_scope) && (options[:ignore_prohibitions] || !is_privilege_ignoring_prohibitions?(user_or_attribute, PM::Prohibition.on(operation), object_or_attribute))
+  def is_privilege_via_attribute?(user_or_attribute, operation, object_or_attribute, user_attribute_scope, options = {})
+    # Prohibitions shouldn't ever be scoped to a user attribute, so use the normal privilege check for the prohibition
+    is_privilege_via_attribute_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute, user_attribute_scope) && (options[:ignore_prohibitions] || !is_privilege_ignoring_prohibitions?(user_or_attribute, PM::Prohibition.on(operation), object_or_attribute))
   end
 
-  def is_privilege_in_role_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute, user_attribute_scope)
-    if policy_machine_storage_adapter.respond_to?(:is_privilege_in_role?)
-      policy_machine_storage_adapter.is_privilege_in_role?(user_or_attribute, operation, object_or_attribute, user_attribute_scope)
+  def is_privilege_via_attribute_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute, user_attribute_scope)
+    if policy_machine_storage_adapter.respond_to?(:is_privilege_via_attribute?)
+      policy_machine_storage_adapter.is_privilege_via_attribute?(user_or_attribute, operation, object_or_attribute, user_attribute_scope)
     else
-      raise NoMethodError, "is_privilege_in_role? is not implemented for storage adapter " \
+      raise NoMethodError, "is_privilege_via_attribute? is not implemented for storage adapter " \
         "#{policy_machine_storage_adapter.class}"
     end
   end

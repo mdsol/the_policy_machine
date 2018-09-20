@@ -25,7 +25,7 @@ describe 'ActiveRecord' do
     it_behaves_like 'a policy machine storage adapter'
     let(:policy_machine_storage_adapter) { described_class.new }
 
-    describe 'scoping privileges by role' do
+    describe 'scoping privileges by user attribute' do
       let(:candy_pm) { PolicyMachine.new(name: 'Candy Machine', storage_adapter: PolicyMachineStorageAdapter::ActiveRecord)}
 
       let(:frank) { candy_pm.create_user('frank') }
@@ -94,11 +94,11 @@ describe 'ActiveRecord' do
         candy_pm.add_association(ice_cream_engineer, creator, ice_creams)
       end
 
-      describe 'is_privilege_in_role?' do
+      describe 'is_privilege_via_attribute?' do
         context 'when the user has access via an operation set' do
           it 'returns true' do
             expect(
-              candy_pm.is_privilege_in_role?(frank, create, brie, cheese_engineer)
+              candy_pm.is_privilege_via_attribute?(frank, create, brie, cheese_engineer)
             ).to be_truthy
           end
 
@@ -112,7 +112,7 @@ describe 'ActiveRecord' do
 
             it 'returns false' do
               expect(
-                candy_pm.is_privilege_in_role?(frank, create, brie, cheese_engineer)
+                candy_pm.is_privilege_via_attribute?(frank, create, brie, cheese_engineer)
               ).to be_falsey
             end
           end
@@ -128,7 +128,7 @@ describe 'ActiveRecord' do
 
           it 'returns true' do
             expect(
-              candy_pm.is_privilege_in_role?(frank, create, money, cheese_engineer)
+              candy_pm.is_privilege_via_attribute?(frank, create, money, cheese_engineer)
             ).to be_truthy
           end
         end
@@ -136,7 +136,7 @@ describe 'ActiveRecord' do
         context 'when the user has access via a different operation set' do
           it 'returns false' do
             expect(
-              candy_pm.is_privilege_in_role?(frank, create, brie, employee)
+              candy_pm.is_privilege_via_attribute?(frank, create, brie, employee)
             ).to be_falsey
           end
         end
@@ -144,7 +144,7 @@ describe 'ActiveRecord' do
         context 'when the user does not have access via any operation set' do
           it 'returns false' do
             expect(
-              candy_pm.is_privilege_in_role?(frank, create, money, cheese_engineer)
+              candy_pm.is_privilege_via_attribute?(frank, create, money, cheese_engineer)
             ).to be_falsey
           end
         end
@@ -152,7 +152,7 @@ describe 'ActiveRecord' do
 
       describe 'scoped_privileges' do
         context 'when the user has access via an operation set' do
-          it 'returns all the privileges granted by that role' do
+          it 'returns all the privileges granted by that attribute' do
             expect(
               candy_pm.scoped_privileges(
                 frank,
@@ -197,8 +197,8 @@ describe 'ActiveRecord' do
         end
 
         context 'when a user_attribute_scope option is passed' do
-          it 'calls is_privilege_in_role?' do
-            expect(candy_pm.policy_machine_storage_adapter).to receive(:is_privilege_in_role?)
+          it 'calls is_privilege_via_attribute?' do
+            expect(candy_pm.policy_machine_storage_adapter).to receive(:is_privilege_via_attribute?)
             candy_pm.is_privilege_ignoring_prohibitions?(
               frank,
               create,
@@ -221,7 +221,7 @@ describe 'ActiveRecord' do
       end
 
       describe 'accessible_objects' do
-        it 'returns objects accessible via a role' do
+        it 'returns objects accessible via an attribute' do
           expect(
             candy_pm.accessible_objects(
               frank,
@@ -232,7 +232,7 @@ describe 'ActiveRecord' do
           ).to match_array(['brie', 'swiss'])
         end
 
-        it 'does not return objects that are not accessible via a role' do
+        it 'does not return objects that are not accessible via an attribute' do
           expect(
             candy_pm.accessible_objects(frank, create, user_attribute_scope: employee)
           ).to be_empty
@@ -260,7 +260,7 @@ describe 'ActiveRecord' do
       end
 
       describe 'accessible_ancestor_objects' do
-        it 'returns objects accessible via a role on an object scope' do
+        it 'returns objects accessible via an attribute on an object scope' do
           expect(
             candy_pm.accessible_ancestor_objects(
               frank,
@@ -272,7 +272,7 @@ describe 'ActiveRecord' do
           ).to match_array(['vanilla', 'french_vanilla', 'american_vanilla'])
         end
 
-        it 'does not return objects that are not accessible via a role on an object scope' do
+        it 'does not return objects that are not accessible via an attribute on an object scope' do
           expect(
             candy_pm.accessible_ancestor_objects(frank, create, vanilla, user_attribute_scope: employee)
           ).to be_empty

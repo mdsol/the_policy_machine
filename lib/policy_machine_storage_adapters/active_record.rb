@@ -711,7 +711,7 @@ module PolicyMachineStorageAdapter
 
     # Returns true if the user has the operation on the object, and that operation is granted by
     # the user attribute scope or its descendants
-    def is_privilege_in_role?(user_or_attribute, operation, object_or_attribute, user_attribute_scope)
+    def is_privilege_via_attribute?(user_or_attribute, operation, object_or_attribute, user_attribute_scope)
       policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
       operation_id = operation.try(:unique_identifier) || operation.to_s
 
@@ -812,7 +812,7 @@ module PolicyMachineStorageAdapter
     # Return true if the user_or_attribute is authorized on the root object
     def short_circuit_all_ancestor_objects?(user_or_attribute, operation, root_object, options)
       if user_attribute_scope = options[:user_attribute_scope]
-        is_privilege_in_role?(user_or_attribute, operation, root_object, user_attribute_scope)
+        is_privilege_via_attribute?(user_or_attribute, operation, root_object, user_attribute_scope)
       else
         is_privilege?(user_or_attribute, operation, root_object)
       end
