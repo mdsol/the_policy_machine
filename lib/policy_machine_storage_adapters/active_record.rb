@@ -709,6 +709,9 @@ module PolicyMachineStorageAdapter
       end
     end
 
+    ## Optimized version of PolicyMachine#is_privilege_with_filters?
+    # Returns true if the user has the operation on the object, but only if the privilege
+    # can be derived via a user attribute that passes the filter
     def is_filtered_privilege?(user_or_attribute, operation, object_or_attribute, filters: {}, options: {})
       policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
       operation_id = operation.try(:unique_identifier) || operation.to_s
