@@ -115,6 +115,14 @@ class PolicyMachine
       return policy_machine_storage_adapter.is_privilege?(*privilege)
     end
 
+    if (user_attribute_scope = options[:user_attribute_scope]) && policy_machine_storage_adapter.respond_to?(:is_privilege_via_attribute?)
+      privilege = [user_or_attribute, operation, object_or_attribute, user_attribute_scope].map do |obj|
+        obj.respond_to?(:stored_pe) ? obj.stored_pe : obj
+      end
+
+      return policy_machine_storage_adapter.is_privilege_via_attribute?(*privilege)
+    end
+
     unless operation.is_a?(PM::Operation)
       operation = operations(unique_identifier: operation.to_s).first or return false
     end
@@ -194,22 +202,37 @@ class PolicyMachine
   #
   # TODO:  might make privilege a class of its own
   def scoped_privileges(user_or_attribute, object_or_attribute, options = {})
-    privileges_and_prohibitions = if policy_machine_storage_adapter.respond_to?(:scoped_privileges)
-      policy_machine_storage_adapter.scoped_privileges(user_or_attribute.stored_pe, object_or_attribute.stored_pe, options).map do |op|
-        operation = PM::Operation.convert_stored_pe_to_pe(op, policy_machine_storage_adapter, PM::Operation)
-        [user_or_attribute, operation, object_or_attribute]
-      end
-    else
-      operations.grep(->operation{is_privilege_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute)}) do |op|
-        [user_or_attribute, op, object_or_attribute]
+    # Duplicate so passed hash doesn't get modified
+    options = options.dup
+    user_attribute_scope = options.delete(:user_attribute_scope)
+
+    privs_and_prohibs = scoped_privileges_and_prohibitions(user_or_attribute, object_or_attribute, options)
+
+    prohibited_operations = Set.new
+
+    privileges = privs_and_prohibs.reject do |_, operation, _|
+      if operation.prohibition?
+        prohibited_operations.add(operation.operation)
       end
     end
-    prohibitions, privileges = privileges_and_prohibitions.partition { |_,op,_| op.prohibition? }
+
+    if user_attribute_scope
+      # TODO: Surface user attribute origin in scoped_privileges_and_prohibitions
+      # so this call is unnecessary and the user attribute scoping can be done
+      # in-memory while maintaining the full set of prohibitions
+      scoped_privs = scoped_privileges_and_prohibitions(
+        user_or_attribute,
+        object_or_attribute,
+        options.merge(user_attribute_scope: user_attribute_scope)
+      )
+
+      privileges = scoped_privs.reject { |_, op, _| op.prohibition? }
+    end
+
     if options[:ignore_prohibitions]
       privileges
     else
-      prohibited_operations = prohibitions.map { |_,prohibition,_| prohibition.operation }
-      privileges.reject { |_,op,_| prohibited_operations.include?(op.unique_identifier) }
+      privileges.reject { |_, op, _| prohibited_operations.include?(op.unique_identifier) }
     end
   end
 
@@ -273,6 +296,20 @@ class PolicyMachine
     else
       raise NoMethodError, "accessible_ancestor_objects is not implemented for storage adapter " \
                            "#{policy_machine_storage_adapter.class}."
+    end
+  end
+
+  def is_privilege_via_attribute?(user_or_attribute, operation, object_or_attribute, user_attribute_scope, options = {})
+    # Prohibitions shouldn't ever be scoped to a user attribute, so use the normal privilege check for the prohibition
+    is_privilege_via_attribute_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute, user_attribute_scope) && (options[:ignore_prohibitions] || !is_privilege_ignoring_prohibitions?(user_or_attribute, PM::Prohibition.on(operation), object_or_attribute))
+  end
+
+  def is_privilege_via_attribute_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute, user_attribute_scope)
+    if policy_machine_storage_adapter.respond_to?(:is_privilege_via_attribute?)
+      policy_machine_storage_adapter.is_privilege_via_attribute?(user_or_attribute, operation, object_or_attribute, user_attribute_scope)
+    else
+      raise NoMethodError, "is_privilege_via_attribute? is not implemented for storage adapter " \
+        "#{policy_machine_storage_adapter.class}"
     end
   end
 
@@ -347,6 +384,20 @@ class PolicyMachine
   end
 
   private
+
+
+  def scoped_privileges_and_prohibitions(user_or_attribute, object_or_attribute, options)
+    if policy_machine_storage_adapter.respond_to?(:scoped_privileges)
+      policy_machine_storage_adapter.scoped_privileges(user_or_attribute.stored_pe, object_or_attribute.stored_pe, options).map do |op|
+        operation = PM::Operation.convert_stored_pe_to_pe(op, policy_machine_storage_adapter, PM::Operation)
+        [user_or_attribute, operation, object_or_attribute]
+      end
+    else
+      operations.grep(->operation{is_privilege_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute)}) do |op|
+        [user_or_attribute, op, object_or_attribute]
+      end
+    end
+  end
 
   # Raise unless the argument is a policy element.
   def assert_policy_element_in_machine(arg_pe)

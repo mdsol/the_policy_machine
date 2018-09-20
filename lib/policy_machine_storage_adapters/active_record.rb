@@ -709,17 +709,37 @@ module PolicyMachineStorageAdapter
       end
     end
 
+    # Returns true if the user has the operation on the object, and that operation is granted by
+    # the user attribute scope or its descendants
+    def is_privilege_via_attribute?(user_or_attribute, operation, object_or_attribute, user_attribute_scope)
+      policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
+      operation_id = operation.try(:unique_identifier) || operation.to_s
+
+      if policy_classes_containing_object.size < 2
+        !accessible_operations(user_or_attribute, object_or_attribute, operation_id, user_attribute_scope).empty?
+      else
+        policy_classes_containing_object.all? do |policy_class|
+          !accessible_operations(user_or_attribute, object_or_attribute, operation_id, user_attribute_scope).empty?
+        end
+      end
+    end
+
     ## Optimized version of PolicyMachine#scoped_privileges
     # Returns all operations the user has on the object
+    # A user attribute scope can be passed in the options hash as :user_attribute_scope
+    # The only privileges returns will be those granted by the user attribute scope or its
+    # descendants
     def scoped_privileges(user_or_attribute, object_or_attribute, options = {})
       policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
 
+      user_attribute_scope = options[:user_attribute_scope]
+
       operations =
         if policy_classes_containing_object.size < 2
-          accessible_operations(user_or_attribute, object_or_attribute)
+          accessible_operations(user_or_attribute, object_or_attribute, nil, user_attribute_scope)
         else
           policy_classes_containing_object.flat_map do |policy_class|
-            accessible_operations(user_or_attribute, policy_class.ancestors)
+            accessible_operations(user_or_attribute, policy_class.ancestors, nil, user_attribute_scope)
           end
         end
 
@@ -739,19 +759,27 @@ module PolicyMachineStorageAdapter
 
     ## Optimized version of PolicyMachine#accessible_objects
     # Returns all objects the user has the given operation on
+    # A user attribute scope can be passed in the options hash as :user_attribute_scope
+    # The only objects that will be returned are those that are accessible via the user attribute scope
     # TODO: Support multiple policy classes here
     def accessible_objects(user_or_attribute, operation, options = {})
+      # Duplicate so passed hash doesn't get modified
+      options = options.dup
       candidates = objects_for_user_or_attribute_and_operation(user_or_attribute, operation, options)
 
       if options[:ignore_prohibitions] || !(prohibition = prohibition_for(operation))
         candidates
       else
+        options = options.dup
+        options.delete(:user_attribute_scope)
         candidates - accessible_objects(user_or_attribute, prohibition, options.merge(ignore_prohibitions: true))
       end
     end
 
     # Version of accessible_objects which only returns objects that are
     # ancestors of a specified root object or the object itself
+    # A user attribute scope can be passed in the options hash as :user_attribute_scope
+    # The only objects that will be returned are those that are accessible via the user attribute scope
     def accessible_ancestor_objects(user_or_attribute, operation, root_object, options = {})
       # If the root_object is a generic PM::Object, convert it the appropriate storage adapter Object
       root_object = root_object.try(:stored_pe) || root_object
@@ -763,7 +791,7 @@ module PolicyMachineStorageAdapter
 
       # Short-circuit and return all ancestors (minus prohibitions) if the user_or_attribute
       # is authorized on the root node
-      if is_privilege?(user_or_attribute, operation, root_object)
+      if short_circuit_all_ancestor_objects?(user_or_attribute, operation, root_object, options)
         return all_ancestor_objects(user_or_attribute, operation, root_object, ancestor_objects, options)
       end
 
@@ -774,22 +802,39 @@ module PolicyMachineStorageAdapter
         candidates
       else
         preloaded_options = options.merge(ignore_prohibitions: true, ancestor_objects: ancestor_objects)
+        preloaded_options.delete(:user_attribute_scope)
         candidates - accessible_ancestor_objects(user_or_attribute, prohibition, root_object, preloaded_options)
       end
     end
 
     private
 
+    # Return true if the user_or_attribute is authorized on the root object
+    def short_circuit_all_ancestor_objects?(user_or_attribute, operation, root_object, options)
+      if user_attribute_scope = options[:user_attribute_scope]
+        is_privilege_via_attribute?(user_or_attribute, operation, root_object, user_attribute_scope)
+      else
+        is_privilege?(user_or_attribute, operation, root_object)
+      end
+    end
+
     # Returns an array of all the objects accessible for a given user or attribute and operation
     def objects_for_user_or_attribute_and_operation(user_or_attribute, operation, options)
-      associations = associations_for_user_or_attribute(user_or_attribute)
+      associations = associations_for_user_or_attribute(user_or_attribute, options)
       filtered_associations = associations_filtered_by_operation(associations, operation)
       build_accessible_object_scope(filtered_associations, options)
     end
 
-    # Gets the associations related to the given user or attribute or its descendants
-    def associations_for_user_or_attribute(user_or_attribute)
+    # Gets the associations related to the given user or its descendants
+    def associations_for_user_or_attribute(user_or_attribute, options)
       user_attribute_ids = user_or_attribute.descendants.pluck(:id) | [user_or_attribute.id]
+
+      if user_attribute_scope = options[:user_attribute_scope]
+        user_attribute_scope_ids = user_attribute_scope.respond_to?(:map) ? user_attribute_scope.map(&:id) : [user_attribute_scope.id]
+        scoped_user_attribute_ids = Assignment.descendants_of(user_attribute_scope).pluck(:id) | user_attribute_scope_ids
+        user_attribute_ids &= scoped_user_attribute_ids
+      end
+
       PolicyElementAssociation.where(user_attribute_id: user_attribute_ids)
     end
 
@@ -807,7 +852,7 @@ module PolicyMachineStorageAdapter
     # Builds an array of PolicyElement objects within the scope of a given
     # array of associations
     def build_accessible_object_scope(associations, options = {})
-      permitting_oas = PolicyElement.where(id: associations.pluck(:object_attribute_id))
+      permitting_oas = PolicyElement.where(id: associations.select(:object_attribute_id))
 
       # Direct scope: the set of objects on which the operator is directly assigned
       direct_scope = permitting_oas.where(type: class_for_type('object'))
@@ -985,10 +1030,15 @@ module PolicyMachineStorageAdapter
       PolicyMachineStorageAdapter::ActiveRecord::Operation.find_by_unique_identifier("~#{operation_id}")
     end
 
-    def accessible_operations(user_or_attribute, object_or_attribute, operation_id = nil)
+    def accessible_operations(user_or_attribute, object_or_attribute, operation_id = nil, user_attribute_scope = nil)
       transaction_without_mergejoin do
         user_attribute_ids = Assignment.descendants_of(user_or_attribute).pluck(:id) | [user_or_attribute.id]
         object_attribute_ids = Assignment.descendants_of(object_or_attribute).pluck(:id) | [object_or_attribute.id]
+
+        if user_attribute_scope
+          scoped_user_attribute_ids = Assignment.descendants_of(user_attribute_scope).pluck(:id) | [user_attribute_scope.id]
+          user_attribute_ids &= scoped_user_attribute_ids
+        end
 
         associations =
           PolicyElementAssociation.where(
@@ -1009,6 +1059,8 @@ module PolicyMachineStorageAdapter
       apply_include_condition!(ancestor_objects, options[:key], options[:includes])
 
       if !options[:ignore_prohibitions] && prohibition = prohibition_for(operation)
+        options.delete(:user_attribute_scope)
+
         prohibited_ancestor_objects = accessible_ancestor_objects(
           user_or_attribute,
           prohibition,
