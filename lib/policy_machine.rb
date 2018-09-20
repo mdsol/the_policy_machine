@@ -94,6 +94,30 @@ class PolicyMachine
       (options[:ignore_prohibitions] || !is_privilege_ignoring_prohibitions?(user_or_attribute, PM::Prohibition.on(operation), object_or_attribute, options))
   end
 
+  def is_privilege_with_filters?(user_or_attribute, operation, object_or_attribute, filters: {}, options: {})
+    is_filtered_privilege_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute, filters: filters, options: options) && (options[:ignore_prohibitions] || !is_privilege_ignoring_prohibitions?(user_or_attribute, PM::Prohibition.on(operation), object_or_attribute, options))
+  end
+
+  def is_filtered_privilege_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute, filters: {}, options: {})
+    unless user_or_attribute.is_a?(PM::User) || user_or_attribute.is_a?(PM::UserAttribute)
+      raise(ArgumentError, "user_attribute_pe must be a User or UserAttribute.")
+    end
+
+    unless [PM::Operation, Symbol, String].any? { |allowed_type| operation.is_a?(allowed_type) }
+      raise(ArgumentError, "operation must be an Operation, Symbol, or String.")
+    end
+
+    unless object_or_attribute.is_a?(PM::Object) || object_or_attribute.is_a?(PM::ObjectAttribute)
+      raise(ArgumentError, "object_or_attribute must either be an Object or ObjectAttribute.")
+    end
+
+    if policy_machine_storage_adapter.respond_to?(:is_filtered_privilege?)
+      policy_machine_storage_adapter.is_filtered_privilege?(user_or_attribute, operation, object_or_attribute, filters: filters, options: options)
+    else
+      raise(NotImplementedError, "is_filtered_privilege? not implemented in storage adapter #{policy_machine_storage_adapter.class}")
+    end
+  end
+
   ##
   # Check the privilege without checking for prohibitions. May be called directly but is also used in is_privilege?
   #
@@ -113,6 +137,11 @@ class PolicyMachine
     if options.empty? && policy_machine_storage_adapter.respond_to?(:is_privilege?)
       privilege = [user_or_attribute, operation, object_or_attribute].map { |obj| obj.respond_to?(:stored_pe) ? obj.stored_pe : obj }
       return policy_machine_storage_adapter.is_privilege?(*privilege)
+    end
+
+    if options[:filters] && policy_machine_storage_adapter.respond_to?(:is_privilege_with_filters?)
+      privilege = [user_or_attribute, operation, object_or_attribute].map { |obj| obj.respond_to?(:stored_pe) ? obj.stored_pe : obj }
+      return policy_machine_storage_adapter.is_privilege_with_filters?(*privilege, filters: options[:filters])
     end
 
     unless operation.is_a?(PM::Operation)
@@ -194,17 +223,31 @@ class PolicyMachine
   #
   # TODO:  might make privilege a class of its own
   def scoped_privileges(user_or_attribute, object_or_attribute, options = {})
-    privileges_and_prohibitions = if policy_machine_storage_adapter.respond_to?(:scoped_privileges)
-      policy_machine_storage_adapter.scoped_privileges(user_or_attribute.stored_pe, object_or_attribute.stored_pe, options).map do |op|
+    filters = options.delete(:filters)
+
+    privs_and_prohibs = if policy_machine_storage_adapter.respond_to?(:scoped_privileges)
+                          policy_machine_storage_adapter.scoped_privileges(user_or_attribute.stored_pe, object_or_attribute.stored_pe, options).map do |op|
+                            operation = PM::Operation.convert_stored_pe_to_pe(op, policy_machine_storage_adapter, PM::Operation)
+                            [user_or_attribute, operation, object_or_attribute]
+                          end
+                        else
+                          operations.grep(->operation{is_privilege_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute)}) do |op|
+                            [user_or_attribute, op, object_or_attribute]
+                          end
+                        end
+
+
+    prohibitions, privileges = privs_and_prohibs.partition { |_,op,_| op.prohibition? }
+
+    if filters
+      raise NotImplementedError unless policy_machine_storage_adapter.respond_to?(:scoped_privileges)
+
+      privileges = policy_machine_storage_adapter.scoped_privileges(user_or_attribute.stored_pe, object_or_attribute.stored_pe, options.merge(filters: filters)).map do |op|
         operation = PM::Operation.convert_stored_pe_to_pe(op, policy_machine_storage_adapter, PM::Operation)
         [user_or_attribute, operation, object_or_attribute]
       end
-    else
-      operations.grep(->operation{is_privilege_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute)}) do |op|
-        [user_or_attribute, op, object_or_attribute]
-      end
     end
-    prohibitions, privileges = privileges_and_prohibitions.partition { |_,op,_| op.prohibition? }
+
     if options[:ignore_prohibitions]
       privileges
     else
