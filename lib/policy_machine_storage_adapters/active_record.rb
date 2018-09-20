@@ -770,6 +770,7 @@ module PolicyMachineStorageAdapter
       if options[:ignore_prohibitions] || !(prohibition = prohibition_for(operation))
         candidates
       else
+        options = options.dup
         options.delete(:user_attribute_scope)
         candidates - accessible_objects(user_or_attribute, prohibition, options.merge(ignore_prohibitions: true))
       end
