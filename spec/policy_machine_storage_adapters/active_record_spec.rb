@@ -159,7 +159,7 @@ describe 'ActiveRecord' do
                 brie,
                 user_attribute_scope: cheese_engineer
               )
-            ).to match_array([[frank, create, brie], [frank, taste, brie]])
+            ).to contain_exactly([frank, create, brie], [frank, taste, brie])
           end
         end
 

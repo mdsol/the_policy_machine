@@ -763,6 +763,8 @@ module PolicyMachineStorageAdapter
     # The only objects that will be returned are those that are accessible via the user attribute scope
     # TODO: Support multiple policy classes here
     def accessible_objects(user_or_attribute, operation, options = {})
+      # Duplicate so passed hash doesn't get modified
+      options = options.dup
       candidates = objects_for_user_or_attribute_and_operation(user_or_attribute, operation, options)
 
       if options[:ignore_prohibitions] || !(prohibition = prohibition_for(operation))
@@ -809,9 +811,9 @@ module PolicyMachineStorageAdapter
     # Return true if the user_or_attribute is authorized on the root object
     def short_circuit_all_ancestor_objects?(user_or_attribute, operation, root_object, options)
       if user_attribute_scope = options[:user_attribute_scope]
-        true if is_privilege_in_role?(user_or_attribute, operation, root_object, user_attribute_scope)
+        is_privilege_in_role?(user_or_attribute, operation, root_object, user_attribute_scope)
       else
-        true if is_privilege?(user_or_attribute, operation, root_object)
+        is_privilege?(user_or_attribute, operation, root_object)
       end
     end
 
@@ -829,7 +831,7 @@ module PolicyMachineStorageAdapter
       if user_attribute_scope = options[:user_attribute_scope]
         user_attribute_scope_ids = user_attribute_scope.respond_to?(:map) ? user_attribute_scope.map(&:id) : [user_attribute_scope.id]
         scoped_user_attribute_ids = Assignment.descendants_of(user_attribute_scope).pluck(:id) | user_attribute_scope_ids
-        user_attribute_ids = user_attribute_ids & scoped_user_attribute_ids
+        user_attribute_ids &= scoped_user_attribute_ids
       end
 
       PolicyElementAssociation.where(user_attribute_id: user_attribute_ids)
@@ -1034,7 +1036,7 @@ module PolicyMachineStorageAdapter
 
         if user_attribute_scope
           scoped_user_attribute_ids = Assignment.descendants_of(user_attribute_scope).pluck(:id) | [user_attribute_scope.id]
-          user_attribute_ids = user_attribute_ids & scoped_user_attribute_ids
+          user_attribute_ids &= scoped_user_attribute_ids
         end
 
         associations =

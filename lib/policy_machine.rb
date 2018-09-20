@@ -116,7 +116,10 @@ class PolicyMachine
     end
 
     if (user_attribute_scope = options[:user_attribute_scope]) && policy_machine_storage_adapter.respond_to?(:is_privilege_in_role?)
-      privilege = [user_or_attribute, operation, object_or_attribute, user_attribute_scope].map { |obj| obj.respond_to?(:stored_pe) ? obj.stored_pe : obj }
+      privilege = [user_or_attribute, operation, object_or_attribute, user_attribute_scope].map do |obj|
+        obj.respond_to?(:stored_pe) ? obj.stored_pe : obj
+      end
+
       return policy_machine_storage_adapter.is_privilege_in_role?(*privilege)
     end
 
@@ -199,15 +202,17 @@ class PolicyMachine
   #
   # TODO:  might make privilege a class of its own
   def scoped_privileges(user_or_attribute, object_or_attribute, options = {})
+    # Duplicate so passed hash doesn't get modified
+    options = options.dup
     user_attribute_scope = options.delete(:user_attribute_scope)
 
     privs_and_prohibs = scoped_privileges_and_prohibitions(user_or_attribute, object_or_attribute, options)
 
     prohibited_operations = Set.new
 
-    privileges = privs_and_prohibs.reject do |_, op, _|
-      if op.prohibition?
-        prohibited_operations.add(op.operation)
+    privileges = privs_and_prohibs.reject do |_, operation, _|
+      if operation.prohibition?
+        prohibited_operations.add(operation.operation)
       end
     end
 
