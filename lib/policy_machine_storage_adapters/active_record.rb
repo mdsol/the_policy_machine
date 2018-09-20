@@ -709,14 +709,25 @@ module PolicyMachineStorageAdapter
       end
     end
 
-    ## Optimized version of PolicyMachine#scoped_privileges
+    def is_filtered_privilege?(user_or_attribute, operation, object_or_attribute, filters: {}, options: {})
+      policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
+      operation_id = operation.try(:unique_identifier) || operation.to_s
+
+      if policy_classes_containing_object.size < 2
+        !accessible_operations(user_or_attribute, object_or_attribute, operation_id, filters: filters).empty?
+      else
+        raise(NotImplementedError, 'is_filtered_privilege? does not support multiple policy classes!')
+      end
+    end
+
+    ## Optimized version of PolicyMachine#scope_privileges
     # Returns all operations the user has on the object
     def scoped_privileges(user_or_attribute, object_or_attribute, options = {})
       policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
 
       operations =
         if policy_classes_containing_object.size < 2
-          accessible_operations(user_or_attribute, object_or_attribute)
+          accessible_operations(user_or_attribute, object_or_attribute, filters: options[:filters])
         else
           policy_classes_containing_object.flat_map do |policy_class|
             accessible_operations(user_or_attribute, policy_class.ancestors)
@@ -743,7 +754,7 @@ module PolicyMachineStorageAdapter
     def accessible_objects(user_or_attribute, operation, options = {})
       operation_id = operation.try(:unique_identifier) || operation.to_s
 
-      user_attributes = user_or_attribute.descendants | [user_or_attribute]
+      user_attributes = user_or_attribute.descendants.where(options[:filters]) | [user_or_attribute]
       associations = PolicyElementAssociation.where(user_attribute_id: user_attributes.map(&:id))
       operation_set_ids = associations.pluck(:operation_set_id)
 
@@ -785,12 +796,12 @@ module PolicyMachineStorageAdapter
 
       # Short-circuit and return all ancestors (minus prohibitions) if the user_or_attribute
       # is authorized on the root node
-      if is_privilege?(user_or_attribute, operation, root_object_stored_pe)
+      if options[:filters].nil? && is_privilege?(user_or_attribute, operation, root_object_stored_pe)
         return all_ancestor_objects(user_or_attribute, operation, root_object_stored_pe, ancestor_objects, options)
       end
 
       # Fetch all of the PEAs using the given UA or its descendants
-      user_attribute_ids = user_or_attribute.descendants.pluck(:id) | [user_or_attribute.id]
+      user_attribute_ids = user_or_attribute.descendants.where(options[:filters]).pluck(:id) | [user_or_attribute.id]
       associations = PolicyElementAssociation.where(user_attribute_id: user_attribute_ids)
       operation_set_ids = associations.pluck(:operation_set_id)
 
@@ -986,9 +997,9 @@ module PolicyMachineStorageAdapter
       PolicyMachineStorageAdapter::ActiveRecord::Operation.find_by_unique_identifier("~#{operation_id}")
     end
 
-    def accessible_operations(user_or_attribute, object_or_attribute, operation_id = nil)
+    def accessible_operations(user_or_attribute, object_or_attribute, operation_id = nil, filters: {})
       transaction_without_mergejoin do
-        user_attribute_ids = Assignment.descendants_of(user_or_attribute).pluck(:id) | [user_or_attribute.id]
+        user_attribute_ids = Assignment.descendants_of(user_or_attribute).where(filters).pluck(:id) | [user_or_attribute.id]
         object_attribute_ids = Assignment.descendants_of(object_or_attribute).pluck(:id) | [object_or_attribute.id]
 
         associations =
