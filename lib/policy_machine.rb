@@ -103,17 +103,7 @@ class PolicyMachine
   ##
   # Check the privilege with filters without checking for prohibitions.
   def is_filtered_privilege_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute, filters: {}, options: {})
-    unless user_or_attribute.is_a?(PM::User) || user_or_attribute.is_a?(PM::UserAttribute)
-      raise(ArgumentError, "user_attribute_pe must be a User or UserAttribute.")
-    end
-
-    unless [PM::Operation, Symbol, String].any? { |allowed_type| operation.is_a?(allowed_type) }
-      raise(ArgumentError, "operation must be an Operation, Symbol, or String.")
-    end
-
-    unless object_or_attribute.is_a?(PM::Object) || object_or_attribute.is_a?(PM::ObjectAttribute)
-      raise(ArgumentError, "object_or_attribute must either be an Object or ObjectAttribute.")
-    end
+    assert_privilege_parameters!(user_or_attribute, operation, object_or_attribute)
 
     if policy_machine_storage_adapter.respond_to?(:is_filtered_privilege?)
       policy_machine_storage_adapter.is_filtered_privilege?(user_or_attribute, operation, object_or_attribute, filters: filters, options: options)
@@ -126,17 +116,7 @@ class PolicyMachine
   # Check the privilege without checking for prohibitions. May be called directly but is also used in is_privilege?
   #
   def is_privilege_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute, options = {})
-    unless user_or_attribute.is_a?(PM::User) || user_or_attribute.is_a?(PM::UserAttribute)
-      raise(ArgumentError, "user_attribute_pe must be a User or UserAttribute.")
-    end
-
-    unless [PM::Operation, Symbol, String].any? { |allowed_type| operation.is_a?(allowed_type) }
-      raise(ArgumentError, "operation must be an Operation, Symbol, or String.")
-    end
-
-    unless object_or_attribute.is_a?(PM::Object) || object_or_attribute.is_a?(PM::ObjectAttribute)
-      raise(ArgumentError, "object_or_attribute must either be an Object or ObjectAttribute.")
-    end
+    assert_privilege_parameters!(user_or_attribute, operation, object_or_attribute)
 
     if options.empty? && policy_machine_storage_adapter.respond_to?(:is_privilege?)
       privilege = [user_or_attribute, operation, object_or_attribute].map { |obj| obj.respond_to?(:stored_pe) ? obj.stored_pe : obj }
@@ -386,6 +366,21 @@ class PolicyMachine
   end
 
   private
+
+  # Raise unless the given parameters are valid types
+  def assert_privilege_parameters!(user_or_attribute, operation, object_or_attribute)
+    unless user_or_attribute.is_a?(PM::User) || user_or_attribute.is_a?(PM::UserAttribute)
+      raise(ArgumentError, "user_attribute_pe must be a User or UserAttribute.")
+    end
+
+    unless [PM::Operation, Symbol, String].any? { |allowed_type| operation.is_a?(allowed_type) }
+      raise(ArgumentError, "operation must be an Operation, Symbol, or String.")
+    end
+
+    unless object_or_attribute.is_a?(PM::Object) || object_or_attribute.is_a?(PM::ObjectAttribute)
+      raise(ArgumentError, "object_or_attribute must either be an Object or ObjectAttribute.")
+    end
+  end
 
   # Retrieves all privileges and prohibitions for the given user or attribute on the object or attribute scope
   def get_all_scoped_privileges_and_prohibitions(user_or_attribute, object_or_attribute, options = {})
