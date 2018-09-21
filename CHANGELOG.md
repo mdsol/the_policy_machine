@@ -1,6 +1,7 @@
 # Changelog
 
 ## 1.9.0
+* Add `is_privilege_with_filters?` and `is_privilege_ignoring_prohibitions_with_filters?` methods to Policy Machine.
 * Add `is_privilege_with_filters?` method to ActiveRecord storage adapter.
 * Update `scoped_privileges`, `accessible_objects`, `accessible_ancestor_objects`, and `accessible_operations` to accept a user attribute filter.
 
