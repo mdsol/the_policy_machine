@@ -143,6 +143,24 @@ describe 'ActiveRecord' do
           end
         end
 
+        # Support for cascading user attribute assignments is not yet supported
+        context 'when the user has access via cascading user attributes' do
+          let(:money_handler) { candy_pm.create_user_attribute('money_handler') }
+
+          before do
+            candy_pm.add_assignment(money_handler, cheese_engineer)
+            candy_pm.add_association(money_handler, creator, money)
+          end
+
+          it 'returns false' do
+            filters = { color: 'purple' }
+
+            expect(
+              candy_pm.is_privilege_with_filters?(frank, create, money, filters: filters)
+            ).to be false
+          end
+        end
+
         context 'when the user has access via a user attribute that is filtered out' do
           it 'returns false' do
             filters = { color: 'beige' }
