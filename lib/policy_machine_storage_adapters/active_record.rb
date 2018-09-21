@@ -760,6 +760,8 @@ module PolicyMachineStorageAdapter
       if options[:ignore_prohibitions] || !(prohibition = prohibition_for(operation))
         candidates
       else
+        # Do not use the filter when checking prohibitions
+        preloaded_options = options.except(:filters).merge(ignore_prohibitions: true)
         candidates - accessible_objects(user_or_attribute, prohibition, options.merge(ignore_prohibitions: true))
       end
     end
@@ -787,7 +789,11 @@ module PolicyMachineStorageAdapter
       if options[:ignore_prohibitions] || !(prohibition = prohibition_for(operation))
         candidates
       else
-        preloaded_options = options.merge(ignore_prohibitions: true, ancestor_objects: ancestor_objects)
+        # Do not use the filter when checking prohibitions
+        preloaded_options = options.except(:filters).merge(ignore_prohibitions: true)
+        # If ancestor objects are filtered, preloaded ancestor objects cannot be used when checking prohibitions
+        preloaded_options.merge!(ancestor_objects: ancestor_objects) unless options[:filters]
+
         candidates - accessible_ancestor_objects(user_or_attribute, prohibition, root_object, preloaded_options)
       end
     end
