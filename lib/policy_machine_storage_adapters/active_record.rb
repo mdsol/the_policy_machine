@@ -762,7 +762,7 @@ module PolicyMachineStorageAdapter
       else
         # Do not use the filter when checking prohibitions
         preloaded_options = options.except(:filters).merge(ignore_prohibitions: true)
-        candidates - accessible_objects(user_or_attribute, prohibition, preloaded_options))
+        candidates - accessible_objects(user_or_attribute, prohibition, preloaded_options)
       end
     end
 
