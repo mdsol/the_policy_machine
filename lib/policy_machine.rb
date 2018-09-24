@@ -81,6 +81,26 @@ class PolicyMachine
     PM::Association.create(user_attribute_pe, operation_set, object_attribute_pe, @uuid, @policy_machine_storage_adapter)
   end
 
+  def is_privilege?(user_or_attribute, operation, object_or_attribute, options = {})
+    unless options.empty?
+      return is_privilege_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute, options)
+    end
+
+    unless user_or_attribute.is_a?(PM::User) || user_or_attribute.is_a?(PM::UserAttribute)
+      raise(ArgumentError, "user_attribute_pe must be a User or UserAttribute.")
+    end
+
+    unless [PM::Operation, Symbol, String].any? { |allowed_type| operation.is_a?(allowed_type) }
+      raise(ArgumentError, "operation must be an Operation, Symbol, or String.")
+    end
+
+    unless object_or_attribute.is_a?(PM::Object) || object_or_attribute.is_a?(PM::ObjectAttribute)
+      raise(ArgumentError, "object_or_attribute must either be an Object or ObjectAttribute.")
+    end
+
+    policy_machine_storage_adapter.is_fastg_privilege?(user_or_attribute, operation, object_or_attribute, options) && !policy_machine_storage_adapter.is_fastg_privilege?(user_or_attribute, PM::Prohibition.on(operation), object_or_attribute, options)
+  end
+
   ##
   # Can we derive a privilege of the form (u, op, o) from this policy machine?
   # user_or_attribute is a user or user_attribute.
@@ -89,10 +109,10 @@ class PolicyMachine
   #
   # TODO: add option to ignore policy classes to allow consumer to speed up this method.
   # TODO: Parallelize the two component checks
-  def is_privilege?(user_or_attribute, operation, object_or_attribute, options = {})
-    is_privilege_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute, options) &&
-      (options[:ignore_prohibitions] || !is_privilege_ignoring_prohibitions?(user_or_attribute, PM::Prohibition.on(operation), object_or_attribute, options))
-  end
+  # def is_privilege?(user_or_attribute, operation, object_or_attribute, options = {})
+  #   is_privilege_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute, options) &&
+  #     (options[:ignore_prohibitions] || !is_privilege_ignoring_prohibitions?(user_or_attribute, PM::Prohibition.on(operation), object_or_attribute, options))
+  # end
 
   ##
   # Check the privilege without checking for prohibitions. May be called directly but is also used in is_privilege?

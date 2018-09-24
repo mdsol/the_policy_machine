@@ -694,6 +694,51 @@ module PolicyMachineStorageAdapter
       PolicyElement.transaction(&block)
     end
 
+    def is_fastg_privilege?(user_or_attribute, operation, object_or_attribute, options)
+      user_attributes = Assignment.descendants_of(user_or_attribute)
+      user_attribute_ids = user_attributes.pluck(:id) | [user_or_attribute.id]
+
+      operation_string = operation.try(:unique_identifier) || operation.to_s
+
+      peas = PolicyElementAssociation.where(
+        user_attribute_id: user_attribute_ids
+      )
+
+      accessible_operations = {}
+
+      peas.each do |pea|
+        ops = Assignment.descendants_of(PolicyElement.where(id: peas))
+      end
+
+      accessible_operations = Assignment.descendants_of(
+        PolicyElement.where(id: peas.select(:operation_set_id))
+      ).where(unique_identifier: operation_string)
+
+      candidate_peas = peas.where()
+
+
+      binding.pry
+
+      bridge_object_attributes = PolicyElement.where(
+        id: peas.select(:object_attribute_id)
+      )
+
+      bridge_ancestors = Assignment.ancestors_of(bridge_object_attributes)
+
+      candidate_object_attributes = bridge_object_attributes.pluck(:id) | bridge_ancestors.pluck(:id)
+
+      target_object_id = object_or_attribute.id
+
+      candidate_object_attributes.include?(target_object_id)
+
+      # BFS from user to identify UAs
+      # Label OAs with related operation sets
+      # Create temporary node that is a descendant of the OAs
+      # Find all ancestors of the temporary node
+      # Intersect target object with list of ancestors
+    end
+
+
     ## Optimized version of PolicyMachine#is_privilege?
     # Returns true if the user has the operation on the object
     def is_privilege?(user_or_attribute, operation, object_or_attribute)
