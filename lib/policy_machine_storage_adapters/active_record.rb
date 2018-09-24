@@ -733,7 +733,7 @@ module PolicyMachineStorageAdapter
           accessible_operations(user_or_attribute, object_or_attribute, filters: options[:filters])
         else
           policy_classes_containing_object.flat_map do |policy_class|
-            accessible_operations(user_or_attribute, policy_class.ancestors)
+            accessible_operations(user_or_attribute, policy_class.ancestors, filters: options[:filters])
           end
         end
 
@@ -809,7 +809,9 @@ module PolicyMachineStorageAdapter
 
     # Gets the associations related to the given user or attribute or its descendants
     def associations_for_user_or_attribute(user_or_attribute, options)
-      user_attribute_ids = user_or_attribute.descendants.where(options[:filters]).pluck(:id) | [user_or_attribute.id]
+      user_attribute_filter = options.dig(:filters, :user_attributes)
+
+      user_attribute_ids = user_or_attribute.descendants.where(user_attribute_filter).pluck(:id) | [user_or_attribute.id]
       PolicyElementAssociation.where(user_attribute_id: user_attribute_ids)
     end
 
@@ -1007,7 +1009,9 @@ module PolicyMachineStorageAdapter
 
     def accessible_operations(user_or_attribute, object_or_attribute, operation_id = nil, filters: {})
       transaction_without_mergejoin do
-        user_attribute_ids = Assignment.descendants_of(user_or_attribute).where(filters).pluck(:id) | [user_or_attribute.id]
+        user_attribute_filter = filters[:user_attributes] if filters
+
+        user_attribute_ids = Assignment.descendants_of(user_or_attribute).where(user_attribute_filter).pluck(:id) | [user_or_attribute.id]
         object_attribute_ids = Assignment.descendants_of(object_or_attribute).pluck(:id) | [object_or_attribute.id]
 
         associations =

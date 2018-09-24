@@ -97,7 +97,7 @@ describe 'ActiveRecord' do
       describe 'is_privilege_with_filters?' do
         context 'when the user has access via a filtered user attribute' do
           it 'returns true' do
-            filters = { color: 'purple' }
+            filters = { user_attributes: { color: 'purple' } }
 
             expect(
               candy_pm.is_privilege_with_filters?(frank, create, brie, filters: filters)
@@ -113,7 +113,7 @@ describe 'ActiveRecord' do
             end
 
             it 'returns false' do
-              filters = { color: 'purple' }
+              filters = { user_attributes: { color: 'purple' } }
 
               expect(
                 candy_pm.is_privilege_with_filters?(frank, create, brie, filters: filters)
@@ -131,7 +131,7 @@ describe 'ActiveRecord' do
           end
 
           it 'returns true' do
-            filters = { color: 'purple' }
+            filters = { user_attributes: { color: 'purple' } }
 
             expect(
               candy_pm.is_privilege_with_filters?(frank, create, money, filters: filters)
@@ -149,7 +149,7 @@ describe 'ActiveRecord' do
           end
 
           it 'returns false' do
-            filters = { color: 'purple' }
+            filters = { user_attributes: { color: 'purple' } }
 
             expect(
               candy_pm.is_privilege_with_filters?(frank, create, money, filters: filters)
@@ -159,7 +159,7 @@ describe 'ActiveRecord' do
 
         context 'when the user has access via a user attribute that is filtered out' do
           it 'returns false' do
-            filters = { color: 'beige' }
+            filters = { user_attributes: { color: 'beige' } }
 
             expect(
               candy_pm.is_privilege_with_filters?(frank, create, brie, filters: filters)
@@ -169,7 +169,7 @@ describe 'ActiveRecord' do
 
         context 'when the user does not have access via any user attribute' do
           it 'returns false' do
-            filters = { color: 'purple' }
+            filters = { user_attributes: { color: 'purple' } }
 
             expect(
               candy_pm.is_privilege_with_filters?(frank, create, money, filters: filters)
@@ -181,7 +181,7 @@ describe 'ActiveRecord' do
       describe 'scoped_privileges' do
         context 'when the user has access via a filtered user attribute' do
           it 'returns all the privileges granted by that attribute' do
-            filters = { color: 'purple' }
+            filters = { user_attributes: { color: 'purple' } }
 
             expect(
               candy_pm.scoped_privileges(frank, brie, filters: filters)
@@ -197,7 +197,7 @@ describe 'ActiveRecord' do
             end
 
             it 'does not return the prohibited privilege' do
-              filters = { color: 'purple' }
+              filters = { user_attributes: { color: 'purple' } }
 
               expect(
                 candy_pm.scoped_privileges(frank, brie, filters: filters)
@@ -208,7 +208,7 @@ describe 'ActiveRecord' do
 
         context 'when the user has access via a user attribute that is filtered out' do
           it 'does not return the privilege given by the other user attribute' do
-            filters = { color: 'beige' }
+            filters = { user_attributes: { color: 'beige' } }
 
             expect(
               candy_pm.scoped_privileges(frank, brie, filters: filters)
@@ -218,7 +218,7 @@ describe 'ActiveRecord' do
 
         context 'when the user does not have access via any user attribute' do
           it 'returns an empty array' do
-            filters = { color: 'purple' }
+            filters = { user_attributes: { color: 'purple' } }
 
             expect(
               candy_pm.scoped_privileges(frank, money, filters: filters)
@@ -239,12 +239,12 @@ describe 'ActiveRecord' do
           it 'calls is_privilege_with_filters?' do
             expect(candy_pm.policy_machine_storage_adapter).to receive(:is_privilege_with_filters?)
 
-            filters = { color: 'purple' }
+            filters = { user_attributes: { color: 'purple' } }
             candy_pm.is_privilege_ignoring_prohibitions?(frank, create, brie, filters: filters)
           end
 
           it 'ignores prohibitions' do
-            filters = { color: 'purple' }
+            filters = { user_attributes: { color: 'purple' } }
 
             expect(
               candy_pm.is_privilege_ignoring_prohibitions?(frank, create, brie, filters: filters)
@@ -255,7 +255,7 @@ describe 'ActiveRecord' do
 
       describe 'accessible_objects' do
         it 'returns objects accessible via the filtered attribute' do
-          filters = { color: 'purple' }
+          filters = { user_attributes: { color: 'purple' } }
 
           expect(
             candy_pm.accessible_objects(
@@ -268,7 +268,7 @@ describe 'ActiveRecord' do
         end
 
         it 'does not return objects that are not accessible via the filtered attribute' do
-          filters = { color: 'beige' }
+          filters = { user_attributes: { color: 'beige' } }
 
           expect(
             candy_pm.accessible_objects(frank, create, filters: filters)
@@ -284,7 +284,7 @@ describe 'ActiveRecord' do
           end
 
           it 'does not return objects with prohibitions' do
-            filters = { color: 'purple' }
+            filters = { user_attributes: { color: 'purple' } }
 
             expect(
               candy_pm.accessible_objects(
@@ -300,7 +300,7 @@ describe 'ActiveRecord' do
 
       describe 'accessible_ancestor_objects' do
         it 'returns objects accessible via the filtered attribute on an object scope' do
-          filters = { color: 'green' }
+          filters = { user_attributes: { color: 'green' } }
 
           expect(
             candy_pm.accessible_ancestor_objects(
@@ -314,7 +314,7 @@ describe 'ActiveRecord' do
         end
 
         it 'does not return objects that are not accessible via the filtered attribute on an object scope' do
-          filters = { color: 'beige' }
+          filters = { user_attributes: { color: 'beige' } }
 
           expect(
             candy_pm.accessible_ancestor_objects(frank, create, vanilla, filters: filters)
@@ -330,7 +330,7 @@ describe 'ActiveRecord' do
           end
 
          it 'does not return objects with prohibitions' do
-           filters = { color: 'green' }
+           filters = { user_attributes: { color: 'green' } }
 
            expect(
              candy_pm.accessible_ancestor_objects(
