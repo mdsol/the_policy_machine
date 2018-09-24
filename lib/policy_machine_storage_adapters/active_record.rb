@@ -809,7 +809,7 @@ module PolicyMachineStorageAdapter
 
     # Gets the associations related to the given user or attribute or its descendants
     def associations_for_user_or_attribute(user_or_attribute, options)
-      user_attribute_filter = options.dig(:filters, :user_attributes)
+      user_attribute_filter = options[:filters][:user_attributes] if options[:filters] && options[:filters][:user_attributes]
 
       user_attribute_ids = user_or_attribute.descendants.where(user_attribute_filter).pluck(:id) | [user_or_attribute.id]
       PolicyElementAssociation.where(user_attribute_id: user_attribute_ids)
