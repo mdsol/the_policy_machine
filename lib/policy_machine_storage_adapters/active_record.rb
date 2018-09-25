@@ -719,7 +719,7 @@ module PolicyMachineStorageAdapter
       if policy_classes_containing_object.size < 2
         !accessible_operations(user_or_attribute, object_or_attribute, operation_id, filters: filters).empty?
       else
-        raise(NotImplementedError, 'is_filtered_privilege? does not support multiple policy classes!')
+        raise 'is_filtered_privilege? does not support multiple policy classes!'
       end
     end
 

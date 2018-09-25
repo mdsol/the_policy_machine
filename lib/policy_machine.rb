@@ -436,5 +436,4 @@ class PolicyMachine
       end
     end
   end
-
 end
