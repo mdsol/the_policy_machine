@@ -97,6 +97,7 @@ class PolicyMachine
   ##
   # Can we derive a privilege given a set of filters?
   def is_privilege_with_filters?(user_or_attribute, operation, object_or_attribute, filters: {}, options: {})
+    # Check that the privilege can be derived given the set of filters, but do not filter the check for prohibitions
     is_privilege_ignoring_prohibitions_with_filters?(user_or_attribute, operation, object_or_attribute, filters: filters, options: options) &&
        (options[:ignore_prohibitions] || !is_privilege_ignoring_prohibitions?(user_or_attribute, PM::Prohibition.on(operation), object_or_attribute, options))
   end
@@ -204,14 +205,15 @@ class PolicyMachine
   #
   # TODO:  might make privilege a class of its own
   def scoped_privileges(user_or_attribute, object_or_attribute, options = {})
+    # Get an initial set of privileges and prohibitions without filtering. Prohibition checks should be
+    # filter-agnostic since prohibitions are meant to be blocking.
     options_without_filters = options.except(:filters)
-
     privs_and_prohibs = get_all_scoped_privileges_and_prohibitions(user_or_attribute, object_or_attribute, options_without_filters)
 
     prohibitions, privileges = privs_and_prohibs.partition { |_,op,_| op.prohibition? }
 
     if options[:filters]
-      # Retrieve all the privileges derived, given a set of filters
+      # Replace unfiltered privileges with the privileges derived from a given set of filters
       privileges = policy_machine_storage_adapter.scoped_privileges(user_or_attribute.stored_pe, object_or_attribute.stored_pe, options).map do |op|
         operation = PM::Operation.convert_stored_pe_to_pe(op, policy_machine_storage_adapter, PM::Operation)
         [user_or_attribute, operation, object_or_attribute]
