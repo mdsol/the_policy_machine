@@ -204,18 +204,15 @@ class PolicyMachine
   #
   # TODO:  might make privilege a class of its own
   def scoped_privileges(user_or_attribute, object_or_attribute, options = {})
-    options = options.dup
-    filters = options.delete(:filters)
+    options_without_filters = options.except(:filters)
 
-    privs_and_prohibs = get_all_scoped_privileges_and_prohibitions(user_or_attribute, object_or_attribute, options)
+    privs_and_prohibs = get_all_scoped_privileges_and_prohibitions(user_or_attribute, object_or_attribute, options_without_filters)
 
     prohibitions, privileges = privs_and_prohibs.partition { |_,op,_| op.prohibition? }
 
-    if filters
-      raise NotImplementedError unless policy_machine_storage_adapter.respond_to?(:scoped_privileges)
-
-      # Retrieve all the privileges derived via the specified user attribute filtering
-      privileges = policy_machine_storage_adapter.scoped_privileges(user_or_attribute.stored_pe, object_or_attribute.stored_pe, options.merge(filters: filters)).map do |op|
+    if options[:filters]
+      # Retrieve all the privileges derived, given a set of filters
+      privileges = policy_machine_storage_adapter.scoped_privileges(user_or_attribute.stored_pe, object_or_attribute.stored_pe, options).map do |op|
         operation = PM::Operation.convert_stored_pe_to_pe(op, policy_machine_storage_adapter, PM::Operation)
         [user_or_attribute, operation, object_or_attribute]
       end
