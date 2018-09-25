@@ -97,7 +97,8 @@ class PolicyMachine
   ##
   # Can we derive a privilege given a set of filters?
   def is_privilege_with_filters?(user_or_attribute, operation, object_or_attribute, filters: {}, options: {})
-    is_privilege_ignoring_prohibitions_with_filters?(user_or_attribute, operation, object_or_attribute, filters: filters, options: options) && (options[:ignore_prohibitions] || !is_privilege_ignoring_prohibitions?(user_or_attribute, PM::Prohibition.on(operation), object_or_attribute, options))
+    is_privilege_ignoring_prohibitions_with_filters?(user_or_attribute, operation, object_or_attribute, filters: filters, options: options) &&
+       (options[:ignore_prohibitions] || !is_privilege_ignoring_prohibitions?(user_or_attribute, PM::Prohibition.on(operation), object_or_attribute, options))
   end
 
   ##
@@ -105,11 +106,7 @@ class PolicyMachine
   def is_privilege_ignoring_prohibitions_with_filters?(user_or_attribute, operation, object_or_attribute, filters: {}, options: {})
     assert_privilege_parameters!(user_or_attribute, operation, object_or_attribute)
 
-    if policy_machine_storage_adapter.respond_to?(:is_filtered_privilege?)
-      policy_machine_storage_adapter.is_filtered_privilege?(user_or_attribute, operation, object_or_attribute, filters: filters, options: options)
-    else
-      raise(NotImplementedError, "is_filtered_privilege? not implemented in storage adapter #{policy_machine_storage_adapter.class}")
-    end
+    policy_machine_storage_adapter.is_filtered_privilege?(user_or_attribute, operation, object_or_attribute, filters: filters, options: options)
   end
 
   ##
