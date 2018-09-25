@@ -29,7 +29,7 @@ Then just make sure to run `bundle exec rake db:migrate`.
 require 'policy_machine'
 require 'policy_machine_storage_adapters/in_memory'
 
-policy_machine = PolicyMachine.new('my_policy_machine', ::PolicyMachineStorageAdapter::InMemory)
+policy_machine = PolicyMachine.new(name: 'my_policy_machine', storage_adapter: ::PolicyMachineStorageAdapter::InMemory)
 
 # This PM is taken from the policy machine spec at http://csrc.nist.gov/pm/documents/pm_report-rev-x_final.pdf,
 # Figure 4. (pg. 19)
@@ -97,7 +97,7 @@ policy_machine.add_association(division, Set.new([r,prohibit_w]),project1)
 ```
 
 # Logical Links
-another_policy_machine = PolicyMachine.new('another_policy_machine', ::PolicyMachineStorageAdapter::InMemory)
+another_policy_machine = PolicyMachine.new(name: 'another_policy_machine', storage_adapter: ::PolicyMachineStorageAdapter::InMemory)
 u4 = another_policy_machine.create_user('u4')
 policy_machine.add_link(u1, u4)
 

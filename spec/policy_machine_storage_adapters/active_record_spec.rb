@@ -25,6 +25,328 @@ describe 'ActiveRecord' do
     it_behaves_like 'a policy machine storage adapter'
     let(:policy_machine_storage_adapter) { described_class.new }
 
+    describe 'scoping privileges by user attribute' do
+      let(:candy_pm) { PolicyMachine.new(name: 'Candy Machine', storage_adapter: PolicyMachineStorageAdapter::ActiveRecord)}
+
+      let(:frank) { candy_pm.create_user('frank') }
+      let(:employee) { candy_pm.create_user_attribute('employee', color: 'beige') }
+      let(:cheese_engineer) { candy_pm.create_user_attribute('cheese_engineer', color: 'purple') }
+      let(:ice_cream_engineer) { candy_pm.create_user_attribute('ice_cream_engineer', color: 'green') }
+
+      let(:chocolate) { candy_pm.create_object('chocolate') }
+      let(:vanilla) { candy_pm.create_object('vanilla') }
+      let(:french_vanilla) { candy_pm.create_object('french_vanilla') }
+      let(:american_vanilla) { candy_pm.create_object('american_vanilla') }
+      let(:ice_creams) { candy_pm.create_object_attribute('ice_creams') }
+
+      let(:brie) { candy_pm.create_object('brie') }
+      let(:swiss) { candy_pm.create_object('swiss') }
+      let(:cheeses) { candy_pm.create_object_attribute('cheeses') }
+
+      let(:money) { candy_pm.create_object('money') }
+      let(:finances) { candy_pm.create_object_attribute('finances') }
+
+      let(:products) { candy_pm.create_object_attribute('products') }
+
+      let(:business) { candy_pm.create_object_attribute('business') }
+
+      let(:taster) { candy_pm.create_operation_set('taster') }
+      let(:taste) { candy_pm.create_operation('taste') }
+
+      let(:creator) { candy_pm.create_operation_set('creator') }
+      let(:create) { candy_pm.create_operation('create') }
+
+      before do
+        # Frank is an engineer for cheese and ice cream
+        candy_pm.add_assignment(frank, cheese_engineer)
+        candy_pm.add_assignment(frank, ice_cream_engineer)
+        candy_pm.add_assignment(frank, employee)
+
+        # Engineers are employees
+        candy_pm.add_assignment(creator, taster)
+
+        # Establish the official ice creams and cheeses
+        candy_pm.add_assignment(chocolate, ice_creams)
+        candy_pm.add_assignment(vanilla, ice_creams)
+        candy_pm.add_assignment(french_vanilla, vanilla)
+        candy_pm.add_assignment(american_vanilla, vanilla)
+        candy_pm.add_assignment(brie, cheeses)
+        candy_pm.add_assignment(swiss, cheeses)
+
+        # Forbidden business things
+        candy_pm.add_assignment(money, finances)
+
+        # Cheeses and ice creams are products
+        candy_pm.add_assignment(ice_creams, products)
+        candy_pm.add_assignment(cheeses, products)
+
+        # Products and finances are part of business
+        candy_pm.add_assignment(products, business)
+        candy_pm.add_assignment(finances, business)
+
+        # Creators create, tasters taste
+        candy_pm.add_assignment(creator, create)
+        candy_pm.add_assignment(taster, taste)
+
+        # Engineers can create, employees can taste products
+        candy_pm.add_association(employee, taster, products)
+        candy_pm.add_association(cheese_engineer, creator, cheeses)
+        candy_pm.add_association(ice_cream_engineer, creator, ice_creams)
+      end
+
+      describe 'is_privilege_with_filters?' do
+        context 'when the user has access via a filtered user attribute' do
+          it 'returns true' do
+            filters = { user_attributes: { color: 'purple' } }
+
+            expect(
+              candy_pm.is_privilege_with_filters?(frank, create, brie, filters: filters)
+            ).to be true
+          end
+
+          context 'and a prohibition is set' do
+            let(:cant_create) { candy_pm.create_operation_set('cant_create') }
+
+            before do
+              candy_pm.add_assignment(cant_create, create.prohibition)
+              candy_pm.add_association(cheese_engineer, cant_create, brie)
+            end
+
+            it 'returns false' do
+              filters = { user_attributes: { color: 'purple' } }
+
+              expect(
+                candy_pm.is_privilege_with_filters?(frank, create, brie, filters: filters)
+              ).to be false
+            end
+          end
+        end
+
+        context 'when the user has access via cascading operation sets assigned to the user attribute' do
+          let(:money_handling) { candy_pm.create_operation_set('money_handling') }
+
+          before do
+            candy_pm.add_assignment(money_handling, creator)
+            candy_pm.add_association(cheese_engineer, money_handling, finances)
+          end
+
+          it 'returns true' do
+            filters = { user_attributes: { color: 'purple' } }
+
+            expect(
+              candy_pm.is_privilege_with_filters?(frank, create, money, filters: filters)
+            ).to be true
+          end
+        end
+
+        # Support for cascading user attribute assignments is not yet supported
+        context 'when the user has access via cascading user attributes' do
+          let(:money_handler) { candy_pm.create_user_attribute('money_handler') }
+
+          before do
+            candy_pm.add_assignment(money_handler, cheese_engineer)
+            candy_pm.add_association(money_handler, creator, money)
+          end
+
+          it 'returns false' do
+            filters = { user_attributes: { color: 'purple' } }
+
+            expect(
+              candy_pm.is_privilege_with_filters?(frank, create, money, filters: filters)
+            ).to be false
+          end
+        end
+
+        context 'when the user has access via a user attribute that is filtered out' do
+          it 'returns false' do
+            filters = { user_attributes: { color: 'beige' } }
+
+            expect(
+              candy_pm.is_privilege_with_filters?(frank, create, brie, filters: filters)
+            ).to be false
+          end
+        end
+
+        context 'when the user does not have access via any user attribute' do
+          it 'returns false' do
+            filters = { user_attributes: { color: 'purple' } }
+
+            expect(
+              candy_pm.is_privilege_with_filters?(frank, create, money, filters: filters)
+            ).to be false
+          end
+        end
+      end
+
+      describe 'scoped_privileges' do
+        context 'when the user has access via a filtered user attribute' do
+          it 'returns all the privileges granted by that attribute' do
+            filters = { user_attributes: { color: 'purple' } }
+
+            expect(
+              candy_pm.scoped_privileges(frank, brie, filters: filters)
+            ).to contain_exactly([frank, create, brie], [frank, taste, brie])
+          end
+
+          context 'when there is a prohibition' do
+            let(:cant_create) { candy_pm.create_operation_set('cant_create') }
+
+            before do
+              candy_pm.add_assignment(cant_create, create.prohibition)
+              candy_pm.add_association(employee, cant_create, brie)
+            end
+
+            it 'does not return the prohibited privilege' do
+              filters = { user_attributes: { color: 'purple' } }
+
+              expect(
+                candy_pm.scoped_privileges(frank, brie, filters: filters)
+              ).to contain_exactly([frank, taste, brie])
+            end
+          end
+        end
+
+        context 'when the user has access via a user attribute that is filtered out' do
+          it 'does not return the privilege given by the other user attribute' do
+            filters = { user_attributes: { color: 'beige' } }
+
+            expect(
+              candy_pm.scoped_privileges(frank, brie, filters: filters)
+            ).to match_array([[frank, taste, brie]])
+          end
+        end
+
+        context 'when the user does not have access via any user attribute' do
+          it 'returns an empty array' do
+            filters = { user_attributes: { color: 'purple' } }
+
+            expect(
+              candy_pm.scoped_privileges(frank, money, filters: filters)
+            ).to be_empty
+          end
+        end
+      end
+
+      describe 'is_privilege_ignoring_prohibitions?' do
+        let(:cant_create) { candy_pm.create_operation_set('cant_create') }
+
+        before do
+          candy_pm.add_assignment(cant_create, create.prohibition)
+          candy_pm.add_association(cheese_engineer, cant_create, brie)
+        end
+
+        context 'when a filter is passed' do
+          it 'calls is_privilege_with_filters?' do
+            expect(candy_pm.policy_machine_storage_adapter).to receive(:is_privilege_with_filters?)
+
+            filters = { user_attributes: { color: 'purple' } }
+            candy_pm.is_privilege_ignoring_prohibitions?(frank, create, brie, filters: filters)
+          end
+
+          it 'ignores prohibitions' do
+            filters = { user_attributes: { color: 'purple' } }
+
+            expect(
+              candy_pm.is_privilege_ignoring_prohibitions?(frank, create, brie, filters: filters)
+            ).to be true
+          end
+        end
+      end
+
+      describe 'accessible_objects' do
+        it 'returns objects accessible via the filtered attribute' do
+          filters = { user_attributes: { color: 'purple' } }
+
+          expect(
+            candy_pm.accessible_objects(
+              frank,
+              create,
+              filters: filters,
+              key: :unique_identifier
+            ).map(&:unique_identifier)
+          ).to match_array(['brie', 'swiss'])
+        end
+
+        it 'does not return objects that are not accessible via the filtered attribute' do
+          filters = { user_attributes: { color: 'beige' } }
+
+          expect(
+            candy_pm.accessible_objects(frank, create, filters: filters)
+          ).to be_empty
+        end
+
+        context 'prohibitions' do
+          let(:cant_create) { candy_pm.create_operation_set('cant_create') }
+
+          before do
+            candy_pm.add_assignment(cant_create, create.prohibition)
+            candy_pm.add_association(cheese_engineer, cant_create, brie)
+          end
+
+          it 'does not return objects with prohibitions' do
+            filters = { user_attributes: { color: 'purple' } }
+
+            expect(
+              candy_pm.accessible_objects(
+                frank,
+                create,
+                filters: filters,
+                key: :unique_identifier
+              ).map(&:unique_identifier)
+            ).to_not include('brie')
+          end
+        end
+      end
+
+      describe 'accessible_ancestor_objects' do
+        it 'returns objects accessible via the filtered attribute on an object scope' do
+          filters = { user_attributes: { color: 'green' } }
+
+          expect(
+            candy_pm.accessible_ancestor_objects(
+              frank,
+              create,
+              vanilla,
+              filters: filters,
+              key: :unique_identifier
+            ).map(&:unique_identifier)
+          ).to match_array(['vanilla', 'french_vanilla', 'american_vanilla'])
+        end
+
+        it 'does not return objects that are not accessible via the filtered attribute on an object scope' do
+          filters = { user_attributes: { color: 'beige' } }
+
+          expect(
+            candy_pm.accessible_ancestor_objects(frank, create, vanilla, filters: filters)
+          ).to be_empty
+        end
+
+        context 'prohibitions' do
+          let(:cant_create) { candy_pm.create_operation_set('cant_create') }
+
+          before do
+            candy_pm.add_assignment(cant_create, create.prohibition)
+            candy_pm.add_association(ice_cream_engineer, cant_create, french_vanilla)
+          end
+
+         it 'does not return objects with prohibitions' do
+           filters = { user_attributes: { color: 'green' } }
+
+           expect(
+             candy_pm.accessible_ancestor_objects(
+               frank,
+               create,
+               vanilla,
+               filters: filters,
+               key: :unique_identifier
+             ).map(&:unique_identifier)
+           ).to_not include('french_vanilla')
+          end
+        end
+      end
+    end
+
+
     describe 'find_all_of_type' do
       let(:pm_uuid) { SecureRandom.uuid }
 

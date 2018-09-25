@@ -709,17 +709,31 @@ module PolicyMachineStorageAdapter
       end
     end
 
-    ## Optimized version of PolicyMachine#scoped_privileges
+    ## Optimized version of PolicyMachine#is_privilege_with_filters?
+    # Returns true if the user has the operation on the object, but only if the privilege
+    # can be derived via a user attribute that passes the filter
+    def is_filtered_privilege?(user_or_attribute, operation, object_or_attribute, filters: {}, options: {})
+      policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
+      operation_id = operation.try(:unique_identifier) || operation.to_s
+
+      if policy_classes_containing_object.size < 2
+        !accessible_operations(user_or_attribute, object_or_attribute, operation_id, filters: filters).empty?
+      else
+        raise 'is_filtered_privilege? does not support multiple policy classes!'
+      end
+    end
+
+    ## Optimized version of PolicyMachine#scope_privileges
     # Returns all operations the user has on the object
     def scoped_privileges(user_or_attribute, object_or_attribute, options = {})
       policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
 
       operations =
         if policy_classes_containing_object.size < 2
-          accessible_operations(user_or_attribute, object_or_attribute)
+          accessible_operations(user_or_attribute, object_or_attribute, filters: options[:filters])
         else
           policy_classes_containing_object.flat_map do |policy_class|
-            accessible_operations(user_or_attribute, policy_class.ancestors)
+            accessible_operations(user_or_attribute, policy_class.ancestors, filters: options[:filters])
           end
         end
 
@@ -741,34 +755,14 @@ module PolicyMachineStorageAdapter
     # Returns all objects the user has the given operation on
     # TODO: Support multiple policy classes here
     def accessible_objects(user_or_attribute, operation, options = {})
-      operation_id = operation.try(:unique_identifier) || operation.to_s
+      candidates = objects_for_user_or_attribute_and_operation(user_or_attribute, operation, options)
 
-      user_attributes = user_or_attribute.descendants | [user_or_attribute]
-      associations = PolicyElementAssociation.where(user_attribute_id: user_attributes.map(&:id))
-      operation_set_ids = associations.pluck(:operation_set_id)
-
-      filtered_operation_set_ids = Assignment.filter_operation_set_list_by_assigned_operation(operation_set_ids, operation_id)
-      filtered_associations =
-        associations.select do |association|
-          filtered_operation_set_ids.include?(association.operation_set_id)
-        end
-
-      permitting_oas = PolicyElement.where(id: filtered_associations.map(&:object_attribute_id))
-
-      direct_scope = permitting_oas.where(type: class_for_type('object'))
-      indirect_scope = Assignment.ancestors_of(permitting_oas).where(type: class_for_type('object'))
-
-      if inclusion = options[:includes]
-        direct_scope = Adapter.apply_include_condition(scope: direct_scope, key: options[:key], value: inclusion, klass: class_for_type('object'))
-        indirect_scope = Adapter.apply_include_condition(scope: indirect_scope, key: options[:key], value: inclusion, klass: class_for_type('object'))
-      end
-
-      candidates = direct_scope | indirect_scope
-
-      if options[:ignore_prohibitions] || !(prohibition = prohibition_for(operation_id))
+      if options[:ignore_prohibitions] || !(prohibition = prohibition_for(operation))
         candidates
       else
-        candidates - accessible_objects(user_or_attribute, prohibition, options.merge(ignore_prohibitions: true))
+        # Do not use the filter when checking prohibitions
+        preloaded_options = options.except(:filters).merge(ignore_prohibitions: true)
+        candidates - accessible_objects(user_or_attribute, prohibition, preloaded_options)
       end
     end
 
@@ -776,56 +770,83 @@ module PolicyMachineStorageAdapter
     # ancestors of a specified root object or the object itself
     def accessible_ancestor_objects(user_or_attribute, operation, root_object, options = {})
       # If the root_object is a generic PM::Object, convert it the appropriate storage adapter Object
-      root_object_stored_pe = root_object.try(:stored_pe) || root_object
+      root_object = root_object.try(:stored_pe) || root_object
 
       # The final set of accessible objects must be ancestors of the root_object; avoid
       # duplicate ancestor calls when possible
       ancestor_objects = options[:ancestor_objects]
-      ancestor_objects ||= root_object_stored_pe.ancestors(type: class_for_type('object')) + [root_object_stored_pe]
+      ancestor_objects ||= root_object.ancestors(type: class_for_type('object')) + [root_object]
 
       # Short-circuit and return all ancestors (minus prohibitions) if the user_or_attribute
       # is authorized on the root node
-      if is_privilege?(user_or_attribute, operation, root_object_stored_pe)
-        return all_ancestor_objects(user_or_attribute, operation, root_object_stored_pe, ancestor_objects, options)
+      if options[:filters].nil? && is_privilege?(user_or_attribute, operation, root_object)
+        return all_ancestor_objects(user_or_attribute, operation, root_object, ancestor_objects, options)
       end
 
-      # Fetch all of the PEAs using the given UA or its descendants
-      user_attribute_ids = user_or_attribute.descendants.pluck(:id) | [user_or_attribute.id]
-      associations = PolicyElementAssociation.where(user_attribute_id: user_attribute_ids)
-      operation_set_ids = associations.pluck(:operation_set_id)
+      all_accessible_objects = objects_for_user_or_attribute_and_operation(user_or_attribute, operation, options)
+      candidates = all_accessible_objects & ancestor_objects
 
-      # Narrow the list of PEAs to just those containing the specified operation
-      operation_id = operation.try(:unique_identifier) || operation.to_s
-      filtered_operation_set_ids = Assignment.filter_operation_set_list_by_assigned_operation(operation_set_ids, operation_id)
-      filtered_associations = associations.where(operation_set_id: filtered_operation_set_ids)
-
-      permitting_oa_ids = filtered_associations.pluck(:object_attribute_id)
-      permitting_oas = PolicyElement.where(id: permitting_oa_ids)
-
-      # Direct scope: the set of objects on which the operator is directly assigned
-      # Indirect scope: the set of objects which the operator can access via ancestral hierarchy
-      direct_scope = permitting_oas.where(type: class_for_type('object'))
-      indirect_scope = Assignment.ancestors_of(permitting_oas).where(type: class_for_type('object'))
-
-      # If an includes: condition has been provided, reduce the set of objects to those containing the
-      # specified value (options[:includes]) for the specified key (options[:key])
-      if inclusion = options[:includes]
-        direct_scope = Adapter.apply_include_condition(scope: direct_scope, key: options[:key], value: inclusion, klass: class_for_type('object'))
-        indirect_scope = Adapter.apply_include_condition(scope: indirect_scope, key: options[:key], value: inclusion, klass: class_for_type('object'))
-      end
-
-      # Ensure all candidates are ancestors of the specified root_object
-      candidates = (direct_scope | indirect_scope) & ancestor_objects
-
-      if options[:ignore_prohibitions] || !(prohibition = prohibition_for(operation_id))
+      if options[:ignore_prohibitions] || !(prohibition = prohibition_for(operation))
         candidates
       else
-        preloaded_options = options.merge(ignore_prohibitions: true, ancestor_objects: ancestor_objects)
+        # Do not use the filter when checking prohibitions
+        preloaded_options = options.except(:filters).merge(ignore_prohibitions: true)
+        # If ancestor objects are filtered, preloaded ancestor objects cannot be used when checking prohibitions
+        preloaded_options.merge!(ancestor_objects: ancestor_objects) unless options[:filters]
+
         candidates - accessible_ancestor_objects(user_or_attribute, prohibition, root_object, preloaded_options)
       end
     end
 
     private
+
+    # Returns an array of all the objects accessible for a given user or attribute and operation
+    def objects_for_user_or_attribute_and_operation(user_or_attribute, operation, options)
+      associations = associations_for_user_or_attribute(user_or_attribute, options)
+      filtered_associations = associations_filtered_by_operation(associations, operation)
+      build_accessible_object_scope(filtered_associations, options)
+    end
+
+    # Gets the associations related to the given user or attribute or its descendants
+    def associations_for_user_or_attribute(user_or_attribute, options)
+      user_attribute_filter = options[:filters][:user_attributes] if options[:filters] && options[:filters][:user_attributes]
+
+      user_attribute_ids = user_or_attribute.descendants.where(user_attribute_filter).pluck(:id) | [user_or_attribute.id]
+      PolicyElementAssociation.where(user_attribute_id: user_attribute_ids)
+    end
+
+    # Filters a list of associations to those related to a given operation
+    def associations_filtered_by_operation(associations, operation)
+      operation_id = operation.try(:unique_identifier) || operation.to_s
+
+      operation_set_ids = associations.pluck(:operation_set_id)
+
+      filtered_operation_set_ids = Assignment.filter_operation_set_list_by_assigned_operation(operation_set_ids, operation_id)
+
+      associations.where(operation_set_id: filtered_operation_set_ids)
+    end
+
+    # Builds an array of PolicyElement objects within the scope of a given
+    # array of associations
+    def build_accessible_object_scope(associations, options = {})
+      permitting_oas = PolicyElement.where(id: associations.pluck(:object_attribute_id))
+
+      # Direct scope: the set of objects on which the operator is directly assigned
+      direct_scope = permitting_oas.where(type: class_for_type('object'))
+      # Indirect scope: the set of objects which the operator can access via ancestral hierarchy
+      indirect_scope = Assignment.ancestors_of(permitting_oas).where(type: class_for_type('object'))
+
+      if inclusion = options[:includes]
+        direct_scope = build_inclusion_scope(direct_scope, options[:key], inclusion)
+        indirect_scope = build_inclusion_scope(indirect_scope, options[:key], inclusion)
+      end
+
+      direct_scope | indirect_scope
+    end
+
+    def build_inclusion_scope(scope, key, value)
+      Adapter.apply_include_condition(scope: scope, key: key, value: value, klass: class_for_type('object'))
+    end
 
     # Given a policy element class and a set of conditions, returns an
     # ActiveRecord_Relation with those conditions applied
@@ -986,9 +1007,11 @@ module PolicyMachineStorageAdapter
       PolicyMachineStorageAdapter::ActiveRecord::Operation.find_by_unique_identifier("~#{operation_id}")
     end
 
-    def accessible_operations(user_or_attribute, object_or_attribute, operation_id = nil)
+    def accessible_operations(user_or_attribute, object_or_attribute, operation_id = nil, filters: {})
       transaction_without_mergejoin do
-        user_attribute_ids = Assignment.descendants_of(user_or_attribute).pluck(:id) | [user_or_attribute.id]
+        user_attribute_filter = filters[:user_attributes] if filters
+
+        user_attribute_ids = Assignment.descendants_of(user_or_attribute).where(user_attribute_filter).pluck(:id) | [user_or_attribute.id]
         object_attribute_ids = Assignment.descendants_of(object_or_attribute).pluck(:id) | [object_or_attribute.id]
 
         associations =
