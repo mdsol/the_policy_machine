@@ -694,42 +694,39 @@ module PolicyMachineStorageAdapter
       PolicyElement.transaction(&block)
     end
 
-    def is_fastg_privilege?(user_or_attribute, operation, object_or_attribute, options)
-      user_attributes = Assignment.descendants_of(user_or_attribute)
-      user_attribute_ids = user_attributes.pluck(:id) | [user_or_attribute.id]
+    ## Optimized version of PolicyMachine#is_privilege?
+    # Returns true if the user has the operation on the object
+    def is_privilege?(user_or_attribute, operation, object_or_attribute, options)
+      # Identify all related user and user attribute ids
+      user_or_attributes = Assignment.descendants_of(user_or_attribute)
+      user_or_attribute_ids = user_or_attributes.pluck(:id) | [user_or_attribute.id]
 
       operation_string = operation.try(:unique_identifier) || operation.to_s
 
+      # Identify all bridges from the user graph to the object and operation graphs
       peas = PolicyElementAssociation.where(
-        user_attribute_id: user_attribute_ids
+        user_attribute_id: user_or_attribute_ids
       )
 
-      accessible_operations = {}
+      # Identify all operation set ids from the bridges that are related to the operation
+      filtered_operation_set_ids = PolicyElementAssociation.operation_set_ids_with_accessible_operation(peas, operation_string)
 
-      peas.each do |pea|
-        ops = Assignment.descendants_of(PolicyElement.where(id: peas))
-      end
+      # Identify all bridges with the filtered list of operation sets
+      candidate_peas = peas.where(operation_set_id: filtered_operation_set_ids)
 
-      accessible_operations = Assignment.descendants_of(
-        PolicyElement.where(id: peas.select(:operation_set_id))
-      ).where(unique_identifier: operation_string)
-
-      candidate_peas = peas.where()
-
-
-      binding.pry
-
-      bridge_object_attributes = PolicyElement.where(
-        id: peas.select(:object_attribute_id)
+      # Identify all object and object attributes that are endpoints of the bridges
+      bridge_object_or_attributes = PolicyElement.where(
+        id: candidate_peas.select(:object_attribute_id)
       )
 
-      bridge_ancestors = Assignment.ancestors_of(bridge_object_attributes)
-
-      candidate_object_attributes = bridge_object_attributes.pluck(:id) | bridge_ancestors.pluck(:id)
+      # Identify all object and object attributes related to the object and object attribute endpoints
+      # These objects are accessible to the given user or attribute with the given operation
+      bridge_ancestors = Assignment.ancestors_of(bridge_object_or_attributes)
+      candidate_object_or_attributes = bridge_object_or_attributes.pluck(:id) | bridge_ancestors.pluck(:id)
 
       target_object_id = object_or_attribute.id
 
-      candidate_object_attributes.include?(target_object_id)
+      candidate_object_or_attributes.include?(target_object_id)
 
       # BFS from user to identify UAs
       # Label OAs with related operation sets
@@ -739,8 +736,6 @@ module PolicyMachineStorageAdapter
     end
 
 
-    ## Optimized version of PolicyMachine#is_privilege?
-    # Returns true if the user has the operation on the object
     def is_privilege?(user_or_attribute, operation, object_or_attribute)
       policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
       operation_id = operation.try(:unique_identifier) || operation.to_s

@@ -98,7 +98,7 @@ class PolicyMachine
       raise(ArgumentError, "object_or_attribute must either be an Object or ObjectAttribute.")
     end
 
-    policy_machine_storage_adapter.is_fastg_privilege?(user_or_attribute, operation, object_or_attribute, options) && !policy_machine_storage_adapter.is_fastg_privilege?(user_or_attribute, PM::Prohibition.on(operation), object_or_attribute, options)
+    policy_machine_storage_adapter.is_privilege?(user_or_attribute, operation, object_or_attribute, options) && !policy_machine_storage_adapter.is_fastg_privilege?(user_or_attribute, PM::Prohibition.on(operation), object_or_attribute, options)
   end
 
   ##

@@ -2,6 +2,42 @@ require 'active_record/hierarchical_query' # via gem activerecord-hierarchical_q
 
 module PolicyMachineStorageAdapter
   class ActiveRecord
+    class PolicyElementAssociation
+      def self.operation_set_ids_with_accessible_operation(associations, operation)
+        query = <<-SQL
+          operation_set_id IN (
+            WITH RECURSIVE accessible_operations AS (
+              (
+                SELECT
+                  child_id,
+                  parent_id,
+                  parent_id AS operation_set_id
+                FROM assignments
+                WHERE parent_id IN (#{associations.select(:operation_set_id).to_sql})
+              )
+              UNION ALL
+              (
+                SELECT
+                  assignments.child_id,
+                  assignments.parent_id,
+                  accessible_operations.operation_set_id AS operation_set_id
+                FROM assignments
+                INNER JOIN accessible_operations
+                ON accessible_operations.child_id = assignments.parent_id
+              )
+            )
+          SELECT accessible_operations.operation_set_id
+          FROM accessible_operations
+          JOIN policy_elements ops
+            ON ops.id = accessible_operations.child_id
+          WHERE ops.unique_identifier = ?
+          )
+        SQL
+
+        PolicyElementAssociation.where(query, operation).select(:operation_set_id).distinct
+      end
+    end
+
     class Assignment < ::ActiveRecord::Base
       # needs parent_id, child_id columns
       belongs_to :parent, class_name: 'PolicyElement', foreign_key: :parent_id
