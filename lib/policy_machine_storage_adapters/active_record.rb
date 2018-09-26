@@ -860,7 +860,7 @@ module PolicyMachineStorageAdapter
     end
 
     def build_inclusion_scope(scope, key, value)
-      Adapter.apply_include_condition(scope: scope, key: key, value: value, klass: class_for_type('object').name)
+      Adapter.apply_include_condition(scope: scope, key: key, value: value, klass: class_for_type('object'))
     end
 
     # Given a policy element class and a set of conditions, returns an
