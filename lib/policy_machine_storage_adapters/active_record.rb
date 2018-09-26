@@ -706,7 +706,7 @@ module PolicyMachineStorageAdapter
       operation_string = operation.try(:unique_identifier) || operation.to_s
 
       # Identify all bridges from the user graph to the object and operation graphs
-      peas = PolicyElementAssociation.where(user_attribute_idL: user_or_attribute_ids)
+      peas = PolicyElementAssociation.where(user_attribute_id: user_or_attribute_ids)
 
       # Identify all operation set ids from the bridges that are related to the operation
       filtered_operation_set_ids = PolicyElementAssociation.operation_set_ids_with_accessible_operation(peas, operation_string)
