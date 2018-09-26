@@ -696,9 +696,11 @@ module PolicyMachineStorageAdapter
 
     ## Optimized version of PolicyMachine#is_privilege?
     # Returns true if the user has the operation on the object
-    def is_privilege?(user_or_attribute, operation, object_or_attribute, options)
+    def is_privilege?(user_or_attribute, operation, object_or_attribute, options = {})
+      user_attribute_filters = options[:filters][:user_attributes] if options[:filters] && options[:filters][:user_attributes]
+
       # Identify all related user and user attribute ids
-      user_or_attributes = Assignment.descendants_of(user_or_attribute)
+      user_or_attributes = Assignment.descendants_of(user_or_attribute).where(user_attribute_filters)
       user_or_attribute_ids = user_or_attributes.pluck(:id) | [user_or_attribute.id]
 
       operation_string = operation.try(:unique_identifier) || operation.to_s
@@ -735,32 +737,8 @@ module PolicyMachineStorageAdapter
       # Intersect target object with list of ancestors
     end
 
-
-    def is_privilege?(user_or_attribute, operation, object_or_attribute)
-      policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
-      operation_id = operation.try(:unique_identifier) || operation.to_s
-
-      if policy_classes_containing_object.size < 2
-        !accessible_operations(user_or_attribute, object_or_attribute, operation_id).empty?
-      else
-        policy_classes_containing_object.all? do |policy_class|
-          !accessible_operations(user_or_attribute, object_or_attribute, operation_id).empty?
-        end
-      end
-    end
-
-    ## Optimized version of PolicyMachine#is_privilege_with_filters?
-    # Returns true if the user has the operation on the object, but only if the privilege
-    # can be derived via a user attribute that passes the filter
-    def is_filtered_privilege?(user_or_attribute, operation, object_or_attribute, filters: {}, options: {})
-      policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
-      operation_id = operation.try(:unique_identifier) || operation.to_s
-
-      if policy_classes_containing_object.size < 2
-        !accessible_operations(user_or_attribute, object_or_attribute, operation_id, filters: filters).empty?
-      else
-        raise 'is_filtered_privilege? does not support multiple policy classes!'
-      end
+    def is_filtered_privilege?(user_or_attribute, operation, object_or_attribute, options = {})
+      is_privilege?(user_or_attribute, operation, object_or_attribute, options)
     end
 
     ## Optimized version of PolicyMachine#scope_privileges
