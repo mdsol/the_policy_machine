@@ -1,4 +1,4 @@
-class UpdatePolicyElementAssociationsTable < ActiveRecord::Migration
+class UpdatePolicyElementAssociationsTable < ActiveRecord::Migration[5.2]
   def change
     add_column :policy_element_associations, :operation_set_id, :integer
     add_index :policy_element_associations,
