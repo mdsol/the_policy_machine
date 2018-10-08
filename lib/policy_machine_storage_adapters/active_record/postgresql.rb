@@ -26,6 +26,7 @@ module PolicyMachineStorageAdapter
                 FROM assignments
                 INNER JOIN assignments_recursive
                 ON assignments_recursive.child_id = assignments.parent_id
+                AND assignments_recursive.child_id = assignments.parent_id
               )
             )
 
@@ -52,6 +53,7 @@ module PolicyMachineStorageAdapter
                 FROM assignments
                 INNER JOIN assignments_recursive
                 ON assignments_recursive.parent_id = assignments.child_id
+                AND assignments_recursive.parent_id = assignments.child_id
               )
             )
 
@@ -79,6 +81,7 @@ module PolicyMachineStorageAdapter
               FROM assignments
               INNER JOIN assignments_recursive
               ON assignments_recursive.parent_id = assignments.child_id
+              AND assignments_recursive.parent_id = assignments.child_id
             )
           )
 
@@ -107,6 +110,7 @@ module PolicyMachineStorageAdapter
               FROM assignments
               INNER JOIN assignments_recursive
               ON assignments_recursive.child_id = assignments.parent_id
+              AND assignments_recursive.child_id = assignments.parent_id
             )
           )
 
@@ -116,6 +120,7 @@ module PolicyMachineStorageAdapter
           ON policy_elements.id = assignments_recursive.child_id
           WHERE #{sanitize_sql_for_conditions(["policy_elements.unique_identifier=:op_id", op_id: operation_id])}
           AND type = 'PolicyMachineStorageAdapter::ActiveRecord::Operation'
+          AND policy_elements.id = assignments_recursive.child_id
         SQL
 
         PolicyElement.connection.exec_query(query).rows.flatten.map(&:to_i)
@@ -146,6 +151,7 @@ module PolicyMachineStorageAdapter
                 FROM logical_links
                 INNER JOIN logical_links_recursive
                 ON logical_links_recursive.link_child_id = logical_links.link_parent_id
+                WHERE logical_links_recursive.link_child_id = logical_links.link_parent_id
               )
             )
 
@@ -172,6 +178,7 @@ module PolicyMachineStorageAdapter
                 FROM logical_links
                 INNER JOIN logical_links_recursive
                 ON logical_links_recursive.link_parent_id = logical_links.link_child_id
+                WHERE logical_links_recursive.link_parent_id = logical_links.link_child_id
               )
             )
 
