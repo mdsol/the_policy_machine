@@ -13,7 +13,7 @@ module PolicyMachineStorageAdapter
 
       def self.descendants_of(element_or_scope)
         query = <<-SQL
-          id IN (
+          EXISTS (
             WITH RECURSIVE assignments_recursive AS (
               (
                 SELECT child_id, parent_id
@@ -30,8 +30,9 @@ module PolicyMachineStorageAdapter
               )
             )
 
-            SELECT assignments_recursive.child_id
+            SELECT 1
             FROM assignments_recursive
+            WHERE id = assignments_recursive.child_id
           )
         SQL
 
@@ -40,7 +41,7 @@ module PolicyMachineStorageAdapter
 
       def self.ancestors_of(element_or_scope)
         query = <<-SQL
-          id IN (
+          EXISTS IN (
             WITH RECURSIVE assignments_recursive AS (
               (
                 SELECT parent_id, child_id
@@ -57,8 +58,9 @@ module PolicyMachineStorageAdapter
               )
             )
 
-            SELECT assignments_recursive.parent_id
+            SELECT 1
             FROM assignments_recursive
+            WHERE id = assignments_recursive.parent_id
           )
         SQL
 
@@ -138,7 +140,7 @@ module PolicyMachineStorageAdapter
 
       def self.descendants_of(element_or_scope)
         query = <<-SQL
-          id IN (
+          EXISTS IN (
             WITH RECURSIVE logical_links_recursive AS (
               (
                 SELECT link_child_id, link_parent_id
@@ -155,8 +157,9 @@ module PolicyMachineStorageAdapter
               )
             )
 
-            SELECT logical_links_recursive.link_child_id
+            SELECT 1
             FROM logical_links_recursive
+            WHERE ID = logical_links_recursive.link_child_id
           )
         SQL
 
@@ -165,7 +168,7 @@ module PolicyMachineStorageAdapter
 
       def self.ancestors_of(element_or_scope)
         query = <<-SQL
-          id IN (
+          EXISTS IN (
             WITH RECURSIVE logical_links_recursive AS (
               (
                 SELECT link_parent_id, link_child_id
@@ -182,8 +185,9 @@ module PolicyMachineStorageAdapter
               )
             )
 
-            SELECT logical_links_recursive.link_parent_id
+            SELECT 1
             FROM logical_links_recursive
+            WHERE id = logical_links_recursive.link_parent_id
           )
         SQL
 
