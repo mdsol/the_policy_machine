@@ -8,35 +8,11 @@ module PolicyMachineStorageAdapter
       belongs_to :child, class_name: 'PolicyElement', foreign_key: :child_id
 
       def self.transitive_closure?(ancestor, descendant)
-        descendants_of(ancestor).include?(descendant)
+        descendant_ids_of(ancestor).include?(descendant.id)
       end
 
       def self.descendants_of(element_or_scope)
-        query = <<-SQL
-          EXISTS (
-            WITH RECURSIVE assignments_recursive AS (
-              (
-                SELECT child_id, parent_id
-                FROM assignments
-                WHERE parent_id in (?)
-              )
-              UNION ALL
-              (
-                SELECT assignments.child_id, assignments.parent_id
-                FROM assignments
-                INNER JOIN assignments_recursive
-                ON assignments_recursive.child_id = assignments.parent_id
-                WHERE assignments_recursive.child_id = assignments.parent_id
-              )
-            )
-
-            SELECT 1
-            FROM assignments_recursive
-            WHERE id = assignments_recursive.child_id
-          )
-        SQL
-
-        PolicyElement.where(query, [*element_or_scope].map(&:id))
+        PolicyElement.where(descendants_of_query, [*element_or_scope].map(&:id))
       end
 
       def self.ancestors_of(element_or_scope)
@@ -127,6 +103,37 @@ module PolicyMachineStorageAdapter
 
         PolicyElement.connection.exec_query(query).rows.flatten.map(&:to_i)
       end
+
+      private
+
+      def self.descendants_of_query
+        <<-SQL
+          EXISTS (
+            WITH RECURSIVE assignments_recursive AS (
+              (
+                SELECT child_id, parent_id
+                FROM assignments
+                WHERE parent_id in (?)
+              )
+              UNION ALL
+              (
+                SELECT assignments.child_id, assignments.parent_id
+                FROM assignments
+                INNER JOIN assignments_recursive
+                ON assignments_recursive.child_id = assignments.parent_id
+                WHERE assignments_recursive.child_id = assignments.parent_id
+              )
+            )
+            SELECT 1
+            FROM assignments_recursive
+            WHERE id = assignments_recursive.child_id
+          )
+        SQL
+      end
+
+      def self.descendant_ids_of(element_or_scope)
+        PolicyElement.where(descendants_of_query, [*element_or_scope].map(&:id)).pluck(:id)
+      end
     end
 
     class LogicalLink < ::ActiveRecord::Base
@@ -135,35 +142,11 @@ module PolicyMachineStorageAdapter
       belongs_to :link_child, class_name: 'PolicyElement', foreign_key: :link_child_id
 
       def self.transitive_closure?(ancestor, descendant)
-        descendants_of(ancestor).include?(descendant)
+        descendant_ids_of(ancestor).include?(descendant.id)
       end
 
       def self.descendants_of(element_or_scope)
-        query = <<-SQL
-          EXISTS (
-            WITH RECURSIVE logical_links_recursive AS (
-              (
-                SELECT link_child_id, link_parent_id
-                FROM logical_links
-                WHERE link_parent_id in (?)
-              )
-              UNION ALL
-              (
-                SELECT logical_links.link_child_id, logical_links.link_parent_id
-                FROM logical_links
-                INNER JOIN logical_links_recursive
-                ON logical_links_recursive.link_child_id = logical_links.link_parent_id
-                WHERE logical_links_recursive.link_child_id = logical_links.link_parent_id
-              )
-            )
-
-            SELECT 1
-            FROM logical_links_recursive
-            WHERE id = logical_links_recursive.link_child_id
-          )
-        SQL
-
-        PolicyElement.where(query, [*element_or_scope].map(&:id))
+       PolicyElement.where(descendants_of_query, [*element_or_scope].map(&:id))
       end
 
       def self.ancestors_of(element_or_scope)
@@ -192,6 +175,37 @@ module PolicyMachineStorageAdapter
         SQL
 
         PolicyElement.where(query, [*element_or_scope].map(&:id))
+      end
+
+      private
+
+      def self.descendants_of_query
+        <<-SQL
+          EXISTS (
+            WITH RECURSIVE logical_links_recursive AS (
+              (
+                SELECT link_child_id, link_parent_id
+                FROM logical_links
+                WHERE link_parent_id in (?)
+              )
+              UNION ALL
+              (
+                SELECT logical_links.link_child_id, logical_links.link_parent_id
+                FROM logical_links
+                INNER JOIN logical_links_recursive
+                ON logical_links_recursive.link_child_id = logical_links.link_parent_id
+                WHERE logical_links_recursive.link_child_id = logical_links.link_parent_id
+              )
+            )
+            SELECT 1
+            FROM logical_links_recursive
+            WHERE id = logical_links_recursive.link_child_id
+          )
+        SQL
+      end
+
+      def self.descendant_ids_of(element_or_scope)
+        PolicyElement.where(descendants_of_query, [*element_or_scope].map(&:id)).pluck(:id)
       end
     end
 
