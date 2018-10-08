@@ -54,7 +54,7 @@ module PolicyMachineStorageAdapter
                 FROM assignments
                 INNER JOIN assignments_recursive
                 ON assignments_recursive.parent_id = assignments.child_id
-                AND assignments_recursive.parent_id = assignments.child_id
+                WHERE assignments_recursive.parent_id = assignments.child_id
               )
             )
 
@@ -83,7 +83,7 @@ module PolicyMachineStorageAdapter
               FROM assignments
               INNER JOIN assignments_recursive
               ON assignments_recursive.parent_id = assignments.child_id
-              AND assignments_recursive.parent_id = assignments.child_id
+              WHERE assignments_recursive.parent_id = assignments.child_id
             )
           )
 
@@ -112,7 +112,7 @@ module PolicyMachineStorageAdapter
               FROM assignments
               INNER JOIN assignments_recursive
               ON assignments_recursive.child_id = assignments.parent_id
-              AND assignments_recursive.child_id = assignments.parent_id
+              WHERE assignments_recursive.child_id = assignments.parent_id
             )
           )
 
