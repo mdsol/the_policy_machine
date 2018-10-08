@@ -41,7 +41,7 @@ module PolicyMachineStorageAdapter
 
       def self.ancestors_of(element_or_scope)
         query = <<-SQL
-          EXISTS IN (
+          EXISTS (
             WITH RECURSIVE assignments_recursive AS (
               (
                 SELECT parent_id, child_id
@@ -140,7 +140,7 @@ module PolicyMachineStorageAdapter
 
       def self.descendants_of(element_or_scope)
         query = <<-SQL
-          EXISTS IN (
+          EXISTS (
             WITH RECURSIVE logical_links_recursive AS (
               (
                 SELECT link_child_id, link_parent_id
@@ -159,7 +159,7 @@ module PolicyMachineStorageAdapter
 
             SELECT 1
             FROM logical_links_recursive
-            WHERE ID = logical_links_recursive.link_child_id
+            WHERE id = logical_links_recursive.link_child_id
           )
         SQL
 
@@ -168,7 +168,7 @@ module PolicyMachineStorageAdapter
 
       def self.ancestors_of(element_or_scope)
         query = <<-SQL
-          EXISTS IN (
+          EXISTS (
             WITH RECURSIVE logical_links_recursive AS (
               (
                 SELECT link_parent_id, link_child_id
