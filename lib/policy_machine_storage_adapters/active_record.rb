@@ -716,10 +716,10 @@ module PolicyMachineStorageAdapter
       operation_id = operation.try(:unique_identifier) || operation.to_s
 
       if policy_classes_containing_object.size < 2
-        !accessible_operations(user_or_attribute, object_or_attribute, operation_id).empty?
+        accessible_operations(user_or_attribute, object_or_attribute, operation_id).exists?
       else
         policy_classes_containing_object.all? do |policy_class|
-          !accessible_operations(user_or_attribute, object_or_attribute, operation_id).empty?
+          accessible_operations(user_or_attribute, object_or_attribute, operation_id).exists?
         end
       end
     end
@@ -732,7 +732,7 @@ module PolicyMachineStorageAdapter
       operation_id = operation.try(:unique_identifier) || operation.to_s
 
       if policy_classes_containing_object.size < 2
-        !accessible_operations(user_or_attribute, object_or_attribute, operation_id, filters: filters).empty?
+        accessible_operations(user_or_attribute, object_or_attribute, operation_id, filters: filters).exists?
       else
         raise 'is_filtered_privilege? does not support multiple policy classes!'
       end
