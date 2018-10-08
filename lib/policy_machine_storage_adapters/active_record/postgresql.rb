@@ -12,35 +12,13 @@ module PolicyMachineStorageAdapter
       end
 
       def self.descendants_of(element_or_scope)
-        PolicyElement.where(descendants_of_query, [*element_or_scope].map(&:id))
+        scope = [*element_or_scope].map { |element| element.try(:id) || element }
+        PolicyElement.where(descendants_of_query, scope)
       end
 
       def self.ancestors_of(element_or_scope)
-        query = <<-SQL
-          EXISTS (
-            WITH RECURSIVE assignments_recursive AS (
-              (
-                SELECT parent_id, child_id
-                FROM assignments
-                WHERE child_id IN (?)
-              )
-              UNION ALL
-              (
-                SELECT assignments.parent_id, assignments.child_id
-                FROM assignments
-                INNER JOIN assignments_recursive
-                ON assignments_recursive.parent_id = assignments.child_id
-                WHERE assignments_recursive.parent_id = assignments.child_id
-              )
-            )
-
-            SELECT 1
-            FROM assignments_recursive
-            WHERE id = assignments_recursive.parent_id
-          )
-        SQL
-
-        PolicyElement.where(query, [*element_or_scope].map(&:id))
+        scope = [*element_or_scope].map { |element| element.try(:id) || element }
+        PolicyElement.where(ancestors_of_query, scope)
       end
 
       # Return an ActiveRecord::Relation containing the ids of all ancestors and the
@@ -106,6 +84,12 @@ module PolicyMachineStorageAdapter
 
       private
 
+      def self.descendant_ids_of(element_or_scope)
+        scope = [*element_or_scope]
+        scope.map! { |element| element.try(:id) || element }
+        PolicyElement.where(descendants_of_query, scope).pluck(:id)
+      end
+
       def self.descendants_of_query
         <<-SQL
           EXISTS (
@@ -131,8 +115,30 @@ module PolicyMachineStorageAdapter
         SQL
       end
 
-      def self.descendant_ids_of(element_or_scope)
-        PolicyElement.where(descendants_of_query, [*element_or_scope].map(&:id)).pluck(:id)
+      def self.ancestors_of_query
+        <<-SQL
+          EXISTS (
+            WITH RECURSIVE assignments_recursive AS (
+              (
+                SELECT parent_id, child_id
+                FROM assignments
+                WHERE child_id IN (?)
+              )
+              UNION ALL
+              (
+                SELECT assignments.parent_id, assignments.child_id
+                FROM assignments
+                INNER JOIN assignments_recursive
+                ON assignments_recursive.parent_id = assignments.child_id
+                WHERE assignments_recursive.parent_id = assignments.child_id
+              )
+            )
+
+            SELECT 1
+            FROM assignments_recursive
+            WHERE id = assignments_recursive.parent_id
+          )
+        SQL
       end
     end
 
