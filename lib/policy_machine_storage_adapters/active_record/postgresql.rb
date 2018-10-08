@@ -26,7 +26,7 @@ module PolicyMachineStorageAdapter
                 FROM assignments
                 INNER JOIN assignments_recursive
                 ON assignments_recursive.child_id = assignments.parent_id
-                AND assignments_recursive.child_id = assignments.parent_id
+                WHERE assignments_recursive.child_id = assignments.parent_id
               )
             )
 
