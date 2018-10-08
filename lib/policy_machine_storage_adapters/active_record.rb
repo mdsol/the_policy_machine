@@ -695,6 +695,10 @@ module PolicyMachineStorageAdapter
       object_attribute.descendants.merge(PolicyElement.where(type: class_for_type('policy_class').name))
     end
 
+    def policy_classes_for_object_attribute_descendants(object_attribute_descendants)
+      object_attribute_descendants.merge(PolicyElement.where(type: class_for_type('policy_class').name))
+    end
+
     ##
     # Return array of all user attributes which contain the given user.
     # Return empty array if no such user attributes are found.
@@ -712,14 +716,17 @@ module PolicyMachineStorageAdapter
     ## Optimized version of PolicyMachine#is_privilege?
     # Returns true if the user has the operation on the object
     def is_privilege?(user_or_attribute, operation, object_or_attribute)
-      policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
       operation_id = operation.try(:unique_identifier) || operation.to_s
 
+      object_attribute_descendants = object_or_attribute.descendants
+      policy_classes_containing_object = policy_classes_for_object_attribute_descendants(object_attribute_descendants)
+      object_attribute_ids = object_attribute_descendants.pluck(:id) | [object_or_attribute.id]
+
       if policy_classes_containing_object.size < 2
-        accessible_operations(user_or_attribute, object_or_attribute, operation_id).exists?
+        accessible_operations(user_or_attribute, object_attribute_ids, operation_id).exists?
       else
         policy_classes_containing_object.all? do |policy_class|
-          accessible_operations(user_or_attribute, object_or_attribute, operation_id).exists?
+          accessible_operations(user_or_attribute, object_attribute_ids, operation_id).exists?
         end
       end
     end
@@ -728,11 +735,14 @@ module PolicyMachineStorageAdapter
     # Returns true if the user has the operation on the object, but only if the privilege
     # can be derived via a user attribute that passes the filter
     def is_filtered_privilege?(user_or_attribute, operation, object_or_attribute, filters: {}, options: {})
-      policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
       operation_id = operation.try(:unique_identifier) || operation.to_s
 
+      object_attribute_descendants = object_or_attribute.descendants
+      policy_classes_containing_object = policy_classes_for_object_attribute_descendants(object_attribute_descendants)
+      object_attribute_ids = object_attribute_descendants.pluck(:id) | [object_or_attribute.id]
+
       if policy_classes_containing_object.size < 2
-        accessible_operations(user_or_attribute, object_or_attribute, operation_id, filters: filters).exists?
+        accessible_operations(user_or_attribute, object_attribute_ids, operation_id, filters: filters).exists?
       else
         raise 'is_filtered_privilege? does not support multiple policy classes!'
       end
@@ -741,14 +751,16 @@ module PolicyMachineStorageAdapter
     ## Optimized version of PolicyMachine#scope_privileges
     # Returns all operations the user has on the object
     def scoped_privileges(user_or_attribute, object_or_attribute, options = {})
-      policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
+      object_attribute_descendants = object_or_attribute.descendants
+      policy_classes_containing_object = policy_classes_for_object_attribute_descendants(object_attribute_descendants)
+      object_attribute_ids = object_attribute_descendants.pluck(:id) | [object_or_attribute.id]
 
       operations =
         if policy_classes_containing_object.size < 2
-          accessible_operations(user_or_attribute, object_or_attribute, filters: options[:filters])
+          accessible_operations(user_or_attribute, object_attribute_ids, filters: options[:filters])
         else
           policy_classes_containing_object.flat_map do |policy_class|
-            accessible_operations(user_or_attribute, policy_class.ancestors, filters: options[:filters])
+            accessible_operations(user_or_attribute, policy_class.ancestors.pluck(:id), filters: options[:filters])
           end
         end
 
@@ -1022,12 +1034,11 @@ module PolicyMachineStorageAdapter
       PolicyMachineStorageAdapter::ActiveRecord::Operation.find_by_unique_identifier("~#{operation_id}")
     end
 
-    def accessible_operations(user_or_attribute, object_or_attribute, operation_id = nil, filters: {})
+    def accessible_operations(user_or_attribute, object_attribute_ids, operation_id = nil, filters: {})
       transaction_without_mergejoin do
         user_attribute_filter = filters[:user_attributes] if filters
 
         user_attribute_ids = Assignment.descendants_of(user_or_attribute).where(user_attribute_filter).pluck(:id) | [user_or_attribute.id]
-        object_attribute_ids = Assignment.descendants_of(object_or_attribute).pluck(:id) | [object_or_attribute.id]
 
         operation_set_ids =
           PolicyElementAssociation.where(
