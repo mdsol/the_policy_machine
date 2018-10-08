@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.0.0
+* Upgrade the Policy Machine to support Rails 5.2.
+
 ## 1.9.0
 * Add `is_privilege_with_filters?` and `is_privilege_ignoring_prohibitions_with_filters?` methods to Policy Machine.
 * Add `is_privilege_with_filters?` method to ActiveRecord storage adapter.
