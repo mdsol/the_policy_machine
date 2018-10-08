@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.0.1
+* Add some database-level performance improvements to `is_privilege?`.
+
 ## 2.0.0
 * Upgrade the Policy Machine to support Rails 5.2.
 
