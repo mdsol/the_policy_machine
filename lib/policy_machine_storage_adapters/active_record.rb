@@ -818,8 +818,8 @@ module PolicyMachineStorageAdapter
     # Returns an array of all the objects accessible for a given user or attribute and operation
     def objects_for_user_or_attribute_and_operation(user_or_attribute, operation, options)
       associations = associations_for_user_or_attribute(user_or_attribute, options)
-      filtered_associations = associations_filtered_by_operation(associations, operation)
-      build_accessible_object_scope(filtered_associations, options)
+      object_attribute_ids = object_attribute_ids_for_associations_filtered_by_operation(associations, operation)
+      build_accessible_object_scope(object_attribute_ids, options)
     end
 
     # Gets the associations related to the given user or attribute or its descendants
@@ -831,20 +831,20 @@ module PolicyMachineStorageAdapter
     end
 
     # Filters a list of associations to those related to a given operation
-    def associations_filtered_by_operation(associations, operation)
+    def object_attribute_ids_for_associations_filtered_by_operation(associations, operation)
       operation_id = operation.try(:unique_identifier) || operation.to_s
 
       operation_set_ids = associations.pluck(:operation_set_id)
 
       filtered_operation_set_ids = Assignment.filter_operation_set_list_by_assigned_operation(operation_set_ids, operation_id)
 
-      associations.where(operation_set_id: filtered_operation_set_ids)
+      associations.where(operation_set_id: filtered_operation_set_ids).pluck(:object_attribute_id)
     end
 
     # Builds an array of PolicyElement objects within the scope of a given
     # array of associations
-    def build_accessible_object_scope(associations, options = {})
-      permitting_oas = PolicyElement.where(id: associations.pluck(:object_attribute_id))
+    def build_accessible_object_scope(object_attribute_ids, options = {})
+      permitting_oas = PolicyElement.where(id: object_attribute_ids)
 
       # Direct scope: the set of objects on which the operator is directly assigned
       direct_scope = permitting_oas.where(type: class_for_type('object').name)
