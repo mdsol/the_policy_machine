@@ -1541,6 +1541,7 @@ describe 'ActiveRecord' do
             it 'can specify a root store level store supported by the backing system' do
               some_hash = { 'foo' => 'bar' }
               obj = policy_machine.send("create_#{type}", SecureRandom.uuid, { document: some_hash })
+
               expect(obj.stored_pe.document).to eq some_hash
               expect(obj.stored_pe.extra_attributes).to be_empty
             end
