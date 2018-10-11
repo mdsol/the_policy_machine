@@ -240,6 +240,7 @@ module PolicyMachineStorageAdapter
       end
 
       def self.serialize(store:, name:, serializer: nil)
+        # Use the passed serializer if present, otherwise use Rails' default serialization
         active_record_serialize store, serializer if serializer
 
         store_accessor store, name
