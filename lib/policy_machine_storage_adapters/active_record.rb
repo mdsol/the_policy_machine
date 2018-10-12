@@ -703,19 +703,27 @@ module PolicyMachineStorageAdapter
     ## Optimized version of PolicyMachine#is_privilege?
     # Returns true if the user has the operation on the object
     def is_privilege?(user_or_attribute, operation, object_or_attribute, options = {})
+      # BFS from user to identify UAs
+      # Label OAs with related operation sets
+      # Create temporary node that is a descendant of the OAs
+      # Find all ancestors of the temporary node
+      # Intersect target object with list of ancestors
+
       user_attribute_filters = options[:filters][:user_attributes] if options[:filters] && options[:filters][:user_attributes]
+
+      operation_string = operation.try(:unique_identifier) || operation.to_s
+      target_object_id = object_or_attribute.id
 
       # Identify all related user and user attribute ids
       user_or_attributes = Assignment.descendants_of(user_or_attribute).where(user_attribute_filters)
       user_or_attribute_ids = user_or_attributes.pluck(:id) | [user_or_attribute.id]
 
-      operation_string = operation.try(:unique_identifier) || operation.to_s
-
       # Identify all bridges from the user graph to the object and operation graphs
       peas = PolicyElementAssociation.where(user_attribute_id: user_or_attribute_ids)
 
       # Identify all operation set ids from the bridges that are related to the operation
-      filtered_operation_set_ids = PolicyElementAssociation.operation_set_ids_with_accessible_operation(peas, operation_string)
+      operation_set_ids = peas.pluck(:operation_set_id)
+      filtered_operation_set_ids = PolicyElementAssociation.operation_set_ids_with_accessible_operation(operation_set_ids, operation_string)
 
       # Identify all bridges with the filtered list of operation sets
       candidate_peas = peas.where(operation_set_id: filtered_operation_set_ids)
@@ -728,15 +736,8 @@ module PolicyMachineStorageAdapter
       bridge_ancestors = Assignment.ancestors_of(bridge_object_or_attributes)
       candidate_object_or_attributes = bridge_object_or_attributes.pluck(:id) | bridge_ancestors.pluck(:id)
 
-      target_object_id = object_or_attribute.id
-
+      # Determine if the objects accessible via the given operation include the target
       candidate_object_or_attributes.include?(target_object_id)
-
-      # BFS from user to identify UAs
-      # Label OAs with related operation sets
-      # Create temporary node that is a descendant of the OAs
-      # Find all ancestors of the temporary node
-      # Intersect target object with list of ancestors
     end
 
     def is_filtered_privilege?(user_or_attribute, operation, object_or_attribute, options = {})
