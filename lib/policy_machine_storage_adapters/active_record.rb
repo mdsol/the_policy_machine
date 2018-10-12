@@ -725,19 +725,21 @@ module PolicyMachineStorageAdapter
       operation_set_ids = peas.pluck(:operation_set_id)
       filtered_operation_set_ids = PolicyElementAssociation.operation_set_ids_with_accessible_operation(operation_set_ids, operation_string)
 
+      # Shortcircuit: if no operation sets can access the given operation, no object is accessible
+      return false if filtered_operation_set_ids.empty?
+
       # Identify all bridges with the filtered list of operation sets
       candidate_peas = peas.where(operation_set_id: filtered_operation_set_ids)
 
       # Identify all object and object attributes that are endpoints of the bridges
       bridge_object_or_attributes = PolicyElement.where(id: candidate_peas.select(:object_attribute_id))
 
-      # Identify all object and object attributes related to the object and object attribute endpoints
-      # These objects are accessible to the given user or attribute with the given operation
-      bridge_ancestors = Assignment.ancestors_of(bridge_object_or_attributes)
-      candidate_object_or_attributes = bridge_object_or_attributes.pluck(:id) | bridge_ancestors.pluck(:id)
+      # If the object is directly assigned to one of the bridges, it is accessible
+      return true if bridge_object_or_attributes.where(id: object_or_attribute.id).any?
 
-      # Determine if the objects accessible via the given operation include the target
-      candidate_object_or_attributes.include?(target_object_id)
+      # If the object's descendants (graph is flipped, remember) are assigned to a bridge, it is accessible
+      bridge_object_or_attribute_ids = bridge_object_or_attributes.pluck(:id)
+      Assignment.descendants_of(object_or_attribute).where(id: bridge_object_or_attribute_ids).any?
     end
 
     def is_filtered_privilege?(user_or_attribute, operation, object_or_attribute, options = {})
