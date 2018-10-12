@@ -34,7 +34,7 @@ module PolicyMachineStorageAdapter
           )
         SQL
 
-        PolicyElementAssociation.where(query, operation)
+        associations.where(query, operation)
       end
     end
 
