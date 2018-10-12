@@ -1026,10 +1026,12 @@ module PolicyMachineStorageAdapter
             object_attribute_id: object_attribute_ids
           )
 
-        prms = { type: PolicyMachineStorageAdapter::ActiveRecord::Operation.to_s }
-        prms.merge!(unique_identifier: operation_id) if operation_id
-
-        Assignment.descendants_of(associations.map(&:operation_set)).where(prms)
+        if operation_id
+          PolicyElementAssociation.with_accessible_operation(associations, operation_id)
+        else
+          prms = { type: PolicyMachineStorageAdapter::ActiveRecord::Operation.to_s }
+          Assignment.descendants_of(associations.map(&:operation_set)).where(prms)
+        end
       end
     end
 
