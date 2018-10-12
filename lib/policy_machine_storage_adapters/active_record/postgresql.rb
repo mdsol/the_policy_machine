@@ -3,7 +3,7 @@ require 'active_record/hierarchical_query' # via gem activerecord-hierarchical_q
 module PolicyMachineStorageAdapter
   class ActiveRecord
     class PolicyElementAssociation
-      def self.operation_set_ids_with_accessible_operation(operation_set_ids, operation)
+      def self.with_accessible_operation(associations, operation)
         query = <<-SQL
           operation_set_id IN (
             WITH RECURSIVE accessible_operations AS (
@@ -13,7 +13,7 @@ module PolicyMachineStorageAdapter
                   parent_id,
                   parent_id AS operation_set_id
                 FROM assignments
-                WHERE parent_id IN (?)
+                WHERE parent_id IN (#{associations.select(:operation_set_id).to_sql})
               )
               UNION ALL
               (
@@ -34,7 +34,7 @@ module PolicyMachineStorageAdapter
           )
         SQL
 
-        PolicyElementAssociation.where(query, operation_set_ids, operation).select(:operation_set_id).distinct
+        PolicyElementAssociation.where(query, operation)
       end
     end
 
