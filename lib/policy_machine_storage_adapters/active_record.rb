@@ -95,16 +95,6 @@ module PolicyMachineStorageAdapter
       true #TODO: More useful return value?
     end
 
-    class HashSerializer
-      def self.dump(hash)
-        hash.to_json
-      end
-
-      def self.load(hash)
-        hash.is_a?(String) ? JSON.parse(hash) : hash || {}
-      end
-    end
-
     class ApplicationRecord < ::ActiveRecord::Base
       require 'will_paginate/active_record'
       self.abstract_class = true
@@ -127,7 +117,7 @@ module PolicyMachineStorageAdapter
 
       attr_accessor :extra_attributes_hash
 
-      active_record_serialize :extra_attributes, HashSerializer
+      active_record_serialize :extra_attributes, JSON
 
       def method_missing(meth, *args, &block)
         store_attributes
@@ -250,7 +240,8 @@ module PolicyMachineStorageAdapter
       end
 
       def self.serialize(store:, name:, serializer: nil)
-        active_record_serialize store, serializer
+        # Use the passed serializer if present, otherwise use Rails' default serialization
+        active_record_serialize store, serializer if serializer
 
         store_accessor store, name
       end

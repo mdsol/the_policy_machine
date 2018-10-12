@@ -1533,7 +1533,7 @@ describe 'ActiveRecord' do
       describe '.serialize' do
         before(:all) do
           klass = PolicyMachineStorageAdapter::ActiveRecord::PolicyElement
-          klass.serialize(store: :document, name: :is_arbitrary, serializer: JSON)
+          klass.serialize(store: :document, name: :is_arbitrary)
         end
 
         (PolicyMachine::POLICY_ELEMENT_TYPES).each do |type|
@@ -1553,6 +1553,16 @@ describe 'ActiveRecord' do
               expect(obj.stored_pe.is_arbitrary).to eq pm2_hash['is_arbitrary']
               expect(obj.stored_pe.document).to eq pm2_hash
               expect(obj.stored_pe.extra_attributes).to be_empty
+            end
+
+            it 'stores a JSON representation of an empty hash by default' do
+              obj = policy_machine.send("create_#{type}", SecureRandom.uuid)
+
+              sql = "SELECT extra_attributes FROM policy_elements WHERE id = #{obj.id}"
+              result = ActiveRecord::Base.connection.execute(sql)
+              database_entry = result[0]["extra_attributes"]
+
+              expect(database_entry).to eq('{}')
             end
           end
         end
