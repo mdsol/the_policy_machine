@@ -8,12 +8,12 @@ module PolicyMachineStorageAdapter
       belongs_to :child, class_name: 'PolicyElement', foreign_key: :child_id
 
       def self.transitive_closure?(ancestor, descendant)
-        raise e.caller
+        raise caller
         descendants_of(ancestor).include?(descendant)
       end
 
       def self.descendants_of(element_or_scope)
-        raise e.caller
+        raise caller
         query = <<-SQL
           id IN (
             WITH RECURSIVE assignments_recursive AS (
