@@ -8,10 +8,12 @@ module PolicyMachineStorageAdapter
       belongs_to :child, class_name: 'PolicyElement', foreign_key: :child_id
 
       def self.transitive_closure?(ancestor, descendant)
+        raise 'DONTRON TEST'
         descendants_of(ancestor).include?(descendant)
       end
 
       def self.descendants_of(element_or_scope)
+        raise 'DONTRON TEST'
         query = <<-SQL
           id IN (
             WITH RECURSIVE assignments_recursive AS (
