@@ -1,7 +1,10 @@
 # Changelog
 
-## 2.0.1
+## 2.0.2
 * Add some database-level performance improvements to `is_privilege?`.
+
+## 2.0.1
+* Fix JSON serialization of the `extra_attributes` column.
 
 ## 2.0.0
 * Upgrade the Policy Machine to support Rails 5.2.
