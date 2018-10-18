@@ -714,10 +714,10 @@ module PolicyMachineStorageAdapter
       object_attribute_ids = object_attribute_descendants.pluck(:id) | [object_or_attribute.id]
 
       if policy_classes_containing_object.size < 2
-        accessible_operations(user_or_attribute, object_attribute_ids, operation_id).exists?
+        accessible_operations(user_or_attribute, object_attribute_ids, operation_id).limit(1).exists?
       else
         policy_classes_containing_object.all? do |policy_class|
-          accessible_operations(user_or_attribute, object_attribute_ids, operation_id).exists?
+          accessible_operations(user_or_attribute, object_attribute_ids, operation_id).limit(1).exists?
         end
       end
     end
@@ -733,7 +733,7 @@ module PolicyMachineStorageAdapter
       object_attribute_ids = object_attribute_descendants.pluck(:id) | [object_or_attribute.id]
 
       if policy_classes_containing_object.size < 2
-        accessible_operations(user_or_attribute, object_attribute_ids, operation_id, filters: filters).exists?
+        accessible_operations(user_or_attribute, object_attribute_ids, operation_id, filters: filters).limit(1).exists?
       else
         raise 'is_filtered_privilege? does not support multiple policy classes!'
       end
