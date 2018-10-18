@@ -686,6 +686,10 @@ module PolicyMachineStorageAdapter
       object_attribute.descendants.merge(PolicyElement.where(type: class_for_type('policy_class').name))
     end
 
+    def policy_classes_for_object_attribute_descendants(object_attribute_descendants)
+      object_attribute_descendants.merge(PolicyElement.where(type: class_for_type('policy_class').name))
+    end
+
     ##
     # Return array of all user attributes which contain the given user.
     # Return empty array if no such user attributes are found.
@@ -703,11 +707,14 @@ module PolicyMachineStorageAdapter
     ## Optimized version of PolicyMachine#is_privilege?
     # Returns true if the user has the operation on the object
     def is_privilege?(user_or_attribute, operation, object_or_attribute)
-      policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
       operation_id = operation.try(:unique_identifier) || operation.to_s
 
+      object_attribute_descendants = object_or_attribute.descendants
+      policy_classes_containing_object = policy_classes_for_object_attribute_descendants(object_attribute_descendants)
+      object_attribute_ids = object_attribute_descendants.pluck(:id) | [object_or_attribute.id]
+
       if policy_classes_containing_object.size < 2
-        !accessible_operations(user_or_attribute, object_or_attribute, operation_id).empty?
+        !faster_accessible_operations(user_or_attribute, object_attribute_ids, operation_id).empty?
       else
         policy_classes_containing_object.all? do |policy_class|
           !accessible_operations(user_or_attribute, object_or_attribute, operation_id).empty?
@@ -1019,6 +1026,25 @@ module PolicyMachineStorageAdapter
 
         user_attribute_ids = Assignment.descendants_of(user_or_attribute).where(user_attribute_filter).pluck(:id) | [user_or_attribute.id]
         object_attribute_ids = Assignment.descendants_of(object_or_attribute).pluck(:id) | [object_or_attribute.id]
+
+        associations =
+          PolicyElementAssociation.where(
+            user_attribute_id: user_attribute_ids,
+            object_attribute_id: object_attribute_ids
+          )
+
+        prms = { type: PolicyMachineStorageAdapter::ActiveRecord::Operation.to_s }
+        prms.merge!(unique_identifier: operation_id) if operation_id
+
+        Assignment.descendants_of(associations.map(&:operation_set)).where(prms)
+      end
+    end
+
+    def faster_accessible_operations(user_or_attribute, object_attribute_ids, operation_id = nil, filters: {})
+      transaction_without_mergejoin do
+        user_attribute_filter = filters[:user_attributes] if filters
+
+        user_attribute_ids = Assignment.descendants_of(user_or_attribute).where(user_attribute_filter).pluck(:id) | [user_or_attribute.id]
 
         associations =
           PolicyElementAssociation.where(
