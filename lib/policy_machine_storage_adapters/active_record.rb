@@ -1046,16 +1046,16 @@ module PolicyMachineStorageAdapter
 
         user_attribute_ids = Assignment.descendants_of(user_or_attribute).where(user_attribute_filter).pluck(:id) | [user_or_attribute.id]
 
-        associations =
+        operation_set_ids =
           PolicyElementAssociation.where(
             user_attribute_id: user_attribute_ids,
             object_attribute_id: object_attribute_ids
-          )
+          ).pluck(:operation_set_id)
 
         prms = { type: PolicyMachineStorageAdapter::ActiveRecord::Operation.to_s }
         prms.merge!(unique_identifier: operation_id) if operation_id
 
-        Assignment.descendants_of(associations.map(&:operation_set)).where(prms)
+        Assignment.descendants_of(operation_set_ids).where(prms)
       end
     end
 

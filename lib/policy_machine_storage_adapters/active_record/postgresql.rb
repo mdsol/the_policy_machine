@@ -11,7 +11,7 @@ module PolicyMachineStorageAdapter
         descendants_of(ancestor).include?(descendant)
       end
 
-      def self.descendants_of(element_or_scope)
+      def self.descendants_of(args)
         query = <<-SQL
           id IN (
             WITH RECURSIVE assignments_recursive AS (
@@ -34,7 +34,8 @@ module PolicyMachineStorageAdapter
           )
         SQL
 
-        PolicyElement.where(query, [*element_or_scope].map(&:id))
+        scope = [*args].map { |arg| arg.try(:id) || arg }
+        PolicyElement.where(query, scope)
       end
 
       def self.ancestors_of(element_or_scope)
