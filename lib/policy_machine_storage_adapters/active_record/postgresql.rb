@@ -92,7 +92,7 @@ module PolicyMachineStorageAdapter
 
       def self.descendants_of_query
         <<-SQL
-          EXISTS (
+          id in (
             WITH RECURSIVE assignments_recursive AS (
               (
                 SELECT child_id, parent_id
@@ -108,16 +108,16 @@ module PolicyMachineStorageAdapter
                 WHERE assignments_recursive.child_id = assignments.parent_id
               )
             )
-            SELECT 1
+
+            SELECT assignments_recursive.child_id
             FROM assignments_recursive
-            WHERE id = assignments_recursive.child_id
           )
         SQL
       end
 
       def self.ancestors_of_query
         <<-SQL
-          EXISTS (
+          id in (
             WITH RECURSIVE assignments_recursive AS (
               (
                 SELECT parent_id, child_id
@@ -134,9 +134,8 @@ module PolicyMachineStorageAdapter
               )
             )
 
-            SELECT 1
+            SELECT assignments_recursive.parent_id
             FROM assignments_recursive
-            WHERE id = assignments_recursive.parent_id
           )
         SQL
       end
@@ -157,7 +156,7 @@ module PolicyMachineStorageAdapter
 
       def self.ancestors_of(element_or_scope)
         query = <<-SQL
-          EXISTS (
+          id in (
             WITH RECURSIVE logical_links_recursive AS (
               (
                 SELECT link_parent_id, link_child_id
@@ -174,9 +173,8 @@ module PolicyMachineStorageAdapter
               )
             )
 
-            SELECT 1
+            SELECT logical_links_recursive.link_child_id
             FROM logical_links_recursive
-            WHERE id = logical_links_recursive.link_parent_id
           )
         SQL
 
@@ -187,7 +185,7 @@ module PolicyMachineStorageAdapter
 
       def self.descendants_of_query
         <<-SQL
-          EXISTS (
+          id in (
             WITH RECURSIVE logical_links_recursive AS (
               (
                 SELECT link_child_id, link_parent_id
@@ -203,9 +201,9 @@ module PolicyMachineStorageAdapter
                 WHERE logical_links_recursive.link_child_id = logical_links.link_parent_id
               )
             )
-            SELECT 1
+
+            SELECT logical_links_recursive.link_parent_id
             FROM logical_links_recursive
-            WHERE id = logical_links_recursive.link_child_id
           )
         SQL
       end
