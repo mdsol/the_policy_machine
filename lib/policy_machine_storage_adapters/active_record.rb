@@ -723,11 +723,12 @@ module PolicyMachineStorageAdapter
       prohibition_id = prohibition.try(:unique_identifier) || prohibition.to_s
 
       if policy_classes_containing_object.size < 2
-        debugger
-        !accessible_operations2(user_or_attribute, object_or_attribute, operation_id, prohibition_id).empty?
+        operations = accessible_operations2(user_or_attribute, object_or_attribute, operation_id, prohibition_id).limit(2)
+        operations.size == 1 && operations.first.id == operation_id
       else
         policy_classes_containing_object.all? do |policy_class|
-          !accessible_operations(user_or_attribute, object_or_attribute, operation_id).empty?
+          operations = accessible_operations2(user_or_attribute, object_or_attribute, operation_id, prohibition_id).limit(2)
+          operations.size == 1 && operations.first.id == operation_id
         end
       end
     end
