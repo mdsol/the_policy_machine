@@ -89,12 +89,12 @@ class PolicyMachine
   #
   # TODO: add option to ignore policy classes to allow consumer to speed up this method.
   # TODO: Parallelize the two component checks
-  def is_privilege?(user_or_attribute, operation, object_or_attribute, options = {})
+  def is_privilege2?(user_or_attribute, operation, object_or_attribute, options = {})
     is_privilege_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute, options) &&
       (options[:ignore_prohibitions] || !is_privilege_ignoring_prohibitions?(user_or_attribute, PM::Prohibition.on(operation), object_or_attribute, options))
   end
 
-  def is_privilege2?(user_or_attribute, operation, object_or_attribute, options = {})
+  def is_privilege?(user_or_attribute, operation, object_or_attribute, options = {})
     privilege = [user_or_attribute, operation, PM::Prohibition.on(operation), object_or_attribute].map { |obj| obj.respond_to?(:stored_pe) ? obj.stored_pe : obj }
     policy_machine_storage_adapter.is_privilege2?(*privilege)
   end
