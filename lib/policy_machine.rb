@@ -94,6 +94,11 @@ class PolicyMachine
       (options[:ignore_prohibitions] || !is_privilege_ignoring_prohibitions?(user_or_attribute, PM::Prohibition.on(operation), object_or_attribute, options))
   end
 
+  def is_privilege2?(user_or_attribute, operation, object_or_attribute, options = {})
+    privilege = [user_or_attribute, operation, PM::Prohibition.on(operation), object_or_attribute].map { |obj| obj.respond_to?(:stored_pe) ? obj.stored_pe : obj }
+    return policy_machine_storage_adapter.is_privilege2?(*privilege)
+  end
+
   ##
   # Can we derive a privilege given a set of filters?
   def is_privilege_with_filters?(user_or_attribute, operation, object_or_attribute, filters: {}, options: {})

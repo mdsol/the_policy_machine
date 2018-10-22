@@ -707,8 +707,24 @@ module PolicyMachineStorageAdapter
       operation_id = operation.try(:unique_identifier) || operation.to_s
 
       if policy_classes_containing_object.size < 2
+        !accessible_operations(user_or_attribute, object_or_attribute, operation.name).empty?
+      else
+        policy_classes_containing_object.all? do |policy_class|
+          !accessible_operations(user_or_attribute, object_or_attribute, operation_id).empty?
+        end
+      end
+    end
+
+    ## Optimized version of PolicyMachine#is_privilege?
+    # Returns true if the user has the operation on the object
+    def is_privilege2?(user_or_attribute, operation, prohibition, object_or_attribute)
+      policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
+      operation_id = operation.try(:unique_identifier) || operation.to_s
+      prohibition_id = prohibition.try(:unique_identifier) || prohibition.to_s
+
+      if policy_classes_containing_object.size < 2
         debugger
-        !accessible_operations2(user_or_attribute, object_or_attribute, operation.name).empty?
+        !accessible_operations2(user_or_attribute, object_or_attribute, operation_id, prohibition_id).empty?
       else
         policy_classes_containing_object.all? do |policy_class|
           !accessible_operations(user_or_attribute, object_or_attribute, operation_id).empty?
@@ -1034,7 +1050,7 @@ module PolicyMachineStorageAdapter
       end
     end
 
-    def accessible_operations2(user_or_attribute, object_or_attribute, operation_name = nil, filters: {})
+    def accessible_operations2(user_or_attribute, object_or_attribute, operation_id = nil, prohibition_id = nil, filters: {})
       transaction_without_mergejoin do
         user_attribute_filter = filters[:user_attributes] if filters
 
@@ -1048,7 +1064,7 @@ module PolicyMachineStorageAdapter
           )
 
         prms = { type: PolicyMachineStorageAdapter::ActiveRecord::Operation.to_s }
-        prms.merge!(unique_identifier: [operation_name, "#{~operation_name}"])
+        prms.merge!(unique_identifier: [operation_id, prohibition_id])
 
         Assignment.descendants_of(associations.map(&:operation_set)).where(prms)
       end
