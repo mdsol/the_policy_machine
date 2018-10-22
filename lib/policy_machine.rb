@@ -96,7 +96,7 @@ class PolicyMachine
 
   def is_privilege2?(user_or_attribute, operation, object_or_attribute, options = {})
     privilege = [user_or_attribute, operation, PM::Prohibition.on(operation), object_or_attribute].map { |obj| obj.respond_to?(:stored_pe) ? obj.stored_pe : obj }
-    return policy_machine_storage_adapter.is_privilege2?(*privilege)
+    policy_machine_storage_adapter.is_privilege2?(*privilege)
   end
 
   ##

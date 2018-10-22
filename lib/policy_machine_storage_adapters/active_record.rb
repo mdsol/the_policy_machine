@@ -707,7 +707,7 @@ module PolicyMachineStorageAdapter
       operation_id = operation.try(:unique_identifier) || operation.to_s
 
       if policy_classes_containing_object.size < 2
-        !accessible_operations(user_or_attribute, object_or_attribute, operation.name).empty?
+        !accessible_operations(user_or_attribute, object_or_attribute, operation_id).empty?
       else
         policy_classes_containing_object.all? do |policy_class|
           !accessible_operations(user_or_attribute, object_or_attribute, operation_id).empty?
