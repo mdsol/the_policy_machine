@@ -1065,9 +1065,9 @@ module PolicyMachineStorageAdapter
           )
 
         prms = { type: PolicyMachineStorageAdapter::ActiveRecord::Operation.to_s }
-        prms.merge!(unique_identifier: [operation_id, prohibition_id])
+        prms.merge!(unique_identifier: operation_id)
 
-        Assignment.descendants_of(associations.map(&:operation_set)).where(prms)
+        Assignment.descendants_of(associations.map(&:operation_set)).where(prms).or(PolicyMachineStorageAdapter::ActiveRecord::PolicyElement.where(unique_identifier: prohibition_id))
       end
     end
 
