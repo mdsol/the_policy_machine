@@ -90,8 +90,19 @@ class PolicyMachine
   # TODO: add option to ignore policy classes to allow consumer to speed up this method.
   # TODO: Parallelize the two component checks
   def is_privilege?(user_or_attribute, operation, object_or_attribute, options = {})
-    is_privilege_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute, options) &&
-      (options[:ignore_prohibitions] || !is_privilege_ignoring_prohibitions?(user_or_attribute, PM::Prohibition.on(operation), object_or_attribute, options))
+    if policy_machine_storage_adapter.implements_coalesced_privileges?
+      assert_privilege_parameters!(user_or_attribute, operation, object_or_attribute)
+
+      policy_machine_storage_adapter.is_privilege?(
+        user_or_attribute,
+        operation,
+        object_or_attribute,
+        ignore_prohibitions: options[:ignore_prohibitions]
+      )
+    else
+      is_privilege_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute, options) &&
+        (options[:ignore_prohibitions] || !is_privilege_ignoring_prohibitions?(user_or_attribute, PM::Prohibition.on(operation), object_or_attribute, options))
+    end
   end
 
   ##
@@ -118,7 +129,12 @@ class PolicyMachine
 
     if options.empty? && policy_machine_storage_adapter.respond_to?(:is_privilege?)
       privilege = [user_or_attribute, operation, object_or_attribute].map { |obj| obj.respond_to?(:stored_pe) ? obj.stored_pe : obj }
-      return policy_machine_storage_adapter.is_privilege?(*privilege)
+
+      if policy_machine_storage_adapter.implements_coalesced_privileges?
+        return policy_machine_storage_adapter.is_privilege?(*privilege, ignore_prohibitions: true)
+      else
+        return policy_machine_storage_adapter.is_privilege?(*privilege)
+      end
     end
 
     if options[:filters] && policy_machine_storage_adapter.respond_to?(:is_privilege_with_filters?)

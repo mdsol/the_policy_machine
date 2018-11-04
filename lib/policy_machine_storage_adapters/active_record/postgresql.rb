@@ -2,6 +2,97 @@ require 'active_record/hierarchical_query' # via gem activerecord-hierarchical_q
 
 module PolicyMachineStorageAdapter
   class ActiveRecord
+    class Privilege
+      def self.derive_privilege(user_or_attribute, operation, object_or_attribute, ignore_prohibitions: false)
+        user_or_attribute_id = user_or_attribute.id
+        operation_id = operation.try(:unique_identifier) || operation.to_s
+        prohibition_id = ::PM::Prohibition.on(operation.to_s)
+        object_or_attribute_id = object_or_attribute.id
+
+        query = <<-SQL
+WITH RECURSIVE operators AS (
+SELECT child_id, parent_id
+FROM assignments
+WHERE parent_id = #{user_or_attribute_id}
+
+UNION ALL
+
+SELECT a.child_id, a.parent_id
+FROM assignments a
+JOIN operators o
+    ON o.child_id = a.parent_id
+),
+
+operables AS (
+SELECT child_id, parent_id
+FROM assignments
+WHERE parent_id = #{object_or_attribute_id}
+
+UNION ALL
+
+SELECT a.child_id, a.parent_id
+FROM assignments a
+JOIN operables o
+    ON o.child_id = a.parent_id
+),
+
+accessible_operations AS (
+SELECT
+    a.parent_id AS operation_set_id,
+    a.child_id
+FROM assignments a
+JOIN (
+    SELECT DISTINCT operation_set_id
+    FROM policy_element_associations peas
+    JOIN operators
+        ON (peas.user_attribute_id = operators.child_id
+        OR peas.user_attribute_id = #{user_or_attribute_id})
+    JOIN operables
+        ON (peas.object_attribute_id = operables.child_id
+        OR peas.object_attribute_id = #{object_or_attribute_id})
+    WHERE 1=1
+        AND (peas.user_attribute_id IN (operators.child_id)
+            OR peas.user_attribute_id = #{user_or_attribute_id})
+        AND (peas.object_attribute_id IN (operables.child_id)
+            OR peas.object_attribute_id = #{object_or_attribute_id})
+) base_associations
+    ON a.parent_id = base_associations.operation_set_id
+
+UNION
+
+SELECT
+    ao.operation_set_id,
+    a.child_id
+FROM assignments a
+JOIN accessible_operations ao
+    ON ao.child_id = a.parent_id
+)
+
+SELECT
+    pe.unique_identifier
+FROM (
+    SELECT DISTINCT child_id FROM accessible_operations
+) ao
+JOIN policy_elements pe
+    ON pe.id = ao.child_id
+    AND pe.unique_identifier IN ('#{operation_id}', '#{prohibition_id}')
+WHERE 1=1
+    AND pe.id = ao.child_id
+    AND pe.unique_identifier IN ('#{operation_id}', '#{prohibition_id}')
+SQL
+
+        # Execute the query and get the value of the count
+        result = ::ActiveRecord::Base.connection.execute(query)
+        rows = result.map { |row| row["unique_identifier"] }
+
+        if ignore_prohibitions
+          rows.include?(operation_id)
+        else
+          rows == [operation_id]
+        end
+      end
+    end
+
     class PolicyElementAssociation
       def self.with_accessible_operation(associations, operation)
         query = <<-SQL

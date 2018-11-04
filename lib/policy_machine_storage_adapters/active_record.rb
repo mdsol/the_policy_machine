@@ -700,20 +700,35 @@ module PolicyMachineStorageAdapter
       PolicyElement.transaction(&block)
     end
 
+    def implements_coalesced_privileges?
+      true
+    end
+
+    def is_privilege?(user_or_attribute, operation, object_or_attribute, ignore_prohibitions: false)
+      Privilege.derive_privilege(
+        user_or_attribute,
+        operation,
+        object_or_attribute,
+        ignore_prohibitions: ignore_prohibitions
+      )
+    end
+
     ## Optimized version of PolicyMachine#is_privilege?
     # Returns true if the user has the operation on the object
-    def is_privilege?(user_or_attribute, operation, object_or_attribute)
-      policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
-      operation_id = operation.try(:unique_identifier) || operation.to_s
+    # def is_privilege?(user_or_attribute, operation, object_or_attribute)
+    #   policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
+    #   operation_id = operation.try(:unique_identifier) || operation.to_s
 
-      if policy_classes_containing_object.size < 2
-        !accessible_operations(user_or_attribute, object_or_attribute, operation_id).empty?
-      else
-        policy_classes_containing_object.all? do |policy_class|
-          !accessible_operations(user_or_attribute, object_or_attribute, operation_id).empty?
-        end
-      end
-    end
+
+
+    #   if policy_classes_containing_object.size < 2
+    #     !accessible_operations(user_or_attribute, object_or_attribute, operation_id).empty?
+    #   else
+    #     policy_classes_containing_object.all? do |policy_class|
+    #       !accessible_operations(user_or_attribute, object_or_attribute, operation_id).empty?
+    #     end
+    #   end
+    # end
 
     ## Optimized version of PolicyMachine#is_privilege_with_filters?
     # Returns true if the user has the operation on the object, but only if the privilege
