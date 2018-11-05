@@ -90,7 +90,7 @@ class PolicyMachine
   # TODO: add option to ignore policy classes to allow consumer to speed up this method.
   # TODO: Parallelize the two component checks
   def is_privilege?(user_or_attribute, operation, object_or_attribute, options = {})
-    if policy_machine_storage_adapter.implements_coalesced_privileges?
+    if policy_machine_storage_adapter.try(:implements_coalesced_privileges?) && options.empty?
       assert_privilege_parameters!(user_or_attribute, operation, object_or_attribute)
 
       policy_machine_storage_adapter.is_privilege?(
