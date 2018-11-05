@@ -11,9 +11,9 @@ module PolicyMachineStorageAdapter
 
         query = <<-SQL
 WITH RECURSIVE operators AS (
-SELECT child_id, parent_id
-FROM assignments
-WHERE parent_id = #{user_or_attribute_id}
+SELECT
+    #{user_or_attribute_id} AS child_id,
+    0 AS parent_id
 
 UNION ALL
 
@@ -24,9 +24,9 @@ JOIN operators o
 ),
 
 operables AS (
-SELECT child_id, parent_id
-FROM assignments
-WHERE parent_id = #{object_or_attribute_id}
+SELECT
+    #{object_or_attribute_id} AS child_id,
+    0 AS parent_id
 
 UNION ALL
 
@@ -43,18 +43,14 @@ SELECT
 FROM assignments a
 JOIN (
     SELECT DISTINCT operation_set_id
-    FROM policy_element_associations peas
-    JOIN operators
-        ON (peas.user_attribute_id = operators.child_id
-        OR peas.user_attribute_id = #{user_or_attribute_id})
-    JOIN operables
-        ON (peas.object_attribute_id = operables.child_id
-        OR peas.object_attribute_id = #{object_or_attribute_id})
+    FROM operators
+    FULL OUTER JOIN policy_element_associations peas
+        ON peas.user_attribute_id = operators.child_id
+    FULL OUTER JOIN operables
+        ON peas.object_attribute_id = operables.child_id
     WHERE 1=1
-        AND (peas.user_attribute_id IN (operators.child_id)
-            OR peas.user_attribute_id = #{user_or_attribute_id})
-        AND (peas.object_attribute_id IN (operables.child_id)
-            OR peas.object_attribute_id = #{object_or_attribute_id})
+        AND peas.user_attribute_id IN (operators.child_id)
+        AND peas.object_attribute_id IN (operables.child_id)
 ) base_associations
     ON a.parent_id = base_associations.operation_set_id
 
