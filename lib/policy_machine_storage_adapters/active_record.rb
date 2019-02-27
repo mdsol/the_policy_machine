@@ -804,6 +804,10 @@ module PolicyMachineStorageAdapter
       end
     end
 
+    def associations_with_accessible_operation(associations, operation_id)
+      Assignment.filter_associations_by_accessible_operation(associations, operation_id)
+    end
+
     private
 
     # Returns an array of all the objects accessible for a given user or attribute and operation
@@ -1031,10 +1035,6 @@ module PolicyMachineStorageAdapter
 
         Assignment.descendants_of(associations.map(&:operation_set)).where(prms)
       end
-    end
-
-    def associations_with_accessible_operation(associations, operation_id)
-      Assignment.filter_associations_by_accessible_operation(associations, operation_id)
     end
 
     # Filter all ancestor objects from a common root by the provided include condition
