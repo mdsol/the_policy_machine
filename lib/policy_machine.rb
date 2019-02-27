@@ -291,6 +291,14 @@ class PolicyMachine
     end
   end
 
+  def associations_filtered_by_operation(associations, operation)
+    if policy_machine_storage_adapter.respond_to?(:associations_filtered_by_operation)
+      policy_machine_storage_adapter.associations_filtered_by_operation(associations, operation)
+    else
+      raise NoMethodError
+    end
+  end
+
   ##
   # Returns an array of all user_attributes a PM::User is assigned to,
   # directly or indirectly.
