@@ -151,7 +151,7 @@ module PolicyMachineStorageAdapter
           FROM accessible_operations
           JOIN policy_elements ops
             ON ops.id = accessible_operations.child_id
-          WHERE #{sanitize_sql_for_conditions(["ops.unique_identifier = :op_id, op_id: operation_id])}
+          WHERE #{sanitize_sql_for_conditions(["ops.unique_identifier = :op_id", op_id: operation_id])}
           )
         SQL
 
