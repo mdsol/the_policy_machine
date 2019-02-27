@@ -808,6 +808,17 @@ module PolicyMachineStorageAdapter
       Assignment.filter_associations_by_accessible_operation(associations, operation_id)
     end
 
+    # Filters a list of associations to those related to a given operation
+    def associations_filtered_by_operation(associations, operation)
+      operation_id = operation.try(:unique_identifier) || operation.to_s
+
+      operation_set_ids = associations.pluck(:operation_set_id)
+
+      filtered_operation_set_ids = Assignment.filter_operation_set_list_by_assigned_operation(operation_set_ids, operation_id)
+
+      associations.where(operation_set_id: filtered_operation_set_ids)
+    end
+
     private
 
     # Returns an array of all the objects accessible for a given user or attribute and operation
@@ -823,17 +834,6 @@ module PolicyMachineStorageAdapter
 
       user_attribute_ids = user_or_attribute.descendants.where(user_attribute_filter).pluck(:id) | [user_or_attribute.id]
       PolicyElementAssociation.where(user_attribute_id: user_attribute_ids)
-    end
-
-    # Filters a list of associations to those related to a given operation
-    def associations_filtered_by_operation(associations, operation)
-      operation_id = operation.try(:unique_identifier) || operation.to_s
-
-      operation_set_ids = associations.pluck(:operation_set_id)
-
-      filtered_operation_set_ids = Assignment.filter_operation_set_list_by_assigned_operation(operation_set_ids, operation_id)
-
-      associations.where(operation_set_id: filtered_operation_set_ids)
     end
 
     # Builds an array of PolicyElement objects within the scope of a given
