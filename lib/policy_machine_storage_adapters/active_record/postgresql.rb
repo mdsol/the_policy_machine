@@ -120,43 +120,6 @@ module PolicyMachineStorageAdapter
 
         PolicyElement.connection.exec_query(query).rows.flatten.map(&:to_i)
       end
-
-      # Filters the provided associations to just those containing the operation
-      def self.filter_associations_by_accessible_operation(associations, operation_id)
-        operation_set_ids = associations.pluck(:operation_set_id)
-
-        query = <<-SQL
-          operation_set_id IN (
-            WITH RECURSIVE accessible_operations AS (
-              (
-                SELECT
-                  child_id,
-                  parent_id,
-                  parent_id AS operation_set_id
-                FROM assignments
-                WHERE parent_id IN (#{operation_set_ids.join(',')})
-              )
-              UNION ALL
-              (
-                SELECT
-                  assignments.child_id,
-                  assignments.parent_id,
-                  accessible_operations.operation_set_id AS operation_set_id
-                FROM assignments
-                INNER JOIN accessible_operations
-                ON accessible_operations.child_id = assignments.parent_id
-              )
-            )
-          SELECT accessible_operations.operation_set_id
-          FROM accessible_operations
-          JOIN policy_elements ops
-            ON ops.id = accessible_operations.child_id
-          WHERE #{sanitize_sql_for_conditions(["ops.unique_identifier = :op_id", op_id: operation_id])}
-          )
-        SQL
-
-        associations.where(query)
-      end
     end
 
     class LogicalLink < ::ActiveRecord::Base

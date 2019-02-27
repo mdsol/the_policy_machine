@@ -804,10 +804,6 @@ module PolicyMachineStorageAdapter
       end
     end
 
-    def associations_with_accessible_operation(associations, operation_id)
-      Assignment.filter_associations_by_accessible_operation(associations, operation_id)
-    end
-
     # Filters a list of associations to those related to a given operation
     def associations_filtered_by_operation(associations, operation)
       operation_id = operation.try(:unique_identifier) || operation.to_s
