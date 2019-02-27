@@ -1033,6 +1033,10 @@ module PolicyMachineStorageAdapter
       end
     end
 
+    def associations_with_accessible_operation(associations, operation_id)
+      Assignment.filter_associations_by_accessible_operation(associations, operation_id)
+    end
+
     # Filter all ancestor objects from a common root by the provided include condition
     # and/or pre-existing prohibitions
     def all_ancestor_objects(user_or_attribute, operation, root_object, ancestor_objects, options)
