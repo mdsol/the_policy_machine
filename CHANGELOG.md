@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.1.0
+* Elevate associations_filtered_by_operation to a public method in the ActiveRecord storage adapter.
+
 ## 2.0.1
 * Fix JSON serialization of the `extra_attributes` column.
 
