@@ -1523,6 +1523,70 @@ describe 'ActiveRecord' do
     end
   end
 
+  describe '#associations_filtered_by_operation' do
+    let!(:new_pm) { PolicyMachine.new(name: 'AR PM', storage_adapter: PolicyMachineStorageAdapter::ActiveRecord) }
+
+    let(:operation_1) { new_pm.create_operation('operation_1') }
+    let(:operation_2) { new_pm.create_operation('operation_2') }
+    let(:operation_3) { new_pm.create_operation('operation_3') }
+    let(:opset_1) { new_pm.create_operation_set('operation_set_1') }
+    let(:opset_2) { new_pm.create_operation_set('operation_set_2') }
+    let(:opset_3) { new_pm.create_operation_set('operation_set_3') }
+
+    let(:user_attr) { new_pm.create_user_attribute('user_attr') }
+
+    let(:object_attr_1) { new_pm.create_object_attribute('object_attr_1') }
+    let(:object_attr_2) { new_pm.create_object_attribute('object_attr_2') }
+    let(:object_attr_3) { new_pm.create_object_attribute('object_attr_3') }
+
+    before do
+      new_pm.add_assignment(opset_1, operation_1)
+      new_pm.add_assignment(opset_2, operation_2)
+      new_pm.add_assignment(opset_3, operation_3)
+
+      new_pm.add_association(user_attr, opset_1, object_attr_1)
+      new_pm.add_association(user_attr, opset_2, object_attr_2)
+      new_pm.add_association(user_attr, opset_3, object_attr_3)
+
+      new_pm.add_assignment(opset_1, opset_2)
+    end
+
+    let(:peas) { PolicyMachineStorageAdapter::ActiveRecord::PolicyElementAssociation.all }
+    let(:pea_1) { peas.find_by(operation_set_id: opset_1.id) }
+    let(:pea_2) { peas.find_by(operation_set_id: opset_2.id) }
+    let(:pea_3) { peas.find_by(operation_set_id: opset_3.id) }
+
+    context 'when provided no policy element associations' do
+      it 'does not error' do
+        expect { new_pm.associations_filtered_by_operation([], operation_1) }.not_to raise_error
+      end
+
+      it 'returns an empty array' do
+        expect(new_pm.associations_filtered_by_operation([], operation_1)).to be_empty
+      end
+    end
+
+    context 'when none of the policy element associations contain the operation' do
+      it 'returns an empty array' do
+        expect(new_pm.associations_filtered_by_operation(peas, 'fake_operation')).to be_empty
+      end
+    end
+
+    context 'when at least one of the policy element associations contains the operation' do
+      context 'when the operation is in a directly associated operation set' do
+        it 'returns only the associations which contain the operation' do
+          expect(new_pm.associations_filtered_by_operation(peas, operation_1)).to contain_exactly(pea_1)
+        end
+      end
+
+      context 'when the operation is in an operation set descendant' do
+        it 'returns only the associations which contain the operation' do
+          expect(new_pm.associations_filtered_by_operation(peas, operation_2)).to contain_exactly(pea_1, pea_2)
+        end
+      end
+    end
+  end
+
   describe 'PolicyMachine integration with PolicyMachineStorageAdapter::ActiveRecord' do
     it_behaves_like 'a policy machine' do
       let(:policy_machine) do
