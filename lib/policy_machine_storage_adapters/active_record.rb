@@ -808,11 +808,13 @@ module PolicyMachineStorageAdapter
     def associations_filtered_by_operation(associations, operation)
       operation_id = operation.try(:unique_identifier) || operation.to_s
 
-      operation_set_ids = associations.pluck(:operation_set_id)
-
-      filtered_operation_set_ids = Assignment.filter_operation_set_list_by_assigned_operation(operation_set_ids, operation_id)
-
-      associations.where(operation_set_id: filtered_operation_set_ids)
+      if associations.present?
+        operation_set_ids = associations.pluck(:operation_set_id)
+        filtered_operation_set_ids = Assignment.filter_operation_set_list_by_assigned_operation(operation_set_ids, operation_id)
+        associations.where(operation_set_id: filtered_operation_set_ids)
+      else
+        []
+      end
     end
 
     private
