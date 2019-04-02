@@ -222,6 +222,8 @@ class PolicyMachine
 
     if options[:ignore_prohibitions]
       privileges
+    elsif options[:include_prohibitions]
+      prohibitions + privileges
     else
       prohibited_operations = prohibitions.map { |_,prohibition,_| prohibition.operation }
       privileges.reject { |_,op,_| prohibited_operations.include?(op.unique_identifier) }
