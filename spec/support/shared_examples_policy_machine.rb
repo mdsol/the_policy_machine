@@ -1260,23 +1260,24 @@ shared_examples "a policy machine" do
 
       context 'when the user only has prohibitions' do
         let(:all_prohibitions) { policy_machine.create_operation_set('all_prohibitions') }
+        let!(:ua_2) { policy_machine.create_user_attribute('ua_2') }
 
         before do
           policy_machine.add_assignment(all_prohibitions, prohib_read)
           policy_machine.add_assignment(all_prohibitions, prohib_write)
           policy_machine.add_assignment(all_prohibitions, prohib_edit)
 
-          policy_machine.add_association(ua, all_prohibitions, one_fish)
+          policy_machine.add_association(ua_2, all_prohibitions, one_fish)
         end
 
         it 'returns all privileges and prohibitions the user has on the specified object' do
           expected_privs_and_prohibs = [
-            [user, prohib_read, one_fish],
-            [user, prohib_write, one_fish],
-            [user, prohib_edit, one_fish]
+            [ua_2, prohib_read, one_fish],
+            [ua_2, prohib_write, one_fish],
+            [ua_2, prohib_edit, one_fish]
           ]
 
-          expect(policy_machine.scoped_privileges(user, one_fish, options)).to match_array(expected_privs_and_prohibs)
+          expect(policy_machine.scoped_privileges(ua_2, one_fish, options)).to match_array(expected_privs_and_prohibs)
         end
       end
     end
