@@ -1212,6 +1212,20 @@ shared_examples "a policy machine" do
 
         expect(policy_machine.scoped_privileges(user, one_fish, options)).to match_array(expected_privileges)
       end
+
+      it 'does not returned prohibited privileges applied outside of the filters' do
+        oa_parent = policy_machine.create_object_attribute('oa_parent')
+        policy_machine.add_assignment(oa, oa_parent)
+
+        prohib_writer = policy_machine.create_operation_set('prohib_writer')
+        policy_machine.add_assignment(prohib_writer, prohib_write)
+
+        policy_machine.add_association(ua, writer, oa)
+        policy_machine.add_association(ua, prohib_writer, oa_parent)
+
+        prohibition = [user, write, oa]
+        expect(policy_machine.scoped_privileges(user, oa, options)).not_to include(prohibition)
+      end
     end
 
     context "when the 'ignore_prohibitions' option is provided" do
