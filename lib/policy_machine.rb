@@ -203,7 +203,7 @@ class PolicyMachine
   # policy machine for the given user (attribute) on the given
   # object (attribute).
   #
-  # TODO:  might make privilege a class of its own
+  # TODO: might make privilege a class of its own
   def scoped_privileges(user_or_attribute, object_or_attribute, options = {})
     # Get an initial set of privileges and prohibitions without filtering. Prohibition checks should be
     # filter-agnostic since prohibitions are meant to be blocking.
@@ -222,6 +222,8 @@ class PolicyMachine
 
     if options[:ignore_prohibitions]
       privileges
+    elsif options[:include_prohibitions]
+      privileges | prohibitions
     else
       prohibited_operations = prohibitions.map { |_,prohibition,_| prohibition.operation }
       privileges.reject { |_,op,_| prohibited_operations.include?(op.unique_identifier) }

@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.1.1
+* Added `include_prohibitions` option to PolicyMachine #scoped_privileges.
+
 ## 2.1.0
 * Elevate associations_filtered_by_operation to a public method in the ActiveRecord storage adapter.
 

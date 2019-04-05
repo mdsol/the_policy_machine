@@ -1065,7 +1065,6 @@ shared_examples "a policy machine" do
   end
 
   describe 'accessible_objects' do
-
     before do
       @one_fish = policy_machine.create_object('one:fish')
       @two_fish = policy_machine.create_object('two:fish')
@@ -1135,14 +1134,156 @@ shared_examples "a policy machine" do
       it 'can ignore prohibitions' do
         expect( policy_machine.accessible_objects(@u1, @read, ignore_prohibitions: true).map(&:unique_identifier) ).to match_array(['one:fish', 'two:fish','red:one'])
       end
-
     end
-
   end
 
+  describe '#scoped_privileges' do
+    let!(:one_fish) { policy_machine.create_object('one:fish') }
+    let!(:two_fish) { policy_machine.create_object('two:fish') }
+    let!(:red_one) { policy_machine.create_object('red:one') }
+    let!(:blue_one) { policy_machine.create_object('blue:one') }
+    let!(:reader) { policy_machine.create_operation_set('reader') }
+    let!(:read) { policy_machine.create_operation('read') }
+    let!(:writer) { policy_machine.create_operation_set('writer') }
+    let!(:write) { policy_machine.create_operation('write') }
+    let!(:prohib_read) { read.prohibition }
+    let!(:prohib_write) { write.prohibition }
+    let!(:prohib_edit) { edit.prohibition }
+    let!(:edit) { policy_machine.create_operation('edit') }
+    let!(:user) { policy_machine.create_user('u1') }
+    let!(:ua) { policy_machine.create_user_attribute('ua') }
+    let!(:oa) { policy_machine.create_object_attribute('oa') }
+
+    before do
+
+      [one_fish, two_fish, red_one].each do |object|
+        policy_machine.add_association(ua, writer, object)
+      end
+
+      policy_machine.add_assignment(reader, read)
+      policy_machine.add_assignment(reader, write)
+      policy_machine.add_assignment(reader, edit)
+      policy_machine.add_assignment(reader, prohib_write)
+      policy_machine.add_assignment(reader, prohib_edit)
+      policy_machine.add_assignment(writer, read)
+      policy_machine.add_assignment(writer, write)
+      policy_machine.add_assignment(writer, edit)
+      policy_machine.add_assignment(writer, prohib_edit)
+
+      policy_machine.add_assignment(user, ua)
+      policy_machine.add_assignment(red_one, oa)
+      policy_machine.add_assignment(blue_one, oa)
+
+      policy_machine.add_association(ua, reader, oa)
+    end
+
+    context "when no options are provided" do
+      it 'returns all privileges the user has on the specified object' do
+        expected_privileges = [
+          [user, read, one_fish],
+          [user, write, one_fish]
+        ]
+
+        expect(policy_machine.scoped_privileges(user, one_fish)).to match_array(expected_privileges)
+      end
+
+      it 'returns all privileges the user has on the specified object attribute' do
+        expected_privileges = [
+          [user, read, oa]
+        ]
+
+        expect(policy_machine.scoped_privileges(user, oa)).to match_array(expected_privileges)
+      end
+
+      it 'does not returned prohibited privileges' do
+        unexpected_privilege = [user, edit, one_fish]
+        expect(policy_machine.scoped_privileges(user, one_fish)).not_to include(unexpected_privilege)
+      end
+    end
+
+    context "when the 'filters' option is provided" do
+      let(:options) { { user_attributes: { unique_identifier: writer.unique_identifier } } }
+
+      it 'returns all privileges the user has on the specified object with filters applied' do
+        expected_privileges = [
+          [user, read, one_fish],
+          [user, write, one_fish]
+        ]
+
+        expect(policy_machine.scoped_privileges(user, one_fish, options)).to match_array(expected_privileges)
+      end
+
+      it 'does not returned prohibited privileges applied outside of the filters' do
+        oa_parent = policy_machine.create_object_attribute('oa_parent')
+        policy_machine.add_assignment(oa, oa_parent)
+
+        prohib_writer = policy_machine.create_operation_set('prohib_writer')
+        policy_machine.add_assignment(prohib_writer, prohib_write)
+
+        policy_machine.add_association(ua, writer, oa)
+        policy_machine.add_association(ua, prohib_writer, oa_parent)
+
+        prohibition = [user, write, oa]
+        expect(policy_machine.scoped_privileges(user, oa, options)).not_to include(prohibition)
+      end
+    end
+
+    context "when the 'ignore_prohibitions' option is provided" do
+      let(:options) { { ignore_prohibitions: true } }
+
+      it 'returns all privileges the user has on the specified object ignoring prohibitions' do
+        expected_privileges = [
+          [user, read, one_fish],
+          [user, write, one_fish],
+          [user, edit, one_fish]
+        ]
+
+        expect(policy_machine.scoped_privileges(user, one_fish, options)).to match_array(expected_privileges)
+      end
+    end
+
+    context "when the 'include_prohibitions' option is provided" do
+      let(:options) { { include_prohibitions: true } }
+
+      context 'when the user has privileges and prohibitions' do
+        it 'returns all privileges and prohibitions the user has on the specified object' do
+          expected_privs_and_prohibs = [
+            [user, read, one_fish],
+            [user, write, one_fish],
+            [user, edit, one_fish],
+            [user, prohib_edit, one_fish]
+          ]
+
+          expect(policy_machine.scoped_privileges(user, one_fish, options)).to match_array(expected_privs_and_prohibs)
+        end
+      end
+
+      context 'when the user only has prohibitions' do
+        let(:all_prohibitions) { policy_machine.create_operation_set('all_prohibitions') }
+        let!(:ua_2) { policy_machine.create_user_attribute('ua_2') }
+
+        before do
+          policy_machine.add_assignment(all_prohibitions, prohib_read)
+          policy_machine.add_assignment(all_prohibitions, prohib_write)
+          policy_machine.add_assignment(all_prohibitions, prohib_edit)
+
+          policy_machine.add_association(ua_2, all_prohibitions, one_fish)
+        end
+
+        it 'returns all privileges and prohibitions the user has on the specified object' do
+          expected_privs_and_prohibs = [
+            [ua_2, prohib_read, one_fish],
+            [ua_2, prohib_write, one_fish],
+            [ua_2, prohib_edit, one_fish]
+          ]
+
+          expect(policy_machine.scoped_privileges(ua_2, one_fish, options)).to match_array(expected_privs_and_prohibs)
+        end
+      end
+    end
+  end
 
   describe 'batch_find' do
-
     before do
       @one_fish = policy_machine.create_object('one:fish')
       @two_fish = policy_machine.create_object('two:fish')
