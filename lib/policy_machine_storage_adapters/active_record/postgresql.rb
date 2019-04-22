@@ -9,8 +9,8 @@ module PolicyMachineStorageAdapter
             WITH RECURSIVE ancestors AS (
             (
               SELECT
-                objects.id AS parent_id
-                ,objects.id AS child_id
+                objects.id AS parent_id,
+                objects.id AS child_id
               FROM policy_element_associations peas
               JOIN policy_elements objects
                 ON objects.id = peas.object_attribute_id
@@ -19,8 +19,8 @@ module PolicyMachineStorageAdapter
             UNION ALL
             (
               SELECT
+                a.parent_id,
                 a.parent_id
-                ,a.parent_id
               FROM assignments a
               JOIN ancestors anc
                 ON anc.parent_id = a.child_id
@@ -30,16 +30,16 @@ module PolicyMachineStorageAdapter
             ancestor_scope AS (
             (
               SELECT
-                id AS parent_id
-                ,id AS child_id
+                id AS parent_id,
+                id AS child_id
               FROM policy_elements
               WHERE id = ?
             )
             UNION ALL
             (
               SELECT
-                a.parent_id
-                ,a.child_id
+                a.parent_id,
+                a.child_id
               FROM assignments a
               JOIN ancestor_scope anc
                 ON anc.parent_id = a.child_id
