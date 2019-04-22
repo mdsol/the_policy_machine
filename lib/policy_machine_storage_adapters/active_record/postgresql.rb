@@ -23,7 +23,7 @@ module PolicyMachineStorageAdapter
                 ,a.parent_id
               FROM assignments a
               JOIN ancestors anc
-      ON anc.parent_id = a.child_id
+                ON anc.parent_id = a.child_id
             )
             ),
 
