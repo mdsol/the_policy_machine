@@ -807,7 +807,11 @@ module PolicyMachineStorageAdapter
     def associations_filtered_by_operation(associations, operation)
       operation_id = operation.try(:unique_identifier) || operation.to_s
 
-      PolicyElementAssociation.with_accessible_operation(associations, operation_id)
+      if associations.present?
+        PolicyElementAssociation.with_accessible_operation(associations, operation_id)
+      else
+        []
+      end
     end
 
     private
