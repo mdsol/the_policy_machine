@@ -803,7 +803,6 @@ module PolicyMachineStorageAdapter
       end
     end
 
-
     # Filters a list of associations to those related to a given operation
     def associations_filtered_by_operation(associations, operation)
       operation_id = operation.try(:unique_identifier) || operation.to_s
