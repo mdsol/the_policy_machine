@@ -6,7 +6,7 @@ module PolicyMachineStorageAdapter
       def self.all_accessible_objects(associations, root_id: nil)
         query = <<-SQL
           id IN (
-            WITH RECURSIVE ancestors AS (
+            WITH RECURSIVE accessible_ancestors AS (
             (
               SELECT
                 objects.id AS parent_id,
@@ -19,11 +19,11 @@ module PolicyMachineStorageAdapter
             UNION ALL
             (
               SELECT
-                a.parent_id,
-                a.parent_id
-              FROM assignments a
-              JOIN ancestors anc
-                ON anc.parent_id = a.child_id
+                assignments.parent_id,
+                assignments.parent_id
+              FROM assignments
+              JOIN accessible_ancestors
+                ON accessible_ancestors.parent_id = assignments.child_id
             )
             ),
 
@@ -38,17 +38,17 @@ module PolicyMachineStorageAdapter
             UNION ALL
             (
               SELECT
-                a.parent_id,
-                a.child_id
-              FROM assignments a
-              JOIN ancestor_scope anc
-                ON anc.parent_id = a.child_id
+                assignments.parent_id,
+                assignments.child_id
+              FROM assignments
+              JOIN ancestor_scope
+                ON ancestor_scope.parent_id = assignments.child_id
             )
             )
 
             SELECT DISTINCT
               parent_id
-            FROM ancestors
+            FROM accessible_ancestors
             WHERE parent_id IN (SELECT parent_id FROM ancestor_scope)
           )
         SQL
