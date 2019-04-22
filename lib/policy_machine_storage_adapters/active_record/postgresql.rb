@@ -3,16 +3,19 @@ require 'active_record/hierarchical_query' # via gem activerecord-hierarchical_q
 module PolicyMachineStorageAdapter
   class ActiveRecord
     class PolicyElementAssociation
-      def self.all_accessible_objects(associations, root_id: nil)
+      def self.all_accessible_objects(associations, root_id: nil, filters: {})
+        pea_ids = associations.pluck(:id)
+        return [] if pea_ids.empty?
+
         query = <<-SQL
           id IN (
             WITH RECURSIVE ancestor_scope AS (
             (
               SELECT
-                id AS parent_id,
-                id AS child_id
-              FROM policy_elements
-              WHERE id = ?
+                child_id AS parent_id,
+                child_id AS child_id
+              FROM assignments
+              WHERE child_id = ?
             )
             UNION ALL
             (
@@ -25,29 +28,19 @@ module PolicyMachineStorageAdapter
             )
             ),
 
-            relevant_peas AS (
-              SELECT
-                peas.id
-              FROM policy_element_associations peas
-              WHERE peas.object_attribute_id IN (SELECT parent_id FROM ancestor_scope)
-                AND peas.id IN (#{associations.select(:id).to_sql})
-            ),
-
             accessible_ancestors AS (
             (
               SELECT
-                objects.id AS parent_id,
-                objects.id AS child_id
+                ARRAY[peas.object_attribute_id] AS path
+                ,peas.object_attribute_id AS parent_id
               FROM policy_element_associations peas
-              JOIN policy_elements objects
-                ON objects.id = peas.object_attribute_id
-              WHERE peas.id IN (SELECT id FROM relevant_peas)
+              WHERE peas.id IN (#{pea_ids.join(',')})
             )
             UNION ALL
             (
               SELECT
-                assignments.parent_id,
-                assignments.parent_id
+                path || assignments.parent_id AS path
+                ,assignments.parent_id AS parent_id
               FROM assignments
               JOIN accessible_ancestors
                 ON accessible_ancestors.parent_id = assignments.child_id
@@ -55,12 +48,16 @@ module PolicyMachineStorageAdapter
             )
 
             SELECT DISTINCT
-              parent_id
-            FROM accessible_ancestors
-          )
+              ancestor_scope.parent_id
+            FROM ancestor_scope
+            JOIN accessible_ancestors
+              ON ancestor_scope.parent_id = accessible_ancestors.parent_id
+                AND ARRAY[ancestor_scope.parent_id] <@ accessible_ancestors.path
+
+            )
         SQL
 
-        PolicyElement.where(query, root_id)
+        PolicyElement.where(query, root_id).where(filters)
       end
 
       def self.with_accessible_operation(associations, operation)

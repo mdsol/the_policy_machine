@@ -785,7 +785,8 @@ module PolicyMachineStorageAdapter
 
       candidates = PolicyElementAssociation.all_accessible_objects(
         filtered_associations,
-        root_id: root_object_id
+        root_id: root_object_id,
+        filters: { type: class_for_type('object').name }
       )
 
       inclusion = options[:includes]
