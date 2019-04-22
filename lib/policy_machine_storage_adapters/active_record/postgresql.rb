@@ -6,28 +6,7 @@ module PolicyMachineStorageAdapter
       def self.all_accessible_objects(associations, root_id: nil)
         query = <<-SQL
           id IN (
-            WITH RECURSIVE accessible_ancestors AS (
-            (
-              SELECT
-                objects.id AS parent_id,
-                objects.id AS child_id
-              FROM policy_element_associations peas
-              JOIN policy_elements objects
-                ON objects.id = peas.object_attribute_id
-              WHERE peas.id IN (#{associations.select(:id).to_sql})
-            )
-            UNION ALL
-            (
-              SELECT
-                assignments.parent_id,
-                assignments.parent_id
-              FROM assignments
-              JOIN accessible_ancestors
-                ON accessible_ancestors.parent_id = assignments.child_id
-            )
-            ),
-
-            ancestor_scope AS (
+            WITH RECURSIVE ancestor_scope AS (
             (
               SELECT
                 id AS parent_id,
@@ -44,12 +23,40 @@ module PolicyMachineStorageAdapter
               JOIN ancestor_scope
                 ON ancestor_scope.parent_id = assignments.child_id
             )
+            ),
+
+            relevant_peas AS (
+              SELECT
+                peas.id
+              FROM policy_element_associations peas
+              WHERE peas.object_attribute_id IN (SELECT parent_id FROM ancestor_scope)
+                AND peas.id IN (#{associations.select(:id).to_sql})
+            ),
+
+            accessible_ancestors AS (
+            (
+              SELECT
+                objects.id AS parent_id,
+                objects.id AS child_id
+              FROM policy_element_associations peas
+              JOIN policy_elements objects
+                ON objects.id = peas.object_attribute_id
+              WHERE peas.id IN (SELECT id FROM relevant_peas)
+            )
+            UNION ALL
+            (
+              SELECT
+                assignments.parent_id,
+                assignments.parent_id
+              FROM assignments
+              JOIN accessible_ancestors
+                ON accessible_ancestors.parent_id = assignments.child_id
+            )
             )
 
             SELECT DISTINCT
               parent_id
             FROM accessible_ancestors
-            WHERE parent_id IN (SELECT parent_id FROM ancestor_scope)
           )
         SQL
 
