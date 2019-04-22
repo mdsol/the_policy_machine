@@ -2,6 +2,95 @@ require 'active_record/hierarchical_query' # via gem activerecord-hierarchical_q
 
 module PolicyMachineStorageAdapter
   class ActiveRecord
+    class PolicyElementAssociation
+      def self.all_accessible_objects(associations, root_id: nil)
+        query = <<-SQL
+          id IN (
+            WITH RECURSIVE ancestors AS (
+            (
+              SELECT
+                objects.id AS parent_id
+                ,objects.id AS child_id
+              FROM policy_element_associations peas
+              JOIN policy_elements objects
+                ON objects.id = peas.object_attribute_id
+              WHERE peas.id IN (#{associations.select(:id).to_sql})
+            )
+            UNION ALL
+            (
+              SELECT
+                a.parent_id
+                ,a.parent_id
+              FROM assignments a
+              JOIN ancestors anc
+      ON anc.parent_id = a.child_id
+            )
+            ),
+
+            ancestor_scope AS (
+            (
+              SELECT
+                id AS parent_id
+                ,id AS child_id
+              FROM policy_elements
+              WHERE id = ?
+            )
+            UNION ALL
+            (
+              SELECT
+                a.parent_id
+                ,a.child_id
+              FROM assignments a
+              JOIN ancestor_scope anc
+                ON anc.parent_id = a.child_id
+            )
+            )
+
+            SELECT DISTINCT
+              parent_id
+            FROM ancestors
+            WHERE parent_id IN (SELECT parent_id FROM ancestor_scope)
+          )
+        SQL
+
+        PolicyElement.where(query, root_id)
+      end
+
+      def self.with_accessible_operation(associations, operation)
+        query = <<-SQL
+          operation_set_id IN (
+           WITH RECURSIVE accessible_operations AS (
+              (
+               SELECT
+                  child_id,
+                  parent_id,
+                  parent_id AS operation_set_id
+                FROM assignments
+                WHERE parent_id IN (#{associations.select(:operation_set_id).to_sql})
+              )
+             UNION ALL
+              (
+                SELECT
+                  assignments.child_id,
+                  assignments.parent_id,
+                 accessible_operations.operation_set_id AS operation_set_id
+                FROM assignments
+                INNER JOIN accessible_operations
+                ON accessible_operations.child_id = assignments.parent_id
+             )
+            )
+          SELECT accessible_operations.operation_set_id
+          FROM accessible_operations
+         JOIN policy_elements ops
+            ON ops.id = accessible_operations.child_id
+          WHERE ops.unique_identifier = ?
+          )
+        SQL
+
+        associations.where(query, operation)
+      end
+    end
+
     class Assignment < ::ActiveRecord::Base
       # needs parent_id, child_id columns
       belongs_to :parent, class_name: 'PolicyElement', foreign_key: :parent_id
