@@ -783,17 +783,11 @@ module PolicyMachineStorageAdapter
       associations = associations_for_user_or_attribute(user_or_attribute, options)
       filtered_associations = associations_filtered_by_operation(associations, operation)
 
-      shortcircuit_ancestors = options[:filters].nil? && is_privilege?(user_or_attribute, operation, root_object)
-      candidates = if shortcircuit_ancestors
-                     ancestors = Assignment.ancestors_of(root_object)
-                     ancestors.or(PolicyElement.where(id: root_object_id))
-                   else
-                     PolicyElementAssociation.all_accessible_objects(
+      candidates = PolicyElementAssociation.all_accessible_objects(
                        filtered_associations,
                        root_id: root_object_id,
                        filters: { type: class_for_type('object').name }
                      )
-                   end
 
       inclusion = options[:includes]
       if inclusion
