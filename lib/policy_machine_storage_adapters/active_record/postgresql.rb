@@ -10,51 +10,79 @@ module PolicyMachineStorageAdapter
         query = <<-SQL
           id IN (
             WITH RECURSIVE ancestor_scope AS (
-            (
-              SELECT
-                child_id AS parent_id,
-                child_id AS child_id
-              FROM assignments
-              WHERE child_id = ?
-            )
+            SELECT
+                child_id,
+                child_id AS parent_id
+            FROM assignments
+            WHERE child_id = ?
+
             UNION ALL
-            (
-              SELECT
+
+            SELECT
+                assignments.child_id,
+                assignments.parent_id
+            FROM assignments
+            JOIN ancestor_scope
+                ON assignments.child_id = ancestor_scope.parent_id
+            ),
+
+            leaf_ancestors AS (
+            SELECT DISTINCT
+                ancestor_scope.parent_id AS parent_id
+            FROM ancestor_scope
+            LEFT OUTER JOIN assignments
+                ON ancestor_scope.parent_id = assignments.child_id
+            WHERE assignments.child_id IS NULL
+            ),
+
+            leaf_descendants AS (
+            SELECT
+                parent_id,
+                parent_id AS child_id
+            FROM leaf_ancestors
+
+            UNION ALL
+
+            SELECT
                 assignments.parent_id,
                 assignments.child_id
-              FROM assignments
-              JOIN ancestor_scope
-                ON ancestor_scope.parent_id = assignments.child_id
-            )
+            FROM assignments
+            JOIN leaf_descendants
+                ON leaf_descendants.child_id = assignments.parent_id
+            ),
+
+            accessible_leaf_descendants AS (
+            SELECT DISTINCT
+                leaf_descendants.child_id
+            FROM leaf_descendants
+            JOIN policy_element_associations peas
+                ON peas.object_attribute_id = leaf_descendants.child_id
+            WHERE 1=1
+                AND peas.id IN (#{pea_ids.join(',')})
             ),
 
             accessible_ancestors AS (
-            (
-              SELECT
-                ARRAY[peas.object_attribute_id] AS path
-                ,peas.object_attribute_id AS parent_id
-              FROM policy_element_associations peas
-              WHERE peas.id IN (#{pea_ids.join(',')})
-            )
+            SELECT
+                child_id,
+                child_id AS parent_id
+            FROM accessible_leaf_descendants
+
             UNION ALL
-            (
-              SELECT
-                path || assignments.parent_id AS path
-                ,assignments.parent_id AS parent_id
-              FROM assignments
-              JOIN accessible_ancestors
-                ON accessible_ancestors.parent_id = assignments.child_id
-            )
+
+            SELECT
+                a.child_id,
+                a.parent_id
+            FROM assignments a
+            JOIN accessible_ancestors d
+                ON a.child_id = d.parent_id
             )
 
-            SELECT DISTINCT
-              ancestor_scope.parent_id
-            FROM ancestor_scope
-            JOIN accessible_ancestors
-              ON ancestor_scope.parent_id = accessible_ancestors.parent_id
-                AND ARRAY[ancestor_scope.parent_id] <@ accessible_ancestors.path
-
-            )
+            SELECT
+                accessible_ancestors.parent_id
+            FROM accessible_ancestors
+            JOIN ancestor_scope
+                ON ancestor_scope.parent_id = accessible_ancestors.parent_id
+          )
         SQL
 
         PolicyElement.where(query, root_id).where(filters)
