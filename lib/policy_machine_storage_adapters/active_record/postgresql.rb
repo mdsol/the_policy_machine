@@ -3,7 +3,7 @@ require 'active_record/hierarchical_query' # via gem activerecord-hierarchical_q
 module PolicyMachineStorageAdapter
   class ActiveRecord
     class PolicyElementAssociation
-      def self.all_accessible_objects(associations, root_id: nil, filters: {})
+      def self.all_accessible_objects(associations, root_id:, filters: {})
         pea_ids = associations.pluck(:id)
         return [] if pea_ids.empty?
 
