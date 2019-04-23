@@ -11,10 +11,10 @@ module PolicyMachineStorageAdapter
           id IN (
             WITH RECURSIVE ancestor_scope AS (
             SELECT
-                child_id,
-                child_id AS parent_id
-            FROM assignments
-            WHERE child_id = ?
+                id AS child_id,
+                id AS parent_id
+            FROM policy_elements
+            WHERE id = ?
 
             UNION ALL
 
