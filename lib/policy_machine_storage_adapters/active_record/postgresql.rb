@@ -90,31 +90,32 @@ module PolicyMachineStorageAdapter
       def self.with_accessible_operation(associations, operation)
         query = <<-SQL
           operation_set_id IN (
-           WITH RECURSIVE accessible_operations AS (
+            WITH RECURSIVE accessible_operations AS (
               (
-               SELECT
+                SELECT
                   child_id,
                   parent_id,
                   parent_id AS operation_set_id
                 FROM assignments
                 WHERE parent_id IN (#{associations.select(:operation_set_id).to_sql})
               )
-             UNION ALL
+              UNION ALL
               (
                 SELECT
                   assignments.child_id,
                   assignments.parent_id,
-                 accessible_operations.operation_set_id AS operation_set_id
+                  accessible_operations.operation_set_id AS operation_set_id
                 FROM assignments
                 INNER JOIN accessible_operations
-                ON accessible_operations.child_id = assignments.parent_id
-             )
+                  ON accessible_operations.child_id = assignments.parent_id
+              )
             )
-          SELECT accessible_operations.operation_set_id
-          FROM accessible_operations
-         JOIN policy_elements ops
-            ON ops.id = accessible_operations.child_id
-          WHERE ops.unique_identifier = ?
+
+            SELECT accessible_operations.operation_set_id
+            FROM accessible_operations
+            JOIN policy_elements ops
+              ON ops.id = accessible_operations.child_id
+            WHERE ops.unique_identifier = ?
           )
         SQL
 
