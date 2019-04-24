@@ -2,6 +2,147 @@ require 'active_record/hierarchical_query' # via gem activerecord-hierarchical_q
 
 module PolicyMachineStorageAdapter
   class ActiveRecord
+    class PolicyElementAssociation
+      def self.scoped_accessible_objects(associations, root_id:, filters: {})
+        pea_ids = associations.pluck(:id)
+        return PolicyElement.none if pea_ids.empty?
+
+        # This query determines which objects are (1) privileged given a
+        # set of PEAs and (2) within the scope of the given root object.
+        # A brief explanation of the CTEs follows:
+        # 'ancestor_scope' - the set of objects within the scope of the
+        #                    given root object
+        # 'leaf_ancestors' - the subset of 'ancestor_scope' that are
+        #                    terminal nodes in the graph
+        # 'leaf_descendants' - the set of objects that cascade access
+        #                      to 'leaf_ancestors'
+        # 'accessible_leaf_descendants' - the set of objects that
+        #                                 (1) cascade access to
+        #                                 'leaf_descendants' and
+        #                                 (2) are privileged by any of
+        #                                 the given set of PEAs
+        # 'accessible_ancestors' - the full set of objects that cascade
+        #                          from 'accessible_leaf_descendants'
+        # The final statement intersects the set of 'ancestor_scope' and
+        # 'accessible_ancestors', meaning it returns the full set of
+        # objects that are (1) privileged given the set of PEAs and
+        # (2) within the scope of the given root object
+        query = <<-SQL
+          id IN (
+            WITH RECURSIVE ancestor_scope AS (
+              SELECT
+                  id AS child_id,
+                  id AS parent_id
+              FROM policy_elements
+              WHERE id = ?
+
+              UNION ALL
+
+              SELECT
+                  assignments.child_id,
+                  assignments.parent_id
+              FROM assignments
+              JOIN ancestor_scope
+                  ON assignments.child_id = ancestor_scope.parent_id
+            ),
+
+            leaf_ancestors AS (
+              SELECT DISTINCT
+                  ancestor_scope.parent_id AS parent_id
+              FROM ancestor_scope
+              LEFT OUTER JOIN assignments
+                  ON ancestor_scope.parent_id = assignments.child_id
+              WHERE assignments.child_id IS NULL
+            ),
+
+            leaf_descendants AS (
+              SELECT
+                  parent_id,
+                  parent_id AS child_id
+              FROM leaf_ancestors
+
+              UNION ALL
+
+              SELECT
+                  assignments.parent_id,
+                  assignments.child_id
+              FROM assignments
+              JOIN leaf_descendants
+                  ON leaf_descendants.child_id = assignments.parent_id
+            ),
+
+            accessible_leaf_descendants AS (
+              SELECT DISTINCT
+                  leaf_descendants.child_id
+              FROM leaf_descendants
+              JOIN policy_element_associations peas
+                  ON peas.object_attribute_id = leaf_descendants.child_id
+              WHERE peas.id IN (?)
+            ),
+
+            accessible_ancestors AS (
+              SELECT
+                  child_id,
+                  child_id AS parent_id
+              FROM accessible_leaf_descendants
+
+              UNION ALL
+
+              SELECT
+                  a.child_id,
+                  a.parent_id
+              FROM assignments a
+              JOIN accessible_ancestors d
+                  ON a.child_id = d.parent_id
+            )
+
+            SELECT
+                accessible_ancestors.parent_id
+            FROM accessible_ancestors
+            JOIN ancestor_scope
+                ON ancestor_scope.parent_id = accessible_ancestors.parent_id
+          )
+        SQL
+
+        PolicyElement.where(query, root_id, pea_ids).where(filters)
+      end
+
+      def self.with_accessible_operation(associations, operation)
+        query = <<-SQL
+          operation_set_id IN (
+            WITH RECURSIVE accessible_operations AS (
+              (
+                SELECT
+                  child_id,
+                  parent_id,
+                  parent_id AS operation_set_id
+                FROM assignments
+                WHERE parent_id IN (#{associations.select(:operation_set_id).to_sql})
+              )
+              UNION ALL
+              (
+                SELECT
+                  assignments.child_id,
+                  assignments.parent_id,
+                  accessible_operations.operation_set_id AS operation_set_id
+                FROM assignments
+                INNER JOIN accessible_operations
+                  ON accessible_operations.child_id = assignments.parent_id
+              )
+            )
+
+            SELECT accessible_operations.operation_set_id
+            FROM accessible_operations
+            JOIN policy_elements ops
+              ON ops.id = accessible_operations.child_id
+            WHERE ops.unique_identifier = ?
+          )
+        SQL
+
+        associations.where(query, operation)
+      end
+    end
+
     class Assignment < ::ActiveRecord::Base
       # needs parent_id, child_id columns
       belongs_to :parent, class_name: 'PolicyElement', foreign_key: :parent_id

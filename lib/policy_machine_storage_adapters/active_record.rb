@@ -777,20 +777,22 @@ module PolicyMachineStorageAdapter
     def accessible_ancestor_objects(user_or_attribute, operation, root_object, options = {})
       # If the root_object is a generic PM::Object, convert it the appropriate storage adapter Object
       root_object = root_object.try(:stored_pe) || root_object
+      root_object_id = root_object.id
+      operation = operation.try(:unique_identifier) || operation.to_s
 
-      # The final set of accessible objects must be ancestors of the root_object; avoid
-      # duplicate ancestor calls when possible
-      ancestor_objects = options[:ancestor_objects]
-      ancestor_objects ||= root_object.ancestors(type: class_for_type('object').name) + [root_object]
+      associations = associations_for_user_or_attribute(user_or_attribute, options)
+      filtered_associations = associations_filtered_by_operation(associations, operation)
 
-      # Short-circuit and return all ancestors (minus prohibitions) if the user_or_attribute
-      # is authorized on the root node
-      if options[:filters].nil? && is_privilege?(user_or_attribute, operation, root_object)
-        return all_ancestor_objects(user_or_attribute, operation, root_object, ancestor_objects, options)
+      candidates = PolicyElementAssociation.scoped_accessible_objects(
+        filtered_associations,
+        root_id: root_object_id,
+        filters: { type: class_for_type('object').name }
+      )
+
+      inclusion = options[:includes]
+      if inclusion
+        candidates = build_inclusion_scope(candidates, options[:key], inclusion)
       end
-
-      all_accessible_objects = objects_for_user_or_attribute_and_operation(user_or_attribute, operation, options)
-      candidates = all_accessible_objects & ancestor_objects
 
       if options[:ignore_prohibitions] || !(prohibition = prohibition_for(operation))
         candidates
@@ -798,8 +800,6 @@ module PolicyMachineStorageAdapter
         # Do not use the filter when checking prohibitions
         preloaded_options = options.except(:filters).merge(ignore_prohibitions: true)
         # If ancestor objects are filtered, preloaded ancestor objects cannot be used when checking prohibitions
-        preloaded_options.merge!(ancestor_objects: ancestor_objects) unless options[:filters]
-
         candidates - accessible_ancestor_objects(user_or_attribute, prohibition, root_object, preloaded_options)
       end
     end
@@ -809,9 +809,7 @@ module PolicyMachineStorageAdapter
       operation_id = operation.try(:unique_identifier) || operation.to_s
 
       if associations.present?
-        operation_set_ids = associations.pluck(:operation_set_id)
-        filtered_operation_set_ids = Assignment.filter_operation_set_list_by_assigned_operation(operation_set_ids, operation_id)
-        associations.where(operation_set_id: filtered_operation_set_ids)
+        PolicyElementAssociation.with_accessible_operation(associations, operation_id)
       else
         []
       end
