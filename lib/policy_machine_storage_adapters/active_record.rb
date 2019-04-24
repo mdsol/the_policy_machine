@@ -783,7 +783,7 @@ module PolicyMachineStorageAdapter
       associations = associations_for_user_or_attribute(user_or_attribute, options)
       filtered_associations = associations_filtered_by_operation(associations, operation)
 
-      candidates = PolicyElementAssociation.all_accessible_objects(
+      candidates = PolicyElementAssociation.scoped_accessible_objects(
         filtered_associations,
         root_id: root_object_id,
         filters: { type: class_for_type('object').name }
