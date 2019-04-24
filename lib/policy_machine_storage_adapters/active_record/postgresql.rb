@@ -7,6 +7,26 @@ module PolicyMachineStorageAdapter
         pea_ids = associations.pluck(:id)
         return PolicyElement.none if pea_ids.empty?
 
+        # This query determines which objects are (1) privileged given a
+        # set of PEAs and (2) within the scope of the given root object.
+        # A brief explanation of the CTEs follows:
+        # 'ancestor_scope' - the set of objects within the scope of the
+        #                    given root object
+        # 'leaf_ancestors' - the subset of 'ancestor_scope' that are
+        #                    terminal nodes in the graph
+        # 'leaf_descendants' - the set of objects that cascade access
+        #                      to 'leaf_ancestors'
+        # 'accessible_leaf_descendants' - the set of objects that
+        #                                 (1) cascade access to
+        #                                 'leaf_descendants' and
+        #                                 (2) are privileged by any of
+        #                                 the given set of PEAs
+        # 'accessible_ancestors' - the full set of objects that cascade
+        #                          from 'accessible_leaf_descendants'
+        # The final statement intersects the set of 'ancestor_scope' and
+        # 'accessible_ancestors', meaning it returns the full set of
+        # objects that are (1) privileged given the set of PEAs and
+        # (2) within the scope of the given root object
         query = <<-SQL
           id IN (
             WITH RECURSIVE ancestor_scope AS (
