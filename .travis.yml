@@ -31,8 +31,9 @@ before_install:
   - sudo service postgresql restart 11
   - sudo cat /etc/postgresql/11/main/postgresql.conf
   - ps aux | grep postgresql
-  - psql -c "SELECT version();"
+  - pwd
   - psql -c "\du"
+  - psql -c "SELECT version();"
 script:
   - bundle exec rake pm:test:prepare
   - bundle exec rspec
