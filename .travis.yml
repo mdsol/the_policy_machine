@@ -9,6 +9,7 @@ env:
     - DB=postgresql
     - RAILS_ENV=test
     - CI_NODE_TOTAL=1
+    - PGUSER=postgres
     - PGPORT=5432
     - PGHOST=localhost
   matrix:
@@ -32,8 +33,6 @@ before_install:
   - sudo cat /etc/postgresql/11/main/postgresql.conf
   - ps aux | grep postgresql
   - pwd
-  - ls config
-  - cat config/database.yml
   - psql -c "\du"
   - psql -c "SELECT version();"
 script:
