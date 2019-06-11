@@ -32,6 +32,8 @@ before_install:
   - sudo cat /etc/postgresql/11/main/postgresql.conf
   - ps aux | grep postgresql
   - pwd
+  - ls config
+  - cat config/database.yml
   - psql -c "\du"
   - psql -c "SELECT version();"
 script:
