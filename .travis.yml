@@ -23,6 +23,33 @@ addons:
     - libcurl3-gnutls
     - libcurl4-openssl-dev
 bundler_args: --jobs=1 --retry=3
+
+#
+# The standard way to configure Travis with PostgreSQL is
+#
+# addons:
+#   postgresql: "9.4"
+# services:
+#   - postgresql
+# 
+# This only works up to 9.6. Travis documentation suggests an
+# alternative way to use higher verions of PostgreSQL:
+#     
+# addons:
+#   postgresql: "10"
+#   apt:
+#     packages:
+#     - postgresql-10
+#     - postgresql-client-10
+# env:
+#   global:
+#   - PGPORT=5433
+#
+# However, even this does not work for PostgreSQL 11. It is unclear when
+# this will be officially supported. For now we manually install
+# PostgreSQL 11 with apt.
+#
+
 before_install:
   - "curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | sudo bash"
   - sudo apt-get update
