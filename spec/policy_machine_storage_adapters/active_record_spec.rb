@@ -300,24 +300,28 @@ describe 'ActiveRecord' do
 
       describe 'accessible_ancestor_objects' do
         it 'returns objects accessible via the filtered attribute on an object scope' do
-          filters = { user_attributes: { color: 'green' } }
+          options = {
+            filters: { user_attributes: { color: 'green' } },
+            key: :unique_identifier
+          }
 
           expect(
             candy_pm.accessible_ancestor_objects(
               frank,
               create,
               vanilla,
-              filters: filters,
-              key: :unique_identifier
+              options: options
             ).map(&:unique_identifier)
           ).to match_array(['vanilla', 'french_vanilla', 'american_vanilla'])
         end
 
         it 'does not return objects that are not accessible via the filtered attribute on an object scope' do
-          filters = { user_attributes: { color: 'beige' } }
+          options = {
+            filters: { user_attributes: { color: 'beige' } }
+          }
 
           expect(
-            candy_pm.accessible_ancestor_objects(frank, create, vanilla, filters: filters)
+            candy_pm.accessible_ancestor_objects(frank, create, vanilla, options: options)
           ).to be_empty
         end
 
@@ -329,23 +333,24 @@ describe 'ActiveRecord' do
             candy_pm.add_association(ice_cream_engineer, cant_create, french_vanilla)
           end
 
-         it 'does not return objects with prohibitions' do
-           filters = { user_attributes: { color: 'green' } }
+          it 'does not return objects with prohibitions' do
+            options = {
+              filters: { user_attributes: { color: 'green' } },
+              key: :unique_identifier
+            }
 
-           expect(
-             candy_pm.accessible_ancestor_objects(
-               frank,
-               create,
-               vanilla,
-               filters: filters,
-               key: :unique_identifier
-             ).map(&:unique_identifier)
-           ).to_not include('french_vanilla')
+            expect(
+              candy_pm.accessible_ancestor_objects(
+                frank,
+                create,
+                vanilla,
+                options: options
+              ).map(&:unique_identifier)
+            ).to_not include('french_vanilla')
           end
         end
       end
     end
-
 
     describe 'find_all_of_type' do
       let(:pm_uuid) { SecureRandom.uuid }
@@ -748,6 +753,8 @@ describe 'ActiveRecord' do
     let!(:ua) { ado_pm.create_user_attribute('ua') }
     let!(:oa) { ado_pm.create_object_attribute('oa') }
 
+    let(:options) { { key: :unique_identifier } }
+
     before do
       [grandparent_fish, parent_fish, child_fish_1, cousin_fish].each do |object|
         ado_pm.add_association(ua, reader, object)
@@ -770,9 +777,9 @@ describe 'ActiveRecord' do
     it 'lists all objects with the given privilege for the given user that are ancestors of a specified object' do
       all_accessible_from_grandparent = %w(grandparent_fish parent_fish uncle_fish cousin_fish child_fish_1 child_fish_2)
 
-      expect(ado_pm.accessible_ancestor_objects(u1, read, grandparent_fish, key: :unique_identifier).map(&:unique_identifier))
+      expect(ado_pm.accessible_ancestor_objects(u1, read, grandparent_fish, options: options).map(&:unique_identifier))
         .to match_array(all_accessible_from_grandparent)
-      expect(ado_pm.accessible_ancestor_objects(u1, write, parent_fish, key: :unique_identifier).map(&:unique_identifier))
+      expect(ado_pm.accessible_ancestor_objects(u1, write, parent_fish, options: options).map(&:unique_identifier))
         .to contain_exactly('child_fish_1')
     end
 
@@ -786,12 +793,12 @@ describe 'ActiveRecord' do
 
       all_accessible_from_parent = %w(parent_fish child_fish_1 child_fish_2)
 
-      expect(ado_pm.accessible_ancestor_objects(u1, wrestle, parent_fish, key: :unique_identifier).map(&:unique_identifier))
+      expect(ado_pm.accessible_ancestor_objects(u1, wrestle, parent_fish, options: options).map(&:unique_identifier))
         .to match_array(all_accessible_from_parent)
     end
 
     it 'does not return objects which are not ancestors of the specified object' do
-      all_accessible_from_uncle = ado_pm.accessible_ancestor_objects(u1, read, uncle_fish, key: :unique_identifier)
+      all_accessible_from_uncle = ado_pm.accessible_ancestor_objects(u1, read, uncle_fish, options: options)
 
       expect(all_accessible_from_uncle.map(&:unique_identifier)).to contain_exactly('uncle_fish', 'cousin_fish')
     end
@@ -805,8 +812,8 @@ describe 'ActiveRecord' do
       ado_pm.add_association(ua, bluffer, cousin_fish)
       ado_pm.add_association(ua, bluffer, child_fish_1)
 
-      all_accessible_from_grandparent = ado_pm.accessible_ancestor_objects(u1, bluff, grandparent_fish, key: :unique_identifier)
-      all_accessible_from_parent = ado_pm.accessible_ancestor_objects(u1, bluff, parent_fish, key: :unique_identifier)
+      all_accessible_from_grandparent = ado_pm.accessible_ancestor_objects(u1, bluff, grandparent_fish, options: options)
+      all_accessible_from_parent = ado_pm.accessible_ancestor_objects(u1, bluff, parent_fish, options: options)
 
       # Verify 'bluff' is still visible when not present on intermediate nodes, namely 'uncle' and 'parent'
       expect(all_accessible_from_grandparent.map(&:unique_identifier)).to contain_exactly('child_fish_1', 'cousin_fish')
@@ -814,10 +821,21 @@ describe 'ActiveRecord' do
     end
 
     it 'filters objects via substring matching' do
-      expect(ado_pm.accessible_ancestor_objects(u1, read, grandparent_fish, includes: 'parent', key: :unique_identifier).map(&:unique_identifier))
-        .to contain_exactly('grandparent_fish', 'parent_fish')
-      expect(ado_pm.accessible_ancestor_objects(u1, read, grandparent_fish, includes: 'messedupstring', key: :unique_identifier).map(&:unique_identifier))
-        .to be_empty
+      expect(
+        ado_pm.accessible_ancestor_objects(u1,
+          read,
+          grandparent_fish,
+          options: options.merge(includes: 'parent')
+        ).map(&:unique_identifier)
+      ).to contain_exactly('grandparent_fish', 'parent_fish')
+
+      expect(
+        ado_pm.accessible_ancestor_objects(u1,
+          read,
+          grandparent_fish,
+          options: options.merge(includes: 'messedupstring')
+        ).map(&:unique_identifier)
+      ).to be_empty
     end
 
     context 'cascading operation sets' do
@@ -834,12 +852,12 @@ describe 'ActiveRecord' do
       end
 
       it 'lists all objects with the given privilege for the given user 1 operation set deep' do
-        expect(ado_pm.accessible_ancestor_objects(u1, speed_write, parent_fish, key: :unique_identifier).map(&:unique_identifier))
+        expect(ado_pm.accessible_ancestor_objects(u1, speed_write, parent_fish, options: options).map(&:unique_identifier))
           .to contain_exactly('child_fish_1')
       end
 
       it 'lists all objects with the given privilege for the given user 2 operation sets deep' do
-        expect(ado_pm.accessible_ancestor_objects(u1, speediest_write, grandparent_fish, key: :unique_identifier).map(&:unique_identifier))
+        expect(ado_pm.accessible_ancestor_objects(u1, speediest_write, grandparent_fish, options: options).map(&:unique_identifier))
           .to contain_exactly('child_fish_1')
       end
     end
@@ -855,16 +873,16 @@ describe 'ActiveRecord' do
         ado_pm.add_association(ua, not_reader, parent_fish)
         all_accessible_from_grandparent = %w(grandparent_fish uncle_fish cousin_fish)
 
-        expect(ado_pm.accessible_ancestor_objects(u1, read, grandparent_fish, key: :unique_identifier).map(&:unique_identifier))
+        expect(ado_pm.accessible_ancestor_objects(u1, read, grandparent_fish, options: options).map(&:unique_identifier))
           .to match_array(all_accessible_from_grandparent)
-        expect(ado_pm.accessible_ancestor_objects(u1, write, parent_fish, key: :unique_identifier).map(&:unique_identifier))
+        expect(ado_pm.accessible_ancestor_objects(u1, write, parent_fish, options: options).map(&:unique_identifier))
           .to contain_exactly('child_fish_1')
       end
 
       it 'does not return objects which are prohibited by an out-of-scope descendant' do
         ado_pm.add_association(ua, not_reader, grandparent_fish)
 
-        expect(ado_pm.accessible_ancestor_objects(u1, read, parent_fish, key: :unique_identifier).map(&:unique_identifier))
+        expect(ado_pm.accessible_ancestor_objects(u1, read, parent_fish, options: options).map(&:unique_identifier))
           .to be_empty
       end
     end

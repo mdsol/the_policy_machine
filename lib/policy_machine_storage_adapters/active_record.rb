@@ -772,8 +772,9 @@ module PolicyMachineStorageAdapter
       end
     end
 
-    # Version of accessible_objects which only returns objects that are
-    # ancestors of a specified root object or the object itself
+    # Version of accessible_objects which only returns objects that are ancestors of a specified
+    # root object or the object itself. A set of policy element associations with the specified
+    # operation may be optionally provided.
     def accessible_ancestor_objects(user_or_attribute, operation, root_object, associations_with_operation = nil, options: {})
       # If the root_object is a generic PM::Object, convert it the appropriate storage adapter Object
       root_object = root_object.try(:stored_pe) || root_object
