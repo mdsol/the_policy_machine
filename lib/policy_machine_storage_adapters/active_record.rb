@@ -1046,7 +1046,7 @@ module PolicyMachineStorageAdapter
           user_or_attribute,
           prohibition,
           root_object,
-          options: options.merge(ignore_prohibitions: true, ancestor_objects: ancestor_objects)
+          options.merge(ignore_prohibitions: true, ancestor_objects: ancestor_objects)
         )
         ancestor_objects - prohibited_ancestor_objects
       else
