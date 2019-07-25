@@ -284,14 +284,13 @@ class PolicyMachine
     end
   end
 
-  def accessible_ancestor_objects(user_or_attribute, operation, root_object, associations_with_operation = nil, options: {})
+  def accessible_ancestor_objects(user_or_attribute, operation, root_object, options = {})
     if policy_machine_storage_adapter.respond_to?(:accessible_ancestor_objects)
       policy_machine_storage_adapter.accessible_ancestor_objects(
         user_or_attribute,
         operation,
         root_object,
-        associations_with_operation,
-        options: options
+        options
       )
     else
       raise NoMethodError, "accessible_ancestor_objects is not implemented for storage adapter " \
