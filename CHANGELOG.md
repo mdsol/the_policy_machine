@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.2.0
+* Update .accessible_ancestor_objects to accept an optional associations_with_operation argument.
+* Update .accessible_ancestor_objects options argument to require a keyword.
+
 ## 2.1.2
 * Optimized ActiveRecord adapter for PolicyMachine `#accessible_ancestor_objects`.
 
