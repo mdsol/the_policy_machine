@@ -26,72 +26,64 @@ describe 'ActiveRecord' do
     let(:policy_machine_storage_adapter) { described_class.new }
 
     describe 'scoping privileges by user attribute' do
-      let(:candy_pm) { PolicyMachine.new(name: 'Candy Machine', storage_adapter: PolicyMachineStorageAdapter::ActiveRecord)}
+      let(:priv_pm) do
+        PolicyMachine.new(name: 'Privilege Scoping PM', storage_adapter: PolicyMachineStorageAdapter::ActiveRecord)
+      end
 
-      let(:frank) { candy_pm.create_user('frank') }
-      let(:employee) { candy_pm.create_user_attribute('employee', color: 'beige') }
-      let(:cheese_engineer) { candy_pm.create_user_attribute('cheese_engineer', color: 'purple') }
-      let(:ice_cream_engineer) { candy_pm.create_user_attribute('ice_cream_engineer', color: 'green') }
+      let(:user_1) { priv_pm.create_user('user_1') }
+      let(:color_1) { priv_pm.create_user_attribute('color_1', color: 'pink') }
+      let(:color_2) { priv_pm.create_user_attribute('color_2', color: 'purple') }
+      let(:color_3) { priv_pm.create_user_attribute('color_3', color: 'green') }
 
-      let(:chocolate) { candy_pm.create_object('chocolate') }
-      let(:vanilla) { candy_pm.create_object('vanilla') }
-      let(:french_vanilla) { candy_pm.create_object('french_vanilla') }
-      let(:american_vanilla) { candy_pm.create_object('american_vanilla') }
-      let(:ice_creams) { candy_pm.create_object_attribute('ice_creams') }
+      let(:object_1) { priv_pm.create_object('object_1') }
+      let(:object_2) { priv_pm.create_object('object_2') }
+      let(:object_3) { priv_pm.create_object('object_3') }
+      let(:object_4) { priv_pm.create_object('object_4') }
+      let(:oa_1) { priv_pm.create_object_attribute('oa_1') }
 
-      let(:brie) { candy_pm.create_object('brie') }
-      let(:swiss) { candy_pm.create_object('swiss') }
-      let(:cheeses) { candy_pm.create_object_attribute('cheeses') }
+      let(:object_5) { priv_pm.create_object('object_5') }
+      let(:object_6) { priv_pm.create_object('object_6') }
+      let(:oa_2) { priv_pm.create_object_attribute('oa_2') }
 
-      let(:money) { candy_pm.create_object('money') }
-      let(:finances) { candy_pm.create_object_attribute('finances') }
+      let(:object_7) { priv_pm.create_object('object_7') }
+      let(:oa_3) { priv_pm.create_object_attribute('oa_3') }
 
-      let(:products) { candy_pm.create_object_attribute('products') }
+      let(:oa_4) { priv_pm.create_object_attribute('oa_4') }
+      let(:oa_5) { priv_pm.create_object_attribute('oa_5') }
 
-      let(:business) { candy_pm.create_object_attribute('business') }
-
-      let(:taster) { candy_pm.create_operation_set('taster') }
-      let(:taste) { candy_pm.create_operation('taste') }
-
-      let(:creator) { candy_pm.create_operation_set('creator') }
-      let(:create) { candy_pm.create_operation('create') }
+      let(:painter) { priv_pm.create_operation_set('painter') }
+      let(:paint) { priv_pm.create_operation('paint') }
+      let(:creator) { priv_pm.create_operation_set('creator') }
+      let(:create) { priv_pm.create_operation('create') }
 
       before do
-        # Frank is an engineer for cheese and ice cream
-        candy_pm.add_assignment(frank, cheese_engineer)
-        candy_pm.add_assignment(frank, ice_cream_engineer)
-        candy_pm.add_assignment(frank, employee)
+        priv_pm.add_assignment(user_1, color_2)
+        priv_pm.add_assignment(user_1, color_3)
+        priv_pm.add_assignment(user_1, color_1)
 
-        # Engineers are employees
-        candy_pm.add_assignment(creator, taster)
+        priv_pm.add_assignment(creator, painter)
 
-        # Establish the official ice creams and cheeses
-        candy_pm.add_assignment(chocolate, ice_creams)
-        candy_pm.add_assignment(vanilla, ice_creams)
-        candy_pm.add_assignment(french_vanilla, vanilla)
-        candy_pm.add_assignment(american_vanilla, vanilla)
-        candy_pm.add_assignment(brie, cheeses)
-        candy_pm.add_assignment(swiss, cheeses)
+        priv_pm.add_assignment(object_1, oa_1)
+        priv_pm.add_assignment(object_2, oa_1)
+        priv_pm.add_assignment(object_3, object_2)
+        priv_pm.add_assignment(object_4, object_2)
+        priv_pm.add_assignment(object_5, oa_2)
+        priv_pm.add_assignment(object_6, oa_2)
 
-        # Forbidden business things
-        candy_pm.add_assignment(money, finances)
+        priv_pm.add_assignment(object_7, oa_3)
 
-        # Cheeses and ice creams are products
-        candy_pm.add_assignment(ice_creams, products)
-        candy_pm.add_assignment(cheeses, products)
+        priv_pm.add_assignment(oa_1, oa_4)
+        priv_pm.add_assignment(oa_2, oa_4)
 
-        # Products and finances are part of business
-        candy_pm.add_assignment(products, business)
-        candy_pm.add_assignment(finances, business)
+        priv_pm.add_assignment(oa_4, oa_5)
+        priv_pm.add_assignment(oa_3, oa_5)
 
-        # Creators create, tasters taste
-        candy_pm.add_assignment(creator, create)
-        candy_pm.add_assignment(taster, taste)
+        priv_pm.add_assignment(creator, create)
+        priv_pm.add_assignment(painter, paint)
 
-        # Engineers can create, employees can taste products
-        candy_pm.add_association(employee, taster, products)
-        candy_pm.add_association(cheese_engineer, creator, cheeses)
-        candy_pm.add_association(ice_cream_engineer, creator, ice_creams)
+        priv_pm.add_association(color_1, painter, oa_4)
+        priv_pm.add_association(color_2, creator, oa_2)
+        priv_pm.add_association(color_3, creator, oa_1)
       end
 
       describe 'is_privilege_with_filters?' do
@@ -100,69 +92,69 @@ describe 'ActiveRecord' do
             filters = { user_attributes: { color: 'purple' } }
 
             expect(
-              candy_pm.is_privilege_with_filters?(frank, create, brie, filters: filters)
+              priv_pm.is_privilege_with_filters?(user_1, create, object_5, filters: filters)
             ).to be true
           end
 
           context 'and a prohibition is set' do
-            let(:cant_create) { candy_pm.create_operation_set('cant_create') }
+            let(:cant_create) { priv_pm.create_operation_set('cant_create') }
 
             before do
-              candy_pm.add_assignment(cant_create, create.prohibition)
-              candy_pm.add_association(cheese_engineer, cant_create, brie)
+              priv_pm.add_assignment(cant_create, create.prohibition)
+              priv_pm.add_association(color_2, cant_create, object_5)
             end
 
             it 'returns false' do
               filters = { user_attributes: { color: 'purple' } }
 
               expect(
-                candy_pm.is_privilege_with_filters?(frank, create, brie, filters: filters)
+                priv_pm.is_privilege_with_filters?(user_1, create, object_5, filters: filters)
               ).to be false
             end
           end
         end
 
         context 'when the user has access via cascading operation sets assigned to the user attribute' do
-          let(:money_handling) { candy_pm.create_operation_set('money_handling') }
+          let(:object_7_handling) { priv_pm.create_operation_set('object_7_handling') }
 
           before do
-            candy_pm.add_assignment(money_handling, creator)
-            candy_pm.add_association(cheese_engineer, money_handling, finances)
+            priv_pm.add_assignment(object_7_handling, creator)
+            priv_pm.add_association(color_2, object_7_handling, oa_3)
           end
 
           it 'returns true' do
             filters = { user_attributes: { color: 'purple' } }
 
             expect(
-              candy_pm.is_privilege_with_filters?(frank, create, money, filters: filters)
+              priv_pm.is_privilege_with_filters?(user_1, create, object_7, filters: filters)
             ).to be true
           end
         end
 
         # Support for cascading user attribute assignments is not yet supported
         context 'when the user has access via cascading user attributes' do
-          let(:money_handler) { candy_pm.create_user_attribute('money_handler') }
+          let(:object_7_handler) { priv_pm.create_user_attribute('object_7_handler') }
 
           before do
-            candy_pm.add_assignment(money_handler, cheese_engineer)
-            candy_pm.add_association(money_handler, creator, money)
+            priv_pm.add_assignment(object_7_handler, color_2)
+            priv_pm.add_association(object_7_handler, creator, object_7)
           end
 
           it 'returns false' do
             filters = { user_attributes: { color: 'purple' } }
 
             expect(
-              candy_pm.is_privilege_with_filters?(frank, create, money, filters: filters)
+              priv_pm.is_privilege_with_filters?(user_1, create, object_7, filters: filters)
             ).to be false
           end
         end
 
         context 'when the user has access via a user attribute that is filtered out' do
           it 'returns false' do
-            filters = { user_attributes: { color: 'beige' } }
+            filters = { user_attributes: { color: 'pink' } }
 
             expect(
-              candy_pm.is_privilege_with_filters?(frank, create, brie, filters: filters)
+              priv_pm.is_privilege_with_filters?(user_1, create, object_5, filters: filters)
             ).to be false
           end
         end
@@ -172,7 +164,7 @@ describe 'ActiveRecord' do
             filters = { user_attributes: { color: 'purple' } }
 
             expect(
-              candy_pm.is_privilege_with_filters?(frank, create, money, filters: filters)
+              priv_pm.is_privilege_with_filters?(user_1, create, object_7, filters: filters)
             ).to be false
           end
         end
@@ -184,35 +176,35 @@ describe 'ActiveRecord' do
             filters = { user_attributes: { color: 'purple' } }
 
             expect(
-              candy_pm.scoped_privileges(frank, brie, filters: filters)
-            ).to contain_exactly([frank, create, brie], [frank, taste, brie])
+              priv_pm.scoped_privileges(user_1, object_5, filters: filters)
+            ).to contain_exactly([user_1, create, object_5], [user_1, paint, object_5])
           end
 
           context 'when there is a prohibition' do
-            let(:cant_create) { candy_pm.create_operation_set('cant_create') }
+            let(:cant_create) { priv_pm.create_operation_set('cant_create') }
 
             before do
-              candy_pm.add_assignment(cant_create, create.prohibition)
-              candy_pm.add_association(employee, cant_create, brie)
+              priv_pm.add_assignment(cant_create, create.prohibition)
+              priv_pm.add_association(color_1, cant_create, object_5)
             end
 
             it 'does not return the prohibited privilege' do
               filters = { user_attributes: { color: 'purple' } }
 
               expect(
-                candy_pm.scoped_privileges(frank, brie, filters: filters)
-              ).to contain_exactly([frank, taste, brie])
+                priv_pm.scoped_privileges(user_1, object_5, filters: filters)
+              ).to contain_exactly([user_1, paint, object_5])
             end
           end
         end
 
         context 'when the user has access via a user attribute that is filtered out' do
           it 'does not return the privilege given by the other user attribute' do
-            filters = { user_attributes: { color: 'beige' } }
+            filters = { user_attributes: { color: 'pink' } }
 
             expect(
-              candy_pm.scoped_privileges(frank, brie, filters: filters)
-            ).to match_array([[frank, taste, brie]])
+              priv_pm.scoped_privileges(user_1, object_5, filters: filters)
+            ).to match_array([[user_1, paint, object_5]])
           end
         end
 
@@ -221,33 +213,33 @@ describe 'ActiveRecord' do
             filters = { user_attributes: { color: 'purple' } }
 
             expect(
-              candy_pm.scoped_privileges(frank, money, filters: filters)
+              priv_pm.scoped_privileges(user_1, object_7, filters: filters)
             ).to be_empty
           end
         end
       end
 
       describe 'is_privilege_ignoring_prohibitions?' do
-        let(:cant_create) { candy_pm.create_operation_set('cant_create') }
+        let(:cant_create) { priv_pm.create_operation_set('cant_create') }
 
         before do
-          candy_pm.add_assignment(cant_create, create.prohibition)
-          candy_pm.add_association(cheese_engineer, cant_create, brie)
+          priv_pm.add_assignment(cant_create, create.prohibition)
+          priv_pm.add_association(color_2, cant_create, object_5)
         end
 
         context 'when a filter is passed' do
           it 'calls is_privilege_with_filters?' do
-            expect(candy_pm.policy_machine_storage_adapter).to receive(:is_privilege_with_filters?)
+            expect(priv_pm.policy_machine_storage_adapter).to receive(:is_privilege_with_filters?)
 
             filters = { user_attributes: { color: 'purple' } }
-            candy_pm.is_privilege_ignoring_prohibitions?(frank, create, brie, filters: filters)
+            priv_pm.is_privilege_ignoring_prohibitions?(user_1, create, object_5, filters: filters)
           end
 
           it 'ignores prohibitions' do
             filters = { user_attributes: { color: 'purple' } }
 
             expect(
-              candy_pm.is_privilege_ignoring_prohibitions?(frank, create, brie, filters: filters)
+              priv_pm.is_privilege_ignoring_prohibitions?(user_1, create, object_5, filters: filters)
             ).to be true
           end
         end
@@ -258,42 +250,42 @@ describe 'ActiveRecord' do
           filters = { user_attributes: { color: 'purple' } }
 
           expect(
-            candy_pm.accessible_objects(
-              frank,
+            priv_pm.accessible_objects(
+              user_1,
               create,
               filters: filters,
               key: :unique_identifier
             ).map(&:unique_identifier)
-          ).to match_array(['brie', 'swiss'])
+          ).to match_array(['object_5', 'object_6'])
         end
 
         it 'does not return objects that are not accessible via the filtered attribute' do
-          filters = { user_attributes: { color: 'beige' } }
+          filters = { user_attributes: { color: 'pink' } }
 
           expect(
-            candy_pm.accessible_objects(frank, create, filters: filters)
+            priv_pm.accessible_objects(user_1, create, filters: filters)
           ).to be_empty
         end
 
         context 'prohibitions' do
-          let(:cant_create) { candy_pm.create_operation_set('cant_create') }
+          let(:cant_create) { priv_pm.create_operation_set('cant_create') }
 
           before do
-            candy_pm.add_assignment(cant_create, create.prohibition)
-            candy_pm.add_association(cheese_engineer, cant_create, brie)
+            priv_pm.add_assignment(cant_create, create.prohibition)
+            priv_pm.add_association(color_2, cant_create, object_5)
           end
 
           it 'does not return objects with prohibitions' do
             filters = { user_attributes: { color: 'purple' } }
 
             expect(
-              candy_pm.accessible_objects(
-                frank,
+              priv_pm.accessible_objects(
+                user_1,
                 create,
                 filters: filters,
                 key: :unique_identifier
               ).map(&:unique_identifier)
-            ).to_not include('brie')
+            ).to_not include('object_5')
           end
         end
       end
@@ -307,31 +299,31 @@ describe 'ActiveRecord' do
             }
 
             expect(
-              candy_pm.accessible_ancestor_objects(
-                frank,
+              priv_pm.accessible_ancestor_objects(
+                user_1,
                 create,
-                vanilla,
+                object_2,
                 options
               ).map(&:unique_identifier)
-            ).to match_array(['vanilla', 'french_vanilla', 'american_vanilla'])
+            ).to match_array(['object_2', 'object_3', 'object_4'])
           end
 
           it 'does not return objects that are not accessible via the filtered attribute on an object scope' do
             options = {
-              filters: { user_attributes: { color: 'beige' } }
+              filters: { user_attributes: { color: 'pink' } }
             }
 
             expect(
-              candy_pm.accessible_ancestor_objects(frank, create, vanilla, options)
+              priv_pm.accessible_ancestor_objects(user_1, create, object_2, options)
             ).to be_empty
           end
 
           context 'prohibitions' do
-            let(:cant_create) { candy_pm.create_operation_set('cant_create') }
+            let(:cant_create) { priv_pm.create_operation_set('cant_create') }
 
             before do
-              candy_pm.add_assignment(cant_create, create.prohibition)
-              candy_pm.add_association(ice_cream_engineer, cant_create, french_vanilla)
+              priv_pm.add_assignment(cant_create, create.prohibition)
+              priv_pm.add_association(color_3, cant_create, object_3)
             end
 
             it 'does not return objects with prohibitions' do
@@ -341,51 +333,51 @@ describe 'ActiveRecord' do
               }
 
               expect(
-                candy_pm.accessible_ancestor_objects(
-                  frank,
+                priv_pm.accessible_ancestor_objects(
+                  user_1,
                   create,
-                  vanilla,
+                  object_2,
                   options
                 ).map(&:unique_identifier)
-              ).to_not include('french_vanilla')
+              ).to_not include('object_3')
             end
           end
         end
 
         context 'when policy element associations are provided as an argument' do
-          let(:user_and_descendant_ids) { frank.descendants.pluck(:id) | [frank.id] }
+          let(:user_and_descendant_ids) { user_1.descendants.pluck(:id) | [user_1.id] }
           let(:all_peas) do
             PolicyMachineStorageAdapter::ActiveRecord::PolicyElementAssociation.where(user_attribute_id: user_and_descendant_ids)
           end
 
           it 'only returns objects accessible via the provided policy element associations' do
             expect(
-              candy_pm.accessible_ancestor_objects(
-                frank,
+              priv_pm.accessible_ancestor_objects(
+                user_1,
                 create,
-                vanilla,
+                object_2,
                 { associations_with_operation: all_peas }
               ).map(&:unique_identifier)
-            ).to match_array(['vanilla', 'french_vanilla', 'american_vanilla'])
+            ).to match_array(['object_2', 'object_3', 'object_4'])
           end
 
           context 'prohibitions' do
             before do
-              cant_create = candy_pm.create_operation_set('cant_create')
-              candy_pm.add_assignment(cant_create, create.prohibition)
-              candy_pm.add_association(ice_cream_engineer, cant_create, french_vanilla)
+              cant_create = priv_pm.create_operation_set('cant_create')
+              priv_pm.add_assignment(cant_create, create.prohibition)
+              priv_pm.add_association(color_3, cant_create, object_3)
             end
 
             context 'when the prohibition is in the provided policy element associations' do
               it 'does not return objects with prohibitions' do
                 expect(
-                  candy_pm.accessible_ancestor_objects(
-                    frank,
+                  priv_pm.accessible_ancestor_objects(
+                    user_1,
                     create,
-                    vanilla,
+                    object_2,
                     { associations_with_operation: all_peas }
                   ).map(&:unique_identifier)
-                ).to_not include('french_vanilla')
+                ).to_not include('object_3')
               end
             end
 
@@ -394,13 +386,13 @@ describe 'ActiveRecord' do
 
               it 'does not return objects with prohibitions' do
                 expect(
-                  candy_pm.accessible_ancestor_objects(
-                    frank,
+                  priv_pm.accessible_ancestor_objects(
+                    user_1,
                     create,
-                    vanilla,
+                    object_2,
                     { associations_with_operation: create_peas }
                   ).map(&:unique_identifier)
-                ).to_not include('french_vanilla')
+                ).to_not include('object_3')
               end
             end
           end
