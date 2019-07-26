@@ -772,19 +772,22 @@ module PolicyMachineStorageAdapter
       end
     end
 
-    # Version of accessible_objects which only returns objects that are
-    # ancestors of a specified root object or the object itself
+    # Version of accessible_objects which only returns objects that are ancestors of a specified
+    # root object or the object itself. A set of policy element associations with the specified
+    # operation may be optionally provided.
     def accessible_ancestor_objects(user_or_attribute, operation, root_object, options = {})
       # If the root_object is a generic PM::Object, convert it the appropriate storage adapter Object
       root_object = root_object.try(:stored_pe) || root_object
       root_object_id = root_object.id
       operation = operation.try(:unique_identifier) || operation.to_s
 
-      associations = associations_for_user_or_attribute(user_or_attribute, options)
-      filtered_associations = associations_filtered_by_operation(associations, operation)
+      unless associations_with_operation = options[:associations_with_operation]
+        associations = associations_for_user_or_attribute(user_or_attribute, options.except(:associations_with_operation))
+        associations_with_operation = associations_filtered_by_operation(associations, operation)
+      end
 
       candidates = PolicyElementAssociation.scoped_accessible_objects(
-        filtered_associations,
+        associations_with_operation,
         root_id: root_object_id,
         filters: { type: class_for_type('object').name }
       )
@@ -798,7 +801,7 @@ module PolicyMachineStorageAdapter
         candidates
       else
         # Do not use the filter when checking prohibitions
-        preloaded_options = options.except(:filters).merge(ignore_prohibitions: true)
+        preloaded_options = options.except(:filters, :associations_with_operation).merge(ignore_prohibitions: true)
         # If ancestor objects are filtered, preloaded ancestor objects cannot be used when checking prohibitions
         candidates - accessible_ancestor_objects(user_or_attribute, prohibition, root_object, preloaded_options)
       end
