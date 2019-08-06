@@ -1,4 +1,3 @@
-dist: bionic
 language: ruby
 rvm:
   - 2.4.1
@@ -9,55 +8,26 @@ env:
     - DB=postgresql
     - RAILS_ENV=test
     - CI_NODE_TOTAL=1
-    - PGUSER=postgres
     - PGPORT=5432
     - PGHOST=localhost
   matrix:
     - CI_NODE_INDEX=0
 before_install:
   - gem install bundler -v 1.14.6
+services:
+  - postgresql
 addons:
   apt:
+    sources:
+    - precise-pgdg-9.5
     packages:
+    - postgresql-9.5
+    - postgresql-contrib-9.5
     - libcurl3
     - libcurl3-gnutls
     - libcurl4-openssl-dev
+  postgresql: 9.5
 bundler_args: --jobs=1 --retry=3
-
-#
-# The standard way to configure Travis with PostgreSQL is
-#
-# addons:
-#   postgresql: "9.4"
-# services:
-#   - postgresql
-# 
-# This only works up to 9.6. Travis documentation suggests an
-# alternative way to use higher verions of PostgreSQL:
-#     
-# addons:
-#   postgresql: "10"
-#   apt:
-#     packages:
-#     - postgresql-10
-#     - postgresql-client-10
-# env:
-#   global:
-#   - PGPORT=5433
-#
-# However, even this does not work for PostgreSQL 11. It is unclear when
-# this will be officially supported. For now we manually install
-# PostgreSQL 11 with apt.
-#
-
-before_install:
-  - "curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | sudo bash"
-  - sudo apt-get update
-  - sudo apt-get --yes remove postgresql\*
-  - sudo apt-get install -y postgresql-11 postgresql-client-11
-  - sudo cp /etc/postgresql/{9.6,11}/main/pg_hba.conf
-#  - sudo echo 'port = 5433' >> /etc/postgresql/11/main/postresql.conf
-  - sudo service postgresql restart 11
 script:
   - bundle exec rake pm:test:prepare
   - bundle exec rspec
