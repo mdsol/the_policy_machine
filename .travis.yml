@@ -27,6 +27,15 @@ addons:
 
 bundler_args: --jobs=1 --retry=3
 
+before_install:
+  - "curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | sudo bash"
+  - sudo apt-get update
+  - sudo apt-get --yes remove postgresql\*
+  - sudo apt-get install -y postgresql-11 postgresql-client-11
+  - sudo cp /etc/postgresql/{9.6,11}/main/pg_hba.conf
+  - sudo echo 'port = 5433' >> /etc/postgresql/11/main/postresql.conf
+  - sudo service postgresql restart 11
+
 script:
   - bundle exec rake pm:test:prepare
   - bundle exec rspec
