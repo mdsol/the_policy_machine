@@ -33,6 +33,11 @@ before_install:
   - sudo apt-get --yes remove postgresql\*
   - sudo apt-get install -y postgresql-11 postgresql-client-11
   - sudo cp /etc/postgresql/{9.6,11}/main/pg_hba.conf
+  - ls /etc
+  - ls /etc/postgresql
+  - ls /etc/postgresql/11
+  - ls /etc/postgresql/11/main
+  - cat /etc/postgresql/11/main/postresql.conf
   - sudo echo 'port = 5433' >> /etc/postgresql/11/main/postresql.conf
   - sudo service postgresql restart 11
 
