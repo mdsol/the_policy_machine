@@ -1,8 +1,10 @@
 language: ruby
+
 rvm:
   - 2.4.1
   - 2.3.0
   - 2.2.3
+
 env:
   global:
     - DB=postgresql
@@ -12,17 +14,19 @@ env:
     - PGHOST=localhost
   matrix:
     - CI_NODE_INDEX=0
+
 before_install:
   - gem install bundler -v 1.14.6
-services:
-  - postgresql
+
 addons:
   apt:
     packages:
     - libcurl3
     - libcurl3-gnutls
     - libcurl4-openssl-dev
+
 bundler_args: --jobs=1 --retry=3
+
 script:
   - bundle exec rake pm:test:prepare
   - bundle exec rspec
