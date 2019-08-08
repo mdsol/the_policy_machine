@@ -36,7 +36,7 @@ before_install:
   - sudo cp /etc/postgresql/{9.6,11}/main/pg_hba.conf
   - sudo perl -pi -e 's/^\s*port\s*=\s*\d+(.*)/port = 5433$1/' /etc/postgresql/11/main/postgresql.conf
   - sudo service postgresql restart 11
-  - sudo cat /var/log/postgresql
+  - sudo ls /var/log/postgresql
 
 script:
   - bundle exec rake pm:test:prepare
