@@ -41,7 +41,7 @@ before_install:
   - echo -----------------------------------
   - echo -----------------------------------
   - echo -----------------------------------
-  - sudo perl -pi -e 's/^\s*port\s*=\s*\d+\s*$/port = 5433/' /etc/postgresql/11/main/postgresql.conf
+  - sudo perl -pi -e 's/^\s*port\s*=\s*\d+\s*/port = 5433/' /etc/postgresql/11/main/postgresql.conf
   - echo -----------------------------------
   - echo -----------------------------------
   - echo -----------------------------------
