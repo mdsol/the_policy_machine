@@ -36,7 +36,8 @@ before_install:
   - sudo cp /etc/postgresql/{9.6,11}/main/pg_hba.conf
   - sudo perl -pi -e 's/^\s*port\s*=\s*\d+(.*)/port = 5433$1/' /etc/postgresql/11/main/postgresql.conf
   - sudo service postgresql restart 11
-  - sudo cat /var/log/postgresql/postgresql-11-main.log
+  #- sudo cat /var/log/postgresql/postgresql-11-main.log
+  - sudo psql -c 'CREATE ROLE travis SUPERUSER LOGIN CREATEDB;' -U postgres
 
 script:
   - bundle exec rake pm:test:prepare
