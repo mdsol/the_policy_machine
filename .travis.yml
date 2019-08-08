@@ -10,10 +10,11 @@ env:
     - DB=postgresql
     - RAILS_ENV=test
     - CI_NODE_TOTAL=1
-    - PGPORT=5432
     - PGHOST=localhost
-  matrix:
     - CI_NODE_INDEX=0
+  matrix:
+    - PGPORT=5432
+    - PGPORT=5433
 
 before_install:
   - gem install bundler -v 1.14.6
@@ -38,13 +39,13 @@ before_install:
   - ls /etc/postgresql/11
   - ls /etc/postgresql/11/main
   - cat /etc/postgresql/11/main/postgresql.conf
-  - echo -----------------------------------
-  - echo -----------------------------------
-  - echo -----------------------------------
-  - sudo perl -pi -e 's/^\s*port\s*=\s*\d+(.*)/port = 5433$1/' /etc/postgresql/11/main/postgresql.conf
-  - echo -----------------------------------
-  - echo -----------------------------------
-  - echo -----------------------------------
+  #- echo -----------------------------------
+  #- echo -----------------------------------
+  #- echo -----------------------------------
+  #- sudo perl -pi -e 's/^\s*port\s*=\s*\d+(.*)/port = 5433$1/' /etc/postgresql/11/main/postgresql.conf
+  #- echo -----------------------------------
+  #- echo -----------------------------------
+  #- echo -----------------------------------
   - cat /etc/postgresql/11/main/postgresql.conf
   - sudo service postgresql restart 11
 
