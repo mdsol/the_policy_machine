@@ -37,7 +37,7 @@ before_install:
   - ls /etc/postgresql
   - ls /etc/postgresql/11
   - ls /etc/postgresql/11/main
-  - cat /etc/postgresql/11/main/postresql.conf
+  - cat /etc/postgresql/11/main/postgresql.conf
   - sudo echo 'port = 5433' >> /etc/postgresql/11/main/postresql.conf
   - sudo service postgresql restart 11
 
