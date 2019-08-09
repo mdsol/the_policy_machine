@@ -21,15 +21,15 @@ before_install:
 
 addons:
   apt:
-    sources:
-    - precise-pgdg-9.6
+   #sources:
+   #- precise-pgdg-9.6
     packages:
     - libcurl3
     - libcurl3-gnutls
     - libcurl4-openssl-dev
-    - postgresql-9.6
-    - postgresql-contrib-9.6
-  postgresql: 9.6
+   #- postgresql-9.6
+   #- postgresql-contrib-9.6
+ #postgresql: 9.6
 
 bundler_args: --jobs=1 --retry=3
 
