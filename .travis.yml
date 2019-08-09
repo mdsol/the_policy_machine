@@ -36,7 +36,7 @@ bundler_args: --jobs=1 --retry=3
 before_install:
   - "curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | sudo bash"
   - sudo apt-get update
-  #- sudo apt-get --yes remove postgresql\*
+  - sudo apt-get --yes remove postgresql\*
   - sudo apt-get install -y postgresql-11 postgresql-client-11
   - sudo cp /etc/postgresql/{9.6,11}/main/pg_hba.conf
   - sudo perl -pi -e 's/^\s*port\s*=\s*\d+(.*)/port = 5433$1/' /etc/postgresql/11/main/postgresql.conf
