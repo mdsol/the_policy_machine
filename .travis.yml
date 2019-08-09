@@ -28,7 +28,6 @@ addons:
 bundler_args: --jobs=1 --retry=3
 
 before_install:
-  - "curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/fossa-cli/master/install.sh | sudo bash"
   - sudo apt-get update
   - sudo apt-get --yes remove postgresql\*
   - sudo apt-get install -y postgresql-11 postgresql-client-11
