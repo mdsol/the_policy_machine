@@ -534,63 +534,70 @@ describe 'ActiveRecord' do
       end
 
       describe '#bulk_persist' do
-        let(:pm) { PolicyMachine.new(name: 'AR PM', storage_adapter: PolicyMachineStorageAdapter::ActiveRecord) }
+        let!(:pm) { PolicyMachine.new(name: 'AR PM', storage_adapter: PolicyMachineStorageAdapter::ActiveRecord) }
         let(:user) { pm.create_user('alice') }
         let(:caffeinated) { pm.create_user_attribute('caffeinated') }
         let(:decaffeinated) { pm.create_user_attribute('decaffeinated') }
 
         describe 'policy element behavior' do
-          it 'deletes a policy element that has been created and then deleted ' do
-            user, attribute = pm.bulk_persist do
+          describe 'within a transaction' do
+            it 'deletes a policy element that has been created and then deleted' do
+              user, attribute = pm.bulk_persist do
+                user = pm.create_user('alice')
+                attribute = pm.create_user_attribute('caffeinated')
+                user.delete
+
+                [user, attribute]
+              end
+
+              expect(pm.user_attributes).to eq [attribute]
+              expect(pm.users).to be_empty
+            end
+
+            it 'deletes preexisting policy elements that have been updated' do
               user = pm.create_user('alice')
-              attribute = pm.create_user_attribute('caffeinated')
-              user.delete
+              attribute = pm.bulk_persist do
+                user.update(color: 'blue')
+                user.delete
+                pm.create_user_attribute('caffeinated')
+              end
 
-              [user, attribute]
+              expect(pm.user_attributes).to eq [attribute]
+              expect(pm.users).to be_empty
             end
 
-            expect(pm.user_attributes).to eq [attribute]
-            expect(pm.users).to be_empty
-          end
+            it 'creates a record if the record is created, deleted and then recreated' do
+              user, attribute = pm.bulk_persist do
+                pm.create_user('alice').delete
+                attribute = pm.create_user_attribute('caffeinated')
+                user = pm.create_user('alice')
 
-          it 'deletes preexisting policy elements that have been updated' do
-            user = pm.create_user('alice')
-            attribute = pm.bulk_persist do
-              user.update(color: 'blue')
-              user.delete
-              pm.create_user_attribute('caffeinated')
+                [user, attribute]
+              end
+
+              expect(pm.user_attributes).to eq [attribute]
+              expect(pm.users).to eq [user]
             end
 
-            expect(pm.user_attributes).to eq [attribute]
-            expect(pm.users).to be_empty
-          end
-
-          it 'creates a record if the record is created, deleted and then recreated' do
-            user, attribute = pm.bulk_persist do
-              pm.create_user('alice').delete
-              attribute = pm.create_user_attribute('caffeinated')
-              user = pm.create_user('alice')
-
-              [user, attribute]
-            end
-
-            expect(pm.user_attributes).to eq [attribute]
-            expect(pm.users).to eq [user]
-          end
-
-          it 'creates a record if a preexisting record is deleted and then recreated' do
-            user = pm.create_user('alice')
-
-            user, attribute = pm.bulk_persist do
-              user.delete
-              attribute = pm.create_user_attribute('caffeinated')
+            it 'creates a record if a preexisting record is deleted and then recreated' do
               user = pm.create_user('alice')
 
-              [user, attribute]
-            end
+              user, attribute = pm.bulk_persist do
+                user.delete
+                attribute = pm.create_user_attribute('caffeinated')
+                user = pm.create_user('alice')
 
-            expect(pm.user_attributes).to eq [attribute]
-            expect(pm.users).to eq [user]
+                [user, attribute]
+              end
+
+              expect(pm.user_attributes).to eq [attribute]
+              expect(pm.users).to eq [user]
+            end
+          end
+
+          describe 'on duplicate key update behavior' do
+            it 'works' do
+            end
           end
         end
 

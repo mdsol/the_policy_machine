@@ -86,7 +86,10 @@ module PolicyMachineStorageAdapter
       PolicyElement.bulk_unassign(buffers[:assignments_to_remove]) if buffers[:assignments_to_remove].present?
       PolicyElement.bulk_unlink(buffers[:links_to_remove]) if buffers[:links_to_remove].present?
       if buffers[:upsert].present?
-        PolicyElement.import(buffers[:upsert].values, on_duplicate_key_update: column_keys.map(&:to_sym) - [:id])
+        # When encountering a duplicate key conflict, update all keys except those
+        # uniquely identifying the record
+        columns_to_update = column_keys.map(&:to_sym) - [:id, :unique_identifier]
+        PolicyElement.import(buffers[:upsert].values, on_duplicate_key_update: columns_to_update)
       end
       PolicyElement.bulk_assign(buffers[:assignments]) if buffers[:assignments].present?
       PolicyElement.bulk_link(buffers[:links]) if buffers[:links].present?
