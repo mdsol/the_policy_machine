@@ -5,7 +5,7 @@ namespace :pm do
       Dir.chdir('./test') do
         db_type = args[:db_type] || 'postgresql'
         `rm -rf testapp`
-        `bundle exec rails new testapp -f -d #{db_type} -m ./template.rb  --skip-keeps --skip-spring  --skip-git`
+        `bundle exec rails new testapp -f -d #{db_type} -m ./template.rb  --skip-keeps --skip-spring  --skip-git --skip-javascript`
       end
 
       Dir.chdir('./test/testapp') do
