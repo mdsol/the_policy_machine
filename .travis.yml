@@ -6,6 +6,9 @@ rvm:
   - 2.2.3
   - 2.5.0
 
+services:
+  - postgresql
+  
 env:
   global:
     - DB=postgresql
