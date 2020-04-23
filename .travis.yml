@@ -6,6 +6,8 @@ rvm:
   - 2.2.3
   - 2.5.0
 
+dist: trusty
+
 env:
   global:
     - DB=postgresql
