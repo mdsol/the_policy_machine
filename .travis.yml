@@ -4,11 +4,11 @@ rvm:
   - 2.4.1
   - 2.3.0
   - 2.2.3
-  - 2.5.0
+  - 2.6.2
 
 services:
   - postgresql
-  
+
 env:
   global:
     - DB=postgresql
@@ -23,6 +23,7 @@ before_install:
   - gem install bundler -v 1.14.6
 
 addons:
+  postgresql: "11.2"
   apt:
     packages:
     - libcurl3
@@ -37,7 +38,10 @@ before_install:
   - sudo apt-get install -y postgresql-11 postgresql-client-11
   - sudo cp /etc/postgresql/{9.6,11}/main/pg_hba.conf
   - sudo service postgresql restart 11
-  - sudo psql -c 'CREATE ROLE travis SUPERUSER LOGIN CREATEDB;' -U postgres
+
+before_script:
+  - psql --version
+  - psql -c 'CREATE ROLE travis SUPERUSER LOGIN CREATEDB;' -U postgres
 
 script:
   - bundle exec rake pm:test:prepare
