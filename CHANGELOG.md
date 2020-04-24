@@ -1,5 +1,8 @@
 # Changelog
 
+## 3.0.0
+* Upgrade the Policy Machine to support Rails 6.0.
+
 ## 2.1.3
 * Update .accessible_ancestor_objects to accept :associations_with_operation in its options argument.
 
