@@ -5,7 +5,7 @@ namespace :pm do
       Dir.chdir('./test') do
         db_type = args[:db_type] || 'postgresql'
         `rm -rf testapp`
-        `bundle exec rails new testapp -f -d #{db_type} -m ./template.rb  --skip-keeps --skip-spring  --skip-git`
+        `bundle exec rails new testapp -f -d #{db_type} -m ./template.rb  --skip-keeps --skip-spring  --skip-git --skip-javascript`
       end
 
       Dir.chdir('./test/testapp') do
@@ -16,7 +16,7 @@ namespace :pm do
         `bundle exec rails generate the_policy_machine:update_policy_element_associations_table -f`
         FileUtils.cp('../add_test_columns_migration.rb', './db/migrate/99999999999999_add_test_columns.rb')
 
-        `bundle exec rake db:drop:all db:create db:migrate db:test:prepare`
+        `bundle exec rake db:create db:migrate db:test:prepare`
       end
     end
   end
