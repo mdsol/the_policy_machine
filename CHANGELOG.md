@@ -1,5 +1,8 @@
 # Changelog
 
+## 3.0.1
+* Optimize privilege exists lookup by checking prohibitions before performing privilege derivation.
+
 ## 3.0.0
 * Upgrade the Policy Machine to support Rails 6.0.
 * Drop support for Ruby versions 2.2.3, 2.3.0, 2.4.1 due to incompatibility with Rails 6.0.
