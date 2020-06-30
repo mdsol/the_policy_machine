@@ -137,10 +137,9 @@ class PolicyMachine
       raise(ArgumentError, "options[:associations] cannot be empty") if associations.empty?
       raise(ArgumentError, "expected each element of options[:associations] to be a PM::Association") unless associations.all?{|a| a.is_a?(PM::Association)}
 
-      associations = associations.select do |association|
+      return false if associations.none? do |association|
         association.operation_set.connected?(operation)
       end
-      return false if associations.empty?
     else
       associations = operation.associations
     end
