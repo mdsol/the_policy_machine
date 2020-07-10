@@ -90,16 +90,16 @@ class PolicyMachine
   # TODO: add option to ignore policy classes to allow consumer to speed up this method.
   # TODO: Parallelize the two component checks
   def is_privilege?(user_or_attribute, operation, object_or_attribute, options = {})
-    is_privilege_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute, options) &&
-      (options[:ignore_prohibitions] || !is_privilege_ignoring_prohibitions?(user_or_attribute, PM::Prohibition.on(operation), object_or_attribute, options))
+    (options[:ignore_prohibitions] || !is_privilege_ignoring_prohibitions?(user_or_attribute, PM::Prohibition.on(operation), object_or_attribute, options)) &&
+      is_privilege_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute, options)
   end
 
   ##
   # Can we derive a privilege given a set of filters?
   def is_privilege_with_filters?(user_or_attribute, operation, object_or_attribute, filters: {}, options: {})
     # Check that the privilege can be derived given the set of filters, but do not filter the check for prohibitions
-    is_privilege_ignoring_prohibitions_with_filters?(user_or_attribute, operation, object_or_attribute, filters: filters, options: options) &&
-       (options[:ignore_prohibitions] || !is_privilege_ignoring_prohibitions?(user_or_attribute, PM::Prohibition.on(operation), object_or_attribute, options))
+    (options[:ignore_prohibitions] || !is_privilege_ignoring_prohibitions?(user_or_attribute, PM::Prohibition.on(operation), object_or_attribute, options)) &&
+      is_privilege_ignoring_prohibitions_with_filters?(user_or_attribute, operation, object_or_attribute, filters: filters, options: options)
   end
 
   ##
@@ -137,10 +137,9 @@ class PolicyMachine
       raise(ArgumentError, "options[:associations] cannot be empty") if associations.empty?
       raise(ArgumentError, "expected each element of options[:associations] to be a PM::Association") unless associations.all?{|a| a.is_a?(PM::Association)}
 
-      associations.keep_if do |association|
+      return false if associations.none? do |association|
         association.operation_set.connected?(operation)
       end
-      return false if associations.empty?
     else
       associations = operation.associations
     end
