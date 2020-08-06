@@ -121,6 +121,8 @@ class PolicyMachine
       return policy_machine_storage_adapter.is_privilege?(*privilege)
     end
 
+    binding.pry
+
     if options[:filters] && policy_machine_storage_adapter.respond_to?(:is_privilege_with_filters?)
       privilege = [user_or_attribute, operation, object_or_attribute].map { |obj| obj.respond_to?(:stored_pe) ? obj.stored_pe : obj }
       return policy_machine_storage_adapter.is_privilege_with_filters?(*privilege, filters: options[:filters])
