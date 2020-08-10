@@ -244,6 +244,15 @@ class PolicyMachine
     end
   end
 
+  def pluck(type:, fields:, options:)
+    if policy_machine_storage_adapter.respond_to?(:pluck)
+      policy_machine_storage_adapter.send(:pluck, {type: type, fields: fields, options: options})
+    else
+      Warn.once("WARNING: 'pluck' is not implemented for storage adapter #{policy_machine_storage_adapter.class}")
+      nil
+    end
+  end
+  
   ##
   # Search for and iterate over a collection of specified attributes in batches
   def batch_pluck(type:, query: {}, fields:, config: {}, &blk)
