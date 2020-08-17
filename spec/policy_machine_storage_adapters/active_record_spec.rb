@@ -1702,10 +1702,9 @@ describe 'ActiveRecord' do
         (PolicyMachine::POLICY_ELEMENT_TYPES).each do |type|
           it "can get data for #{type}" do
             id = "#{type}-pluck-test"
-            binding.pry
             policy_machine.send("create_#{type}", id)
             data = policy_machine.send(:pluck, type: type, fields: [:unique_identifier], options: { unique_identifier: id })
-            expect(data[0]).to eq(id)
+            expect(data).to eq([id])
           end
         end
       end
