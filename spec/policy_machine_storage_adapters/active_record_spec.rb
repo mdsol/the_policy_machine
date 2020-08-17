@@ -92,7 +92,7 @@ describe 'ActiveRecord' do
             filters = { user_attributes: { color: 'purple' } }
 
             expect(
-              priv_pm.is_privilege_with_filters?(user_1, create, object_5, filters: filters)
+                priv_pm.is_privilege_with_filters?(user_1, create, object_5, filters: filters)
             ).to be true
           end
 
@@ -108,7 +108,7 @@ describe 'ActiveRecord' do
               filters = { user_attributes: { color: 'purple' } }
 
               expect(
-                priv_pm.is_privilege_with_filters?(user_1, create, object_5, filters: filters)
+                  priv_pm.is_privilege_with_filters?(user_1, create, object_5, filters: filters)
               ).to be false
             end
           end
@@ -126,7 +126,7 @@ describe 'ActiveRecord' do
             filters = { user_attributes: { color: 'purple' } }
 
             expect(
-              priv_pm.is_privilege_with_filters?(user_1, create, object_7, filters: filters)
+                priv_pm.is_privilege_with_filters?(user_1, create, object_7, filters: filters)
             ).to be true
           end
         end
@@ -144,7 +144,7 @@ describe 'ActiveRecord' do
             filters = { user_attributes: { color: 'purple' } }
 
             expect(
-              priv_pm.is_privilege_with_filters?(user_1, create, object_7, filters: filters)
+                priv_pm.is_privilege_with_filters?(user_1, create, object_7, filters: filters)
             ).to be false
           end
         end
@@ -154,7 +154,7 @@ describe 'ActiveRecord' do
             filters = { user_attributes: { color: 'pink' } }
 
             expect(
-              priv_pm.is_privilege_with_filters?(user_1, create, object_5, filters: filters)
+                priv_pm.is_privilege_with_filters?(user_1, create, object_5, filters: filters)
             ).to be false
           end
         end
@@ -164,7 +164,7 @@ describe 'ActiveRecord' do
             filters = { user_attributes: { color: 'purple' } }
 
             expect(
-              priv_pm.is_privilege_with_filters?(user_1, create, object_7, filters: filters)
+                priv_pm.is_privilege_with_filters?(user_1, create, object_7, filters: filters)
             ).to be false
           end
         end
@@ -176,7 +176,7 @@ describe 'ActiveRecord' do
             filters = { user_attributes: { color: 'purple' } }
 
             expect(
-              priv_pm.scoped_privileges(user_1, object_5, filters: filters)
+                priv_pm.scoped_privileges(user_1, object_5, filters: filters)
             ).to contain_exactly([user_1, create, object_5], [user_1, paint, object_5])
           end
 
@@ -192,7 +192,7 @@ describe 'ActiveRecord' do
               filters = { user_attributes: { color: 'purple' } }
 
               expect(
-                priv_pm.scoped_privileges(user_1, object_5, filters: filters)
+                  priv_pm.scoped_privileges(user_1, object_5, filters: filters)
               ).to contain_exactly([user_1, paint, object_5])
             end
           end
@@ -203,7 +203,7 @@ describe 'ActiveRecord' do
             filters = { user_attributes: { color: 'pink' } }
 
             expect(
-              priv_pm.scoped_privileges(user_1, object_5, filters: filters)
+                priv_pm.scoped_privileges(user_1, object_5, filters: filters)
             ).to match_array([[user_1, paint, object_5]])
           end
         end
@@ -213,7 +213,7 @@ describe 'ActiveRecord' do
             filters = { user_attributes: { color: 'purple' } }
 
             expect(
-              priv_pm.scoped_privileges(user_1, object_7, filters: filters)
+                priv_pm.scoped_privileges(user_1, object_7, filters: filters)
             ).to be_empty
           end
         end
@@ -239,7 +239,7 @@ describe 'ActiveRecord' do
             filters = { user_attributes: { color: 'purple' } }
 
             expect(
-              priv_pm.is_privilege_ignoring_prohibitions?(user_1, create, object_5, filters: filters)
+                priv_pm.is_privilege_ignoring_prohibitions?(user_1, create, object_5, filters: filters)
             ).to be true
           end
         end
@@ -250,12 +250,12 @@ describe 'ActiveRecord' do
           filters = { user_attributes: { color: 'purple' } }
 
           expect(
-            priv_pm.accessible_objects(
-              user_1,
-              create,
-              filters: filters,
-              key: :unique_identifier
-            ).map(&:unique_identifier)
+              priv_pm.accessible_objects(
+                  user_1,
+                  create,
+                  filters: filters,
+                  key: :unique_identifier
+              ).map(&:unique_identifier)
           ).to match_array(['object_5', 'object_6'])
         end
 
@@ -263,7 +263,7 @@ describe 'ActiveRecord' do
           filters = { user_attributes: { color: 'pink' } }
 
           expect(
-            priv_pm.accessible_objects(user_1, create, filters: filters)
+              priv_pm.accessible_objects(user_1, create, filters: filters)
           ).to be_empty
         end
 
@@ -279,12 +279,12 @@ describe 'ActiveRecord' do
             filters = { user_attributes: { color: 'purple' } }
 
             expect(
-              priv_pm.accessible_objects(
-                user_1,
-                create,
-                filters: filters,
-                key: :unique_identifier
-              ).map(&:unique_identifier)
+                priv_pm.accessible_objects(
+                    user_1,
+                    create,
+                    filters: filters,
+                    key: :unique_identifier
+                ).map(&:unique_identifier)
             ).to_not include('object_5')
           end
         end
@@ -294,27 +294,27 @@ describe 'ActiveRecord' do
         context 'when policy element associations are not provided as an argument' do
           it 'returns objects accessible via the filtered attribute on an object scope' do
             options = {
-              filters: { user_attributes: { color: 'green' } },
-              key: :unique_identifier
+                filters: { user_attributes: { color: 'green' } },
+                key: :unique_identifier
             }
 
             expect(
-              priv_pm.accessible_ancestor_objects(
-                user_1,
-                create,
-                object_2,
-                options
-              ).map(&:unique_identifier)
+                priv_pm.accessible_ancestor_objects(
+                    user_1,
+                    create,
+                    object_2,
+                    options
+                ).map(&:unique_identifier)
             ).to match_array(['object_2', 'object_3', 'object_4'])
           end
 
           it 'does not return objects that are not accessible via the filtered attribute on an object scope' do
             options = {
-              filters: { user_attributes: { color: 'pink' } }
+                filters: { user_attributes: { color: 'pink' } }
             }
 
             expect(
-              priv_pm.accessible_ancestor_objects(user_1, create, object_2, options)
+                priv_pm.accessible_ancestor_objects(user_1, create, object_2, options)
             ).to be_empty
           end
 
@@ -328,17 +328,17 @@ describe 'ActiveRecord' do
 
             it 'does not return objects with prohibitions' do
               options = {
-                filters: { user_attributes: { color: 'green' } },
-                key: :unique_identifier
+                  filters: { user_attributes: { color: 'green' } },
+                  key: :unique_identifier
               }
 
               expect(
-                priv_pm.accessible_ancestor_objects(
-                  user_1,
-                  create,
-                  object_2,
-                  options
-                ).map(&:unique_identifier)
+                  priv_pm.accessible_ancestor_objects(
+                      user_1,
+                      create,
+                      object_2,
+                      options
+                  ).map(&:unique_identifier)
               ).to_not include('object_3')
             end
           end
@@ -352,12 +352,12 @@ describe 'ActiveRecord' do
 
           it 'only returns objects accessible via the provided policy element associations' do
             expect(
-              priv_pm.accessible_ancestor_objects(
-                user_1,
-                create,
-                object_2,
-                { associations_with_operation: all_peas }
-              ).map(&:unique_identifier)
+                priv_pm.accessible_ancestor_objects(
+                    user_1,
+                    create,
+                    object_2,
+                    { associations_with_operation: all_peas }
+                ).map(&:unique_identifier)
             ).to match_array(['object_2', 'object_3', 'object_4'])
           end
 
@@ -371,12 +371,12 @@ describe 'ActiveRecord' do
             context 'when the prohibition is in the provided policy element associations' do
               it 'does not return objects with prohibitions' do
                 expect(
-                  priv_pm.accessible_ancestor_objects(
-                    user_1,
-                    create,
-                    object_2,
-                    { associations_with_operation: all_peas }
-                  ).map(&:unique_identifier)
+                    priv_pm.accessible_ancestor_objects(
+                        user_1,
+                        create,
+                        object_2,
+                        { associations_with_operation: all_peas }
+                    ).map(&:unique_identifier)
                 ).to_not include('object_3')
               end
             end
@@ -386,12 +386,12 @@ describe 'ActiveRecord' do
 
               it 'does not return objects with prohibitions' do
                 expect(
-                  priv_pm.accessible_ancestor_objects(
-                    user_1,
-                    create,
-                    object_2,
-                    { associations_with_operation: create_peas }
-                  ).map(&:unique_identifier)
+                    priv_pm.accessible_ancestor_objects(
+                        user_1,
+                        create,
+                        object_2,
+                        { associations_with_operation: create_peas }
+                    ).map(&:unique_identifier)
                 ).to_not include('object_3')
               end
             end
@@ -410,9 +410,9 @@ describe 'ActiveRecord' do
         policy_machine_storage_adapter.add_object(SecureRandom.uuid, pm_uuid)
 
         expect(
-          policy_machine_storage_adapter.find_all_of_type_object(
-            unique_identifier: search_uuids
-          ).count
+            policy_machine_storage_adapter.find_all_of_type_object(
+                unique_identifier: search_uuids
+            ).count
         ).to eq(2)
       end
 
@@ -424,10 +424,10 @@ describe 'ActiveRecord' do
           policy_machine_storage_adapter.add_object(SecureRandom.uuid, pm_uuid, color: nil)
 
           expect(
-            policy_machine_storage_adapter.find_all_of_type_object(
-              color: colors,
-              ignore_case: true
-            ).count
+              policy_machine_storage_adapter.find_all_of_type_object(
+                  color: colors,
+                  ignore_case: true
+              ).count
           ).to eq(2)
         end
       end
@@ -437,7 +437,7 @@ describe 'ActiveRecord' do
         policy_machine_storage_adapter.add_object(uuid, pm_uuid)
 
         expect(
-          policy_machine_storage_adapter.find_all_of_type_object(uuid: uuid).count
+            policy_machine_storage_adapter.find_all_of_type_object(uuid: uuid).count
         ).to eq(1)
       end
 
@@ -474,7 +474,7 @@ describe 'ActiveRecord' do
 
         context 'pagination' do
           before do
-            10.times {|i| policy_machine_storage_adapter.add_object("uuid_#{i}", pm_uuid, color: 'red') }
+            10.times { |i| policy_machine_storage_adapter.add_object("uuid_#{i}", pm_uuid, color: 'red') }
           end
 
           it 'paginates the results based on page and per_page' do
@@ -504,7 +504,7 @@ describe 'ActiveRecord' do
         let(:user) { pm.create_user('user') }
         let(:pm2_user) { pm2.create_user('PM 2 user') }
         let(:operation) { pm.create_operation('operation') }
-        let(:op_set) { pm.create_operation_set('op_set')}
+        let(:op_set) { pm.create_operation_set('op_set') }
         let(:user_attribute) { pm.create_user_attribute('user_attribute') }
         let(:object_attribute) { pm.create_object_attribute('object_attribute') }
         let(:object) { pm.create_object('object') }
@@ -735,15 +735,15 @@ describe 'ActiveRecord' do
     describe 'method_missing' do
 
       before do
-        @o1 = policy_machine_storage_adapter.add_object('some_uuid1','some_policy_machine_uuid1')
+        @o1 = policy_machine_storage_adapter.add_object('some_uuid1', 'some_policy_machine_uuid1')
       end
 
       it 'calls super when the method is not an attribute' do
-        expect {@o1.sabe}.to raise_error NameError
+        expect { @o1.sabe }.to raise_error NameError
       end
 
       it 'retrieves the attribute value' do
-        @o1.extra_attributes = {foo: 'bar'}
+        @o1.extra_attributes = { foo: 'bar' }
         expect(@o1.foo).to eq 'bar'
       end
 
@@ -826,15 +826,15 @@ describe 'ActiveRecord' do
       all_accessible_from_grandparent = %w(grandparent_fish parent_fish uncle_fish cousin_fish child_fish_1 child_fish_2)
 
       expect(ado_pm.accessible_ancestor_objects(u1, read, grandparent_fish, options).map(&:unique_identifier))
-        .to match_array(all_accessible_from_grandparent)
+          .to match_array(all_accessible_from_grandparent)
       expect(ado_pm.accessible_ancestor_objects(u1, write, parent_fish, options).map(&:unique_identifier))
-        .to contain_exactly('child_fish_1')
+          .to contain_exactly('child_fish_1')
     end
 
     it 'lists all objects with the given privilege provided by an out-of-scope descendant' do
       wrestle = ado_pm.create_operation('wrestle')
       wrestler = ado_pm.create_operation_set('wrestler')
-      ado_pm.add_assignment(wrestler, wrestle) 
+      ado_pm.add_assignment(wrestler, wrestle)
 
       # Give the user 'wrestle' on the highest, out-of-scope node
       ado_pm.add_association(ua, wrestler, grandparent_fish)
@@ -842,7 +842,7 @@ describe 'ActiveRecord' do
       all_accessible_from_parent = %w(parent_fish child_fish_1 child_fish_2)
 
       expect(ado_pm.accessible_ancestor_objects(u1, wrestle, parent_fish, options).map(&:unique_identifier))
-        .to match_array(all_accessible_from_parent)
+          .to match_array(all_accessible_from_parent)
     end
 
     it 'does not return objects which are not ancestors of the specified object' do
@@ -870,19 +870,19 @@ describe 'ActiveRecord' do
 
     it 'filters objects via substring matching' do
       expect(
-        ado_pm.accessible_ancestor_objects(u1,
-          read,
-          grandparent_fish,
-          options.merge(includes: 'parent')
-        ).map(&:unique_identifier)
+          ado_pm.accessible_ancestor_objects(u1,
+                                             read,
+                                             grandparent_fish,
+                                             options.merge(includes: 'parent')
+          ).map(&:unique_identifier)
       ).to contain_exactly('grandparent_fish', 'parent_fish')
 
       expect(
-        ado_pm.accessible_ancestor_objects(u1,
-          read,
-          grandparent_fish,
-          options.merge(includes: 'messedupstring')
-        ).map(&:unique_identifier)
+          ado_pm.accessible_ancestor_objects(u1,
+                                             read,
+                                             grandparent_fish,
+                                             options.merge(includes: 'messedupstring')
+          ).map(&:unique_identifier)
       ).to be_empty
     end
 
@@ -901,12 +901,12 @@ describe 'ActiveRecord' do
 
       it 'lists all objects with the given privilege for the given user 1 operation set deep' do
         expect(ado_pm.accessible_ancestor_objects(u1, speed_write, parent_fish, options).map(&:unique_identifier))
-          .to contain_exactly('child_fish_1')
+            .to contain_exactly('child_fish_1')
       end
 
       it 'lists all objects with the given privilege for the given user 2 operation sets deep' do
         expect(ado_pm.accessible_ancestor_objects(u1, speediest_write, grandparent_fish, options).map(&:unique_identifier))
-          .to contain_exactly('child_fish_1')
+            .to contain_exactly('child_fish_1')
       end
     end
 
@@ -922,16 +922,16 @@ describe 'ActiveRecord' do
         all_accessible_from_grandparent = %w(grandparent_fish uncle_fish cousin_fish)
 
         expect(ado_pm.accessible_ancestor_objects(u1, read, grandparent_fish, options).map(&:unique_identifier))
-          .to match_array(all_accessible_from_grandparent)
+            .to match_array(all_accessible_from_grandparent)
         expect(ado_pm.accessible_ancestor_objects(u1, write, parent_fish, options).map(&:unique_identifier))
-          .to contain_exactly('child_fish_1')
+            .to contain_exactly('child_fish_1')
       end
 
       it 'does not return objects which are prohibited by an out-of-scope descendant' do
         ado_pm.add_association(ua, not_reader, grandparent_fish)
 
         expect(ado_pm.accessible_ancestor_objects(u1, read, parent_fish, options).map(&:unique_identifier))
-          .to be_empty
+            .to be_empty
       end
     end
   end
@@ -973,7 +973,7 @@ describe 'ActiveRecord' do
 
     # For specs that require more attribute differentiation for filtering
     let(:darken_colors) do
-      ->{
+      -> {
         user_2.update(color: 'navy_blue')
         user_attr_2.update(color: 'forest_green')
         pm2_operation_2.update(color: 'crimson')
@@ -1046,15 +1046,15 @@ describe 'ActiveRecord' do
 
         it 'returns appropriate descendants and multiple specified attributes' do
           plucked_results = [
-            { unique_identifier: 'user_attr_1', color: 'green' },
-            { unique_identifier: 'user_attr_2', color: 'forest_green' },
-            { unique_identifier: 'user_attr_3', color: 'green' }]
+              { unique_identifier: 'user_attr_1', color: 'green' },
+              { unique_identifier: 'user_attr_2', color: 'forest_green' },
+              { unique_identifier: 'user_attr_3', color: 'green' }]
           expect(user_1.pluck_from_descendants(fields: [:unique_identifier, :color])).to match_array(plucked_results)
         end
 
         it 'errors appropriately when nonexistent attributes are specified' do
           expect { expect(user_1.pluck_from_descendants(fields: ['favorite_mountain'])) }
-            .to raise_error(ArgumentError)
+              .to raise_error(ArgumentError)
         end
 
         it 'errors appropriately when no attributes are specified' do
@@ -1066,7 +1066,7 @@ describe 'ActiveRecord' do
         it 'applies a single filter if one is supplied' do
           plucked_results = [{ color: 'green' }, { color: 'green' }]
           expect(user_1.pluck_from_descendants(fields: [:color], filters: { color: 'green' }))
-            .to match_array(plucked_results)
+              .to match_array(plucked_results)
         end
 
         it 'applies multiple filters if they are supplied' do
@@ -1100,7 +1100,7 @@ describe 'ActiveRecord' do
 
         it 'applies multiple filters if they are supplied' do
           expect(user_1.link_descendants(color: 'green', unique_identifier: 'pm2_user_attr'))
-            .to contain_exactly(pm2_user_attr.stored_pe)
+              .to contain_exactly(pm2_user_attr.stored_pe)
         end
 
         it 'returns appropriate results when filters apply to no link_descendants' do
@@ -1144,15 +1144,15 @@ describe 'ActiveRecord' do
 
         it 'returns appropriate ancestors and multiple specified attributes' do
           plucked_results = [
-            { unique_identifier: 'user_1', color: 'blue' },
-            { unique_identifier: 'user_2', color: 'navy_blue' },
-            { unique_identifier: 'user_3', color: 'blue' }]
+              { unique_identifier: 'user_1', color: 'blue' },
+              { unique_identifier: 'user_2', color: 'navy_blue' },
+              { unique_identifier: 'user_3', color: 'blue' }]
           expect(user_attr_1.pluck_from_ancestors(fields: [:unique_identifier, :color])).to match_array(plucked_results)
         end
 
         it 'errors appropriately when nonexistent attributes are specified' do
           expect { expect(user_attr_1.pluck_from_ancestors(fields: ['favorite_mountain'])) }
-            .to raise_error(ArgumentError)
+              .to raise_error(ArgumentError)
         end
 
         it 'errors appropriately when no attributes are specified' do
@@ -1164,7 +1164,7 @@ describe 'ActiveRecord' do
         it 'applies a single filter if one is supplied' do
           plucked_results = [{ color: 'blue' }, { color: 'blue' }]
           expect(user_attr_1.pluck_from_ancestors(fields: [:color], filters: { color: 'blue' }))
-            .to match_array(plucked_results)
+              .to match_array(plucked_results)
         end
 
         it 'applies multiple filters if they are supplied' do
@@ -1194,8 +1194,8 @@ describe 'ActiveRecord' do
       before do
         darken_colors.call
 
-        single_ancestors.each { |ancestor| ancestor.update(color: 'gold' ) }
-        double_ancestors.each { |ancestor| ancestor.update(color: 'silver' ) }
+        single_ancestors.each { |ancestor| ancestor.update(color: 'gold') }
+        double_ancestors.each { |ancestor| ancestor.update(color: 'silver') }
         pm1.add_assignment(user_attr_4, user_attr_1)
         pm1.add_assignment(user_attr_5, user_attr_1)
         pm1.add_assignment(user_attr_6, user_attr_1)
@@ -1208,15 +1208,15 @@ describe 'ActiveRecord' do
       context 'no filter is applied' do
         it 'returns appropriate ancestors and the specified attribute' do
           plucked_results = HashWithIndifferentAccess.new(
-            user_1: [],
-            user_2: [],
-            user_3: [],
-            user_attr_4: [{ unique_identifier: 'user_attr_7' }],
-            user_attr_5: [{ unique_identifier: 'user_attr_8' }],
-            user_attr_6: [{ unique_identifier: 'user_attr_9' }],
-            user_attr_7: [],
-            user_attr_8: [],
-            user_attr_9: []
+              user_1: [],
+              user_2: [],
+              user_3: [],
+              user_attr_4: [{ unique_identifier: 'user_attr_7' }],
+              user_attr_5: [{ unique_identifier: 'user_attr_8' }],
+              user_attr_6: [{ unique_identifier: 'user_attr_9' }],
+              user_attr_7: [],
+              user_attr_8: [],
+              user_attr_9: []
           )
 
           expect(user_attr_1.pluck_ancestor_tree(fields: [:unique_identifier])).to eq(plucked_results)
@@ -1224,15 +1224,15 @@ describe 'ActiveRecord' do
 
         it 'returns appropriate ancestors and multiple specified attributes' do
           plucked_results = HashWithIndifferentAccess.new(
-            user_1: [],
-            user_2: [],
-            user_3: [],
-            user_attr_4: [{ unique_identifier: 'user_attr_7', color: 'silver' }],
-            user_attr_5: [{ unique_identifier: 'user_attr_8', color: 'silver' }],
-            user_attr_6: [{ unique_identifier: 'user_attr_9', color: 'silver' }],
-            user_attr_7: [],
-            user_attr_8: [],
-            user_attr_9: []
+              user_1: [],
+              user_2: [],
+              user_3: [],
+              user_attr_4: [{ unique_identifier: 'user_attr_7', color: 'silver' }],
+              user_attr_5: [{ unique_identifier: 'user_attr_8', color: 'silver' }],
+              user_attr_6: [{ unique_identifier: 'user_attr_9', color: 'silver' }],
+              user_attr_7: [],
+              user_attr_8: [],
+              user_attr_9: []
           )
           expect(user_attr_1.pluck_ancestor_tree(fields: [:unique_identifier, :color])).to eq(plucked_results)
         end
@@ -1249,7 +1249,7 @@ describe 'ActiveRecord' do
       context 'a filter is applied' do
         it 'applies a single filter if one is supplied' do
           plucked_results = HashWithIndifferentAccess.new(user_attr_7: [], user_attr_8: [], user_attr_9: [])
-          params = { fields: [:unique_identifier], filters: { color: 'silver'} }
+          params = { fields: [:unique_identifier], filters: { color: 'silver' } }
           expect(user_attr_1.pluck_ancestor_tree(params)).to eq(plucked_results)
         end
 
@@ -1264,18 +1264,18 @@ describe 'ActiveRecord' do
           pm1.add_assignment(user_attr_10, user_attr_1)
 
           plucked_results = HashWithIndifferentAccess.new(user_attr_10: [])
-          params = { fields: [:unique_identifier], filters: { color: 'indigo'} }
+          params = { fields: [:unique_identifier], filters: { color: 'indigo' } }
           expect(user_attr_1.pluck_ancestor_tree(params)).to eq(plucked_results)
         end
 
         it 'returns appropriate results when filters apply to ancestors but not their ancestors' do
           plucked_results = HashWithIndifferentAccess.new(user_attr_4: [], user_attr_5: [], user_attr_6: [])
-          params = { fields: [:unique_identifier], filters: { color: 'gold'} }
+          params = { fields: [:unique_identifier], filters: { color: 'gold' } }
           expect(user_attr_1.pluck_ancestor_tree(params)).to eq(plucked_results)
         end
 
         it 'returns appropriate results when filters apply to no ancestors' do
-          params = { fields: [:unique_identifier], filters: { color: 'obsidian'} }
+          params = { fields: [:unique_identifier], filters: { color: 'obsidian' } }
           expect(user_attr_1.pluck_ancestor_tree(params)).to match_array({})
         end
       end
@@ -1300,7 +1300,7 @@ describe 'ActiveRecord' do
 
         it 'applies multiple filters if they are supplied' do
           expect(pm3_user_attr.link_ancestors(color: 'red', unique_identifier: 'pm2_operation_1'))
-            .to contain_exactly(pm2_operation_1.stored_pe)
+              .to contain_exactly(pm2_operation_1.stored_pe)
         end
 
         it 'returns appropriate results when filters apply to no link_ancestors' do
@@ -1344,15 +1344,15 @@ describe 'ActiveRecord' do
 
         it 'returns appropriate parents and multiple specified attributes' do
           plucked_results = [
-            { unique_identifier: 'user_1', color: 'blue' },
-            { unique_identifier: 'user_2', color: 'navy_blue' },
-            { unique_identifier: 'user_3', color: 'blue' }]
+              { unique_identifier: 'user_1', color: 'blue' },
+              { unique_identifier: 'user_2', color: 'navy_blue' },
+              { unique_identifier: 'user_3', color: 'blue' }]
           expect(user_attr_1.pluck_from_parents(fields: [:unique_identifier, :color])).to match_array(plucked_results)
         end
 
         it 'errors appropriately when nonexistent attributes are specified' do
           expect { expect(user_attr_1.pluck_from_parents(fields: ['favorite_mountain'])) }
-            .to raise_error(ArgumentError)
+              .to raise_error(ArgumentError)
         end
 
         it 'errors appropriately when no attributes are specified' do
@@ -1364,7 +1364,7 @@ describe 'ActiveRecord' do
         it 'applies a single filter if one is supplied' do
           plucked_results = [{ color: 'blue' }, { color: 'blue' }]
           expect(user_attr_1.pluck_from_parents(fields: [:color], filters: { color: 'blue' }))
-            .to match_array(plucked_results)
+              .to match_array(plucked_results)
         end
 
         it 'applies multiple filters if they are supplied' do
@@ -1412,15 +1412,15 @@ describe 'ActiveRecord' do
 
         it 'returns appropriate children and multiple specified attributes' do
           plucked_results = [
-            { unique_identifier: 'user_attr_1', color: 'green' },
-            { unique_identifier: 'user_attr_2', color: 'forest_green' },
-            { unique_identifier: 'user_attr_3', color: 'green' }]
+              { unique_identifier: 'user_attr_1', color: 'green' },
+              { unique_identifier: 'user_attr_2', color: 'forest_green' },
+              { unique_identifier: 'user_attr_3', color: 'green' }]
           expect(user_1.pluck_from_children(fields: [:unique_identifier, :color])).to match_array(plucked_results)
         end
 
         it 'errors appropriately when nonexistent attributes are specified' do
           expect { expect(user_1.pluck_from_children(fields: ['favorite_mountain'])) }
-            .to raise_error(ArgumentError)
+              .to raise_error(ArgumentError)
         end
 
         it 'errors appropriately when no attributes are specified' do
@@ -1432,7 +1432,7 @@ describe 'ActiveRecord' do
         it 'applies a single filter if one is supplied' do
           plucked_results = [{ color: 'green' }, { color: 'green' }]
           expect(user_1.pluck_from_children(fields: [:color], filters: { color: 'green' }))
-            .to match_array(plucked_results)
+              .to match_array(plucked_results)
         end
 
         it 'applies multiple filters if they are supplied' do
@@ -1462,7 +1462,7 @@ describe 'ActiveRecord' do
 
         it 'applies multiple filters if they are supplied' do
           expect(pm3_user_attr.link_parents(color: 'red', unique_identifier: 'pm2_operation_2'))
-            .to contain_exactly(pm2_operation_2.stored_pe)
+              .to contain_exactly(pm2_operation_2.stored_pe)
         end
 
         it 'returns appropriate results when filters apply to no link_parents' do
@@ -1483,14 +1483,14 @@ describe 'ActiveRecord' do
 
         it 'returns appropriate link_parents and multiple specified attributes' do
           plucked_results = [
-            { unique_identifier: 'pm2_operation_1', color: 'red' },
-            { unique_identifier: 'pm2_operation_2', color: 'crimson' }]
+              { unique_identifier: 'pm2_operation_1', color: 'red' },
+              { unique_identifier: 'pm2_operation_2', color: 'crimson' }]
           expect(pm3_user_attr.pluck_from_link_parents(fields: [:unique_identifier, :color])).to match_array(plucked_results)
         end
 
         it 'errors appropriately when nonexistent attributes are specified' do
           expect { expect(pm3_user_attr.pluck_from_link_parents(fields: ['favorite_mountain'])) }
-            .to raise_error(ArgumentError)
+              .to raise_error(ArgumentError)
         end
 
         it 'errors appropriately when no attributes are specified' do
@@ -1502,7 +1502,7 @@ describe 'ActiveRecord' do
         it 'applies a single filter if one is supplied' do
           plucked_results = [{ color: 'red' }]
           expect(pm3_user_attr.pluck_from_link_parents(fields: [:color], filters: { color: 'red' }))
-            .to match_array(plucked_results)
+              .to match_array(plucked_results)
         end
 
         it 'applies multiple filters if they are supplied' do
@@ -1532,7 +1532,7 @@ describe 'ActiveRecord' do
 
         it 'applies multiple filters if they are supplied' do
           expect(user_1.link_children(color: 'red', unique_identifier: 'pm2_operation_1'))
-            .to contain_exactly(pm2_operation_1.stored_pe)
+              .to contain_exactly(pm2_operation_1.stored_pe)
         end
 
         it 'returns appropriate results when filters apply to no link_children' do
@@ -1553,16 +1553,16 @@ describe 'ActiveRecord' do
 
         it 'returns appropriate link_children and multiple specified attributes' do
           plucked_results = [
-            { unique_identifier: 'pm2_user', color: 'blue' },
-            { unique_identifier: 'pm2_operation_1', color: 'red' },
-            { unique_identifier: 'pm2_operation_2', color: 'crimson' },
-            { unique_identifier: 'pm2_user_attr', color: 'green' }]
+              { unique_identifier: 'pm2_user', color: 'blue' },
+              { unique_identifier: 'pm2_operation_1', color: 'red' },
+              { unique_identifier: 'pm2_operation_2', color: 'crimson' },
+              { unique_identifier: 'pm2_user_attr', color: 'green' }]
           expect(user_1.pluck_from_link_children(fields: [:unique_identifier, :color])).to match_array(plucked_results)
         end
 
         it 'errors appropriately when nonexistent attributes are specified' do
           expect { expect(user_1.pluck_from_link_children(fields: ['favorite_mountain'])) }
-            .to raise_error(ArgumentError)
+              .to raise_error(ArgumentError)
         end
 
         it 'errors appropriately when no attributes are specified' do
@@ -1574,7 +1574,7 @@ describe 'ActiveRecord' do
         it 'applies a single filter if one is supplied' do
           plucked_results = [{ color: 'green' }]
           expect(user_1.pluck_from_link_children(fields: [:color], filters: { color: 'green' }))
-            .to match_array(plucked_results)
+              .to match_array(plucked_results)
         end
 
         it 'applies multiple filters if they are supplied' do
@@ -1694,6 +1694,18 @@ describe 'ActiveRecord' do
 
               expect(database_entry).to eq('{}')
             end
+          end
+        end
+      end
+
+      describe 'pluck' do
+        (PolicyMachine::POLICY_ELEMENT_TYPES).each do |type|
+          it "can get data for #{type}" do
+            id = "#{type}-pluck-test"
+            binding.pry
+            policy_machine.send("create_#{type}", id)
+            data = policy_machine.send(:pluck, type: type, fields: [:unique_identifier], options: { unique_identifier: id })
+            expect(data[0]).to eq(id)
           end
         end
       end
