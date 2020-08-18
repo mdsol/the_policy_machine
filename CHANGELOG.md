@@ -1,5 +1,8 @@
 # Changelog
 
+## 3.0.2
+* Added `pluck` method to PolicyMachine. Implemented for PolicyMachineStorageAdapter::ActiveRecord only.
+
 ## 3.0.1
 * Optimize privilege exists lookup by checking prohibitions before performing privilege derivation.
 

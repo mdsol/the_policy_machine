@@ -8,7 +8,7 @@ require 'set'
 require 'will_paginate/array'
 
 # require all adapters
-Dir.glob(File.dirname(File.absolute_path(__FILE__)) + '/policy_machine_storage_adapters/*.rb').each { |f| require f }
+Dir.glob(File.dirname(File.absolute_path(__FILE__)) + '/policy_machine_storage_adapters/*.rb').each{ |f| require f }
 
 class PolicyMachine
   POLICY_ELEMENT_TYPES = %w(user user_attribute object object_attribute operation operation_set policy_class)
@@ -91,7 +91,7 @@ class PolicyMachine
   # TODO: Parallelize the two component checks
   def is_privilege?(user_or_attribute, operation, object_or_attribute, options = {})
     (options[:ignore_prohibitions] || !is_privilege_ignoring_prohibitions?(user_or_attribute, PM::Prohibition.on(operation), object_or_attribute, options)) &&
-        is_privilege_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute, options)
+      is_privilege_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute, options)
   end
 
   ##
@@ -99,7 +99,7 @@ class PolicyMachine
   def is_privilege_with_filters?(user_or_attribute, operation, object_or_attribute, filters: {}, options: {})
     # Check that the privilege can be derived given the set of filters, but do not filter the check for prohibitions
     (options[:ignore_prohibitions] || !is_privilege_ignoring_prohibitions?(user_or_attribute, PM::Prohibition.on(operation), object_or_attribute, options)) &&
-        is_privilege_ignoring_prohibitions_with_filters?(user_or_attribute, operation, object_or_attribute, filters: filters, options: options)
+      is_privilege_ignoring_prohibitions_with_filters?(user_or_attribute, operation, object_or_attribute, filters: filters, options: options)
   end
 
   ##
@@ -135,7 +135,7 @@ class PolicyMachine
     if associations
       raise(ArgumentError, "expected options[:associations] to be an Array; got #{associations.class}") unless associations.is_a?(Array)
       raise(ArgumentError, "options[:associations] cannot be empty") if associations.empty?
-      raise(ArgumentError, "expected each element of options[:associations] to be a PM::Association") unless associations.all? { |a| a.is_a?(PM::Association) }
+      raise(ArgumentError, "expected each element of options[:associations] to be a PM::Association") unless associations.all?{|a| a.is_a?(PM::Association)}
 
       return false if associations.none? do |association|
         association.operation_set.connected?(operation)
@@ -209,7 +209,7 @@ class PolicyMachine
     options_without_filters = options.except(:filters)
     privs_and_prohibs = get_all_scoped_privileges_and_prohibitions(user_or_attribute, object_or_attribute, options_without_filters)
 
-    prohibitions, privileges = privs_and_prohibs.partition { |_, op, _| op.prohibition? }
+    prohibitions, privileges = privs_and_prohibs.partition { |_,op,_| op.prohibition? }
 
     if options[:filters]
       # Replace unfiltered privileges with the privileges derived from a given set of filters
@@ -224,8 +224,8 @@ class PolicyMachine
     elsif options[:include_prohibitions]
       privileges | prohibitions
     else
-      prohibited_operations = prohibitions.map { |_, prohibition, _| prohibition.operation }
-      privileges.reject { |_, op, _| prohibited_operations.include?(op.unique_identifier) }
+      prohibited_operations = prohibitions.map { |_,prohibition,_| prohibition.operation }
+      privileges.reject { |_,op,_| prohibited_operations.include?(op.unique_identifier) }
     end
   end
 
@@ -294,10 +294,10 @@ class PolicyMachine
   def accessible_ancestor_objects(user_or_attribute, operation, root_object, options = {})
     if policy_machine_storage_adapter.respond_to?(:accessible_ancestor_objects)
       policy_machine_storage_adapter.accessible_ancestor_objects(
-          user_or_attribute,
-          operation,
-          root_object,
-          options
+        user_or_attribute,
+        operation,
+        root_object,
+        options
       )
     else
       raise NoMethodError, "accessible_ancestor_objects is not implemented for storage adapter " \
@@ -409,7 +409,7 @@ class PolicyMachine
         [user_or_attribute, operation, object_or_attribute]
       end
     else
-      operations.grep(-> operation { is_privilege_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute) }) do |op|
+      operations.grep(->operation{is_privilege_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute)}) do |op|
         [user_or_attribute, op, object_or_attribute]
       end
     end
@@ -454,12 +454,9 @@ class PolicyMachine
     policy_classes_containing_object.all? do |pc|
       associations.any? do |assoc|
         user_or_attribute.connected?(assoc.user_attribute) &&
-            object_or_attribute.connected?(assoc.object_attribute) &&
-            assoc.object_attribute.connected?(pc)
+        object_or_attribute.connected?(assoc.object_attribute) &&
+        assoc.object_attribute.connected?(pc)
       end
     end
-  end
-
-  class MethodNotSupportedError < StandardError
   end
 end
