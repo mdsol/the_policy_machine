@@ -1700,7 +1700,7 @@ describe 'ActiveRecord' do
 
       describe 'pluck' do
         (PolicyMachine::POLICY_ELEMENT_TYPES).each do |type|
-          it "can get data for #{type}" do
+          it "plucks the correct data for #{type}" do
             id = "#{type}-pluck-test"
             policy_machine.send("create_#{type}", id)
             data = policy_machine.send(:pluck, type: type, fields: [:unique_identifier], options: { unique_identifier: id })
