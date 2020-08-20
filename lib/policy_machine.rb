@@ -90,16 +90,16 @@ class PolicyMachine
   # TODO: add option to ignore policy classes to allow consumer to speed up this method.
   # TODO: Parallelize the two component checks
   def is_privilege?(user_or_attribute, operation, object_or_attribute, options = {})
-    (options[:ignore_prohibitions] || !is_privilege_ignoring_prohibitions?(user_or_attribute, PM::Prohibition.on(operation), object_or_attribute, options)) &&
-      is_privilege_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute, options)
+    is_privilege_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute, options) &&
+      (options[:ignore_prohibitions] || !is_privilege_ignoring_prohibitions?(user_or_attribute, PM::Prohibition.on(operation), object_or_attribute, options))
   end
 
   ##
   # Can we derive a privilege given a set of filters?
   def is_privilege_with_filters?(user_or_attribute, operation, object_or_attribute, filters: {}, options: {})
     # Check that the privilege can be derived given the set of filters, but do not filter the check for prohibitions
-    (options[:ignore_prohibitions] || !is_privilege_ignoring_prohibitions?(user_or_attribute, PM::Prohibition.on(operation), object_or_attribute, options)) &&
-      is_privilege_ignoring_prohibitions_with_filters?(user_or_attribute, operation, object_or_attribute, filters: filters, options: options)
+    is_privilege_ignoring_prohibitions_with_filters?(user_or_attribute, operation, object_or_attribute, filters: filters, options: options) &&
+       (options[:ignore_prohibitions] || !is_privilege_ignoring_prohibitions?(user_or_attribute, PM::Prohibition.on(operation), object_or_attribute, options))
   end
 
   ##
@@ -137,9 +137,10 @@ class PolicyMachine
       raise(ArgumentError, "options[:associations] cannot be empty") if associations.empty?
       raise(ArgumentError, "expected each element of options[:associations] to be a PM::Association") unless associations.all?{|a| a.is_a?(PM::Association)}
 
-      return false if associations.none? do |association|
+      associations.keep_if do |association|
         association.operation_set.connected?(operation)
       end
+      return false if associations.empty?
     else
       associations = operation.associations
     end
@@ -241,6 +242,14 @@ class PolicyMachine
     else
       batch_size = config.fetch(:batch_size, 1)
       method(type.to_s.pluralize).call(query).each_slice(batch_size, &blk)
+    end
+  end
+
+  def pluck(type:, fields:, options:)
+    if policy_machine_storage_adapter.respond_to?(:pluck)
+      policy_machine_storage_adapter.send(:pluck, { type: type, fields: fields, options: options })
+    else
+      raise "Method 'pluck' is not implemented for storage adapter #{policy_machine_storage_adapter.class}"
     end
   end
 

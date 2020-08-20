@@ -1,3 +1,5 @@
 test/testapp/
 Gemfile.lock
 coverage/
+.idea/
+.vscode/
