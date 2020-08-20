@@ -489,6 +489,12 @@ module PolicyMachineStorageAdapter
       end
     end # End of POLICY_ELEMENT_TYPES iteration
 
+    def pluck(type:, fields: [], options: {})
+      pe_class = class_for_type(type.to_s)
+      options ||= {}
+      pe_class.where(options).pluck(*fields)
+    end
+
     def class_for_type(pe_type)
       @pe_type_class_hash ||= Hash.new { |h,k| h[k] = "PolicyMachineStorageAdapter::ActiveRecord::#{k.camelize}".constantize }
       @pe_type_class_hash[pe_type]
