@@ -1666,7 +1666,7 @@ describe 'ActiveRecord' do
           klass.serialize(store: :document, name: :is_arbitrary)
         end
 
-        (PolicyMachine::POLICY_ELEMENT_TYPES).each do |type|
+        PolicyMachine::POLICY_ELEMENT_TYPES.each do |type|
           describe 'store' do
             it 'can specify a root store level store supported by the backing system' do
               some_hash = { 'foo' => 'bar' }
@@ -1699,7 +1699,7 @@ describe 'ActiveRecord' do
       end
 
       describe 'pluck' do
-        (PolicyMachine::POLICY_ELEMENT_TYPES).each do |type|
+        PolicyMachine::POLICY_ELEMENT_TYPES.each do |type|
           it "plucks the correct data for #{type}" do
             id = "#{type}-pluck-test"
             policy_machine.send("create_#{type}", id)
