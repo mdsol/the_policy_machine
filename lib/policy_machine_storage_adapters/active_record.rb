@@ -752,6 +752,10 @@ module PolicyMachineStorageAdapter
       options[:order] ? operations.sort : operations
     end
 
+    # Returns all associations along any paths that link the given user/user_attr to the given object/object_attr.
+    def scoped_associations(user_or_attr, object_or_attr)
+    end
+
     def batch_find(policy_object, query = {}, config = {}, &blk)
       method("find_all_of_type_#{policy_object}").call(query).find_in_batches(config, &blk)
     end
@@ -776,6 +780,32 @@ module PolicyMachineStorageAdapter
         preloaded_options = options.except(:filters).merge(ignore_prohibitions: true)
         candidates - accessible_objects(user_or_attribute, prohibition, preloaded_options)
       end
+    end
+
+    # Returns a hash where, for a given user/user_attr and operation:
+    #   - the keys are associations that lead to accessible objects
+    #   - the values are an array of all objects accessible via the association
+    def accessible_objects_by_association(user_or_attribute, operation, options = {})
+      objects, assocs = objects_and_associations_for_user_or_attribute_and_operation(
+        user_or_attribute, operation, options
+      )
+
+      if !options[:ignore_prohibitions] && (prohibition = prohibition_for(operation))
+        prohib_objects, prohib_assocs = objects_and_associations_for_user_or_attribute_and_operation(
+          user_or_attribute,
+          prohibition,
+          options.except(:filters) # Do not use the filter when checking prohibitions
+        )
+        objects -= prohib_objects
+        assocs -= prohib_assocs
+      end
+
+      result = assocs.map do |assoc|
+        assoc_objs = Assignment.ancestors_of(assoc.object_attribute).where(type: class_for_type('object').name)
+        [assoc, assoc_objs & objects]
+      end
+
+      result.to_h
     end
 
     # Version of accessible_objects which only returns objects that are ancestors of a specified
@@ -831,6 +861,13 @@ module PolicyMachineStorageAdapter
       associations = associations_for_user_or_attribute(user_or_attribute, options)
       filtered_associations = associations_filtered_by_operation(associations, operation)
       build_accessible_object_scope(filtered_associations, options)
+    end
+
+    def objects_and_associations_for_user_or_attribute_and_operation(user_or_attribute, operation, options)
+      associations = associations_for_user_or_attribute(user_or_attribute, options)
+      filtered_associations = associations_filtered_by_operation(associations, operation)
+      objects = build_accessible_object_scope(filtered_associations, options)
+      [objects, filtered_associations]
     end
 
     # Gets the associations related to the given user or attribute or its descendants

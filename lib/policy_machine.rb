@@ -292,6 +292,20 @@ class PolicyMachine
     end
   end
 
+  # Returns a hash where, for a given user/user_attr and operation:
+  #   - the keys are all accessible objects
+  #   - the values are an array of all associations connecting the user/user_attr to the key object via the operation
+  def accessible_objects_by_association(user_or_attribute, operation, options = {})
+    unless policy_machine_storage_adapter.respond_to?(:accessible_objects_by_association)
+      adapter = policy_machine_storage_adapter.class
+      raise(
+        NotImplementedError,
+        "accessible_objects_by_association is not implemented for storage adapter #{adapter}."
+      )
+    end
+    policy_machine_storage_adapter.accessible_objects_by_association(user_or_attribute, operation, options)
+  end
+
   def accessible_ancestor_objects(user_or_attribute, operation, root_object, options = {})
     if policy_machine_storage_adapter.respond_to?(:accessible_ancestor_objects)
       policy_machine_storage_adapter.accessible_ancestor_objects(

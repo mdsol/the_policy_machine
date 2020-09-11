@@ -290,6 +290,44 @@ describe 'ActiveRecord' do
         end
       end
 
+      describe 'accessible_objects_by_association' do
+        let(:assoc1) do
+          PolicyMachineStorageAdapter::ActiveRecord::PolicyElementAssociation.find_by(
+            user_attribute_id: color_1.id,
+            operation_set_id: painter.id,
+            object_attribute_id: oa_4.id,
+          )
+        end
+        let(:assoc2) do
+          PolicyMachineStorageAdapter::ActiveRecord::PolicyElementAssociation.find_by(
+            user_attribute_id: color_2.id,
+            operation_set_id: creator.id,
+            object_attribute_id: oa_2.id,
+          )
+        end
+        let(:assoc3) do
+          PolicyMachineStorageAdapter::ActiveRecord::PolicyElementAssociation.find_by(
+            user_attribute_id: color_3.id,
+            operation_set_id: creator.id,
+            object_attribute_id: oa_1.id,
+          )
+        end
+
+        it 'returns the expected mapping' do
+          result = priv_pm.accessible_objects_by_association(user_1, paint)
+          expect(result.keys).to contain_exactly(assoc1, assoc2, assoc3)
+          expect(result[assoc1].map(&:id)).to contain_exactly(
+            object_1.id, object_2.id, object_3.id, object_4.id, object_5.id, object_6.id
+          )
+          expect(result[assoc2].map(&:id)).to contain_exactly(
+            object_5.id, object_6.id
+          )
+          expect(result[assoc3].map(&:id)).to contain_exactly(
+            object_1.id, object_2.id, object_3.id, object_4.id
+          )
+        end
+      end
+
       describe 'accessible_ancestor_objects' do
         context 'when policy element associations are not provided as an argument' do
           it 'returns objects accessible via the filtered attribute on an object scope' do
@@ -834,7 +872,7 @@ describe 'ActiveRecord' do
     it 'lists all objects with the given privilege provided by an out-of-scope descendant' do
       wrestle = ado_pm.create_operation('wrestle')
       wrestler = ado_pm.create_operation_set('wrestler')
-      ado_pm.add_assignment(wrestler, wrestle) 
+      ado_pm.add_assignment(wrestler, wrestle)
 
       # Give the user 'wrestle' on the highest, out-of-scope node
       ado_pm.add_association(ua, wrestler, grandparent_fish)
