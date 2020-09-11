@@ -313,6 +313,9 @@ describe 'ActiveRecord' do
           )
         end
 
+        let(:filters_purple) { { filters: { user_attributes: { color: 'purple' } } } }
+        let(:filters_pink) { { filters: { user_attributes: { color: 'pink' } } } }
+
         it 'returns the expected mapping' do
           result = priv_pm.accessible_objects_by_association(user_1, paint)
           expect(result.keys).to contain_exactly(assoc1, assoc2, assoc3)
@@ -325,6 +328,34 @@ describe 'ActiveRecord' do
           expect(result[assoc3].map(&:id)).to contain_exactly(
             object_1.id, object_2.id, object_3.id, object_4.id
           )
+        end
+
+        context 'when filtering' do
+          it 'returns the expected mapping' do
+            result = priv_pm.accessible_objects_by_association(user_1, create, filters_purple)
+            expect(result.keys).to contain_exactly(assoc2)
+            expect(result[assoc2].map(&:id)).to contain_exactly(object_5.id, object_6.id)
+          end
+
+          it 'does not return objects that are not accessible via the filtered attribute' do
+            result = priv_pm.accessible_objects_by_association(user_1, create, filters_pink)
+            expect(result).to be_empty
+          end
+        end
+
+        context 'when prohibitions are present' do
+          let(:cant_create) { priv_pm.create_operation_set('cant_create') }
+
+          before do
+            priv_pm.add_assignment(cant_create, create.prohibition)
+            priv_pm.add_association(color_2, cant_create, object_5)
+          end
+
+          it 'does not return objects with prohibitions' do
+            result = priv_pm.accessible_objects_by_association(user_1, create, filters_purple)
+            expect(result.keys).to contain_exactly(assoc2)
+            expect(result[assoc2].map(&:id)).not_to include(object_5.id)
+          end
         end
       end
 
