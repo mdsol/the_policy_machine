@@ -783,7 +783,7 @@ module PolicyMachineStorageAdapter
     end
 
     # Returns a hash where, for a given user/user_attr and operation:
-    #   - the keys are associations that lead to accessible objects
+    #   - the keys are all associations that lead to accessible objects
     #   - the values are an array of all objects accessible via the association
     def accessible_objects_by_association(user_or_attribute, operation, options = {})
       objects, assocs = objects_and_associations_for_user_or_attribute_and_operation(
