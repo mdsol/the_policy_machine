@@ -288,6 +288,19 @@ describe 'ActiveRecord' do
             ).to_not include('object_5')
           end
         end
+
+        context 'direct only' do
+          it 'only considers associations that go directly to objects' do
+            priv_pm.add_association(color_1, creator, object_7)
+
+            expect(priv_pm.accessible_objects(
+                user_1,
+                create,
+                direct_only: true
+              ).map(&:unique_identifier)
+            ).to contain_exactly('object_7')
+          end
+        end
       end
 
       describe 'accessible_ancestor_objects' do
@@ -834,7 +847,7 @@ describe 'ActiveRecord' do
     it 'lists all objects with the given privilege provided by an out-of-scope descendant' do
       wrestle = ado_pm.create_operation('wrestle')
       wrestler = ado_pm.create_operation_set('wrestler')
-      ado_pm.add_assignment(wrestler, wrestle) 
+      ado_pm.add_assignment(wrestler, wrestle)
 
       # Give the user 'wrestle' on the highest, out-of-scope node
       ado_pm.add_association(ua, wrestler, grandparent_fish)

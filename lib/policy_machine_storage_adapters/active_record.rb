@@ -846,17 +846,21 @@ module PolicyMachineStorageAdapter
     def build_accessible_object_scope(associations, options = {})
       permitting_oas = PolicyElement.where(id: associations.pluck(:object_attribute_id))
 
-      # Direct scope: the set of objects on which the operator is directly assigned
-      direct_scope = permitting_oas.where(type: class_for_type('object').name)
-      # Indirect scope: the set of objects which the operator can access via ancestral hierarchy
-      indirect_scope = Assignment.ancestors_of(permitting_oas).where(type: class_for_type('object').name)
+      scopes = []
 
-      if inclusion = options[:includes]
-        direct_scope = build_inclusion_scope(direct_scope, options[:key], inclusion)
-        indirect_scope = build_inclusion_scope(indirect_scope, options[:key], inclusion)
+      # Direct scope: the set of objects on which the operator is directly assigned
+      scopes << permitting_oas.where(type: class_for_type('object').name)
+
+      # Indirect scope: the set of objects which the operator can access via ancestral hierarchy
+      unless options[:direct_only]
+        scopes << Assignment.ancestors_of(permitting_oas).where(type: class_for_type('object').name)
       end
 
-      direct_scope | indirect_scope
+      if inclusion = options[:includes]
+        scopes.map! { |s| build_inclusion_scope(s, options[:key], inclusion) }
+      end
+
+      scopes.reduce(&:|)
     end
 
     def build_inclusion_scope(scope, key, value)
