@@ -860,7 +860,7 @@ module PolicyMachineStorageAdapter
         scopes.map! { |s| build_inclusion_scope(s, options[:key], inclusion) }
       end
 
-      scopes.reduce(&:|)
+      scopes.reduce(&:|).to_a
     end
 
     def build_inclusion_scope(scope, key, value)

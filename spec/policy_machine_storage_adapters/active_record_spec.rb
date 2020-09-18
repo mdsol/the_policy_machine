@@ -290,15 +290,23 @@ describe 'ActiveRecord' do
         end
 
         context 'direct only' do
-          it 'only considers associations that go directly to objects' do
-            priv_pm.add_association(color_1, creator, object_7)
+          before { priv_pm.add_association(color_1, creator, object_7) }
 
+          it 'only considers associations that go directly to objects' do
             expect(priv_pm.accessible_objects(
                 user_1,
                 create,
                 direct_only: true
               ).map(&:unique_identifier)
             ).to contain_exactly('object_7')
+          end
+
+          it 'returns an array' do
+            expect(priv_pm.accessible_objects(
+                user_1,
+                create,
+                direct_only: true
+              ).class).to eq(Array)
           end
         end
       end
