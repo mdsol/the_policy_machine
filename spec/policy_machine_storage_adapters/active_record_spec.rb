@@ -303,10 +303,10 @@ describe 'ActiveRecord' do
 
           it 'returns an array' do
             expect(priv_pm.accessible_objects(
-                user_1,
-                create,
-                direct_only: true
-              ).class).to eq(Array)
+              user_1,
+              create,
+              direct_only: true
+            ).class).to eq(Array)
           end
         end
       end

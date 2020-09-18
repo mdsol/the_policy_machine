@@ -1,7 +1,7 @@
 # Changelog
 
 ## 3.1.0
-* Add `direct_only` option to `PolicyMachineStorageAdapter::ActiveRecord::accessible_objects` to fetch only directly assigned objects.
+* Added `direct_only` option to `PolicyMachineStorageAdapter::ActiveRecord::accessible_objects` to fetch only directly assigned objects.
 
 ## 3.0.2
 * Added `pluck` method to PolicyMachine. Implemented for PolicyMachineStorageAdapter::ActiveRecord only.
