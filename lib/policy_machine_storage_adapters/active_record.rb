@@ -856,9 +856,8 @@ module PolicyMachineStorageAdapter
         scopes << Assignment.ancestors_of(permitting_oas).where(type: class_for_type('object').name)
       end
 
-      if inclusion = options[:includes]
-        scopes.map! { |s| build_inclusion_scope(s, options[:key], inclusion) }
-      end
+      inclusion = options[:includes]
+      scopes.map! { |s| build_inclusion_scope(s, options[:key], inclusion) } if inclusion
 
       scopes.reduce(&:|).to_a
     end
