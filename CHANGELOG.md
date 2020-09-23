@@ -1,5 +1,8 @@
 # Changelog
 
+## 3.1.0
+* Added `direct_only` option to `PolicyMachineStorageAdapter::ActiveRecord::accessible_objects` to fetch only directly assigned objects.
+
 ## 3.0.2
 * Added `pluck` method to PolicyMachine. Implemented for PolicyMachineStorageAdapter::ActiveRecord only.
 
@@ -40,7 +43,7 @@
 * Add accessible_ancestor_objects method to ActiveRecord storage adapter.
 
 ## 1.7.4
-* Re-expose the 'class_for_type' method to the public interface. 
+* Re-expose the 'class_for_type' method to the public interface.
 
 ## 1.7.3
 * Improve find_all_of_type_* functionality. This allows for properly passing
