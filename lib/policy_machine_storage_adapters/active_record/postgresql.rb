@@ -2,6 +2,72 @@ require 'active_record/hierarchical_query' # via gem activerecord-hierarchical_q
 
 module PolicyMachineStorageAdapter
   class ActiveRecord
+    class PolicyElement
+
+      # Given a list of operation set ids and a list of operations
+      # Returns a map of operations to the operation set ids that contain them
+      def self.operation_sets_containing(operation_set_ids, operations)
+        query = <<~SQL
+          WITH RECURSIVE accessible_operations AS (
+            (
+              SELECT
+                child_id,
+                parent_id,
+                parent_id AS operation_set_id
+              FROM assignments
+              WHERE parent_id IN (?)
+            )
+            UNION ALL
+            (
+              SELECT
+                assignments.child_id,
+                assignments.parent_id,
+                accessible_operations.operation_set_id AS operation_set_id
+              FROM assignments
+              INNER JOIN accessible_operations
+                ON accessible_operations.child_id = assignments.parent_id
+            )
+          )
+
+          SELECT DISTINCT accessible_operations.operation_set_id, ops.unique_identifier
+          FROM accessible_operations
+          JOIN policy_elements ops
+            ON ops.id = accessible_operations.child_id
+          WHERE ops.unique_identifier IN (?)
+        SQL
+
+        sanitized_query = sanitize_sql_for_assignment([
+          query,
+          operation_set_ids,
+          operations,
+        ])
+
+        # gives pairs of (opset_id, operation) representing all operations contained by an operation set
+        # accounts for any nested operation sets
+        #
+        # e.g:
+        #
+        #            opset_123                  opset_789
+        #             /     \                    /     \
+        #      opset_456   operation2    operation3   operation4
+        #           /
+        #   operation1
+        #
+        # will result in:
+        #   (123, operation1)
+        #   (123, operation2)
+        #   (789, operation3)
+        #   (789, operation4)
+        #
+        result = connection.execute(sanitized_query)
+
+        result.to_a.reduce(Hash.new { |h, k| h[k] = [] }) do |acc, item|
+          acc[item['unique_identifier']] << item['operation_set_id']
+          acc
+        end
+      end
+    end
+
     class PolicyElementAssociation
       def self.scoped_accessible_objects(associations, root_id:, filters: {})
         pea_ids = associations.pluck(:id)

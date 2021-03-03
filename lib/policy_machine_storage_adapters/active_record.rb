@@ -778,6 +778,23 @@ module PolicyMachineStorageAdapter
       end
     end
 
+    # Returns a map of operations to the user_or_attribute's accessible objects via each operation
+    def accessible_objects_for_operations(user_or_attribute, operations, options: {})
+      permitted_map = objects_for_user_or_attribute_and_operations(user_or_attribute, operations, options)
+
+      return permitted_map if options[:ignore_prohibitions]
+
+      prohibitions = operations.map { |o| prohibition_for(o) }.compact
+      prohibitted_map = objects_for_user_or_attribute_and_operations(user_or_attribute, prohibitions, options)
+
+      permitted_map.keys.each do |k|
+        prohibited_objects = prohibitted_map[k] || []
+        permitted_map[k] -= prohibited_objects
+      end
+
+      permitted_map
+    end
+
     # Version of accessible_objects which only returns objects that are ancestors of a specified
     # root object or the object itself. A set of policy element associations with the specified
     # operation may be optionally provided.
@@ -831,6 +848,15 @@ module PolicyMachineStorageAdapter
       associations = associations_for_user_or_attribute(user_or_attribute, options)
       filtered_associations = associations_filtered_by_operation(associations, operation)
       build_accessible_object_scope(filtered_associations, options)
+    end
+
+    def objects_for_user_or_attribute_and_operations(user_or_attribute, operations, options)
+      associations = associations_for_user_or_attribute(user_or_attribute, options)
+      operations_to_set_ids = PolicyElement.operation_sets_containing(
+        associations.pluck(&:operation_set_id), operations
+      )
+      filtered_associations = associations.where(operation_set_id: operations_to_set_ids.values.reduce(&:+).uniq)
+      # to be continued
     end
 
     # Gets the associations related to the given user or attribute or its descendants
