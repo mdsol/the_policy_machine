@@ -47,17 +47,17 @@ module PolicyMachineStorageAdapter
         #
         # e.g:
         #
-        #            opset_123                  opset_789
-        #             /     \                    /     \
-        #      opset_456   operation2    operation3   operation4
+        #            opset_123    opset_789
+        #             /     \      /     \
+        #      opset_456   operation2   operation4
         #           /
         #   operation1
         #
         # will result in:
         #   (123, operation1)
         #   (123, operation2)
+        #   (789, operation2)
         #   (789, operation3)
-        #   (789, operation4)
         #
         result = connection.execute(sanitized_query)
 
