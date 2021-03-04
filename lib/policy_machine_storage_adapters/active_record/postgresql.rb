@@ -49,7 +49,7 @@ module PolicyMachineStorageAdapter
         #
         #            opset_123    opset_789
         #             /     \      /     \
-        #      opset_456   operation2   operation4
+        #      opset_456   operation2   operation3
         #           /
         #   operation1
         #
