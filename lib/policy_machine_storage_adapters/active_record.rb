@@ -787,9 +787,9 @@ module PolicyMachineStorageAdapter
       prohibitions = operations.map { |o| prohibition_for(o) }.compact
       prohibitted_map = objects_for_user_or_attribute_and_operations(user_or_attribute, prohibitions, options)
 
-      permitted_map.keys.each do |k|
-        prohibited_objects = prohibitted_map[k] || []
-        permitted_map[k] -= prohibited_objects
+      permitted_map.keys.each do |operation|
+        prohibited_objects = prohibitted_map[operation] || []
+        permitted_map[operation] -= prohibited_objects
       end
 
       permitted_map
