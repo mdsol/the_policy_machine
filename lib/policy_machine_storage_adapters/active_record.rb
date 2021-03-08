@@ -778,14 +778,22 @@ module PolicyMachineStorageAdapter
       end
     end
 
-    # Returns a map of operations to the user_or_attribute's accessible objects via each operation
-    def accessible_objects_for_operations(user_or_attribute, operations, options: {})
+    # Returns a map of operation names to the user_or_attribute's accessible objects via each operation
+    def accessible_objects_for_operations(user_or_attribute, operations, options = {})
+      unless options[:direct_only]
+        raise ArgumentError, 'Functionality for indirect objects is not yet implemented!'
+      end
+
+      operations = operations.map(&:to_s) # convert to operation names if operation instances given
       permitted_map = objects_for_user_or_attribute_and_operations(user_or_attribute, operations, options)
 
       return permitted_map if options[:ignore_prohibitions]
 
-      prohibitions = operations.map { |o| prohibition_for(o) }.compact
-      prohibitted_map = objects_for_user_or_attribute_and_operations(user_or_attribute, prohibitions, options)
+      prohibitted_map = objects_for_user_or_attribute_and_operations(
+        user_or_attribute,
+        prohibitions_for(operations),
+        options
+      )
 
       permitted_map.keys.each do |operation|
         prohibited_objects = prohibitted_map[operation] || []
@@ -851,44 +859,32 @@ module PolicyMachineStorageAdapter
     end
 
     def objects_for_user_or_attribute_and_operations(user_or_attribute, operations, options)
-      unless options[:direct_only]
-        raise ArgumentError, 'Functionality for indirect objects is not yet implemented!'
+      return {} if operations.empty?
+      associations = associations_for_user_or_attribute(user_or_attribute, options)
+
+      opset_ids_to_objattr_ids = associations.pluck(
+        :operation_set_id,
+        :object_attribute_id
+      ).reduce(Hash.new { |h, k| h[k] = [] }) do |acc, (opset_id, objattr_id)|
+        acc[opset_id] << objattr_id
+        acc
       end
 
-      associations = associations_for_user_or_attribute(user_or_attribute, options)
-      opset_ids_to_objattr_ids = associations.pluck(:operation_set_id, :object_attribute_id).to_h
-
-      # {
-      #   'operation1' => [123],
-      #   'operation2' => [123, 789],
-      #   'operation3' => [789],
-      # }
       operations_to_filtered_opset_ids = PolicyElement.filtered_operation_set_ids_by_operation(
         opset_ids_to_objattr_ids.keys,
         operations
       )
 
-      # {
-      #   'operation1' => [objattr_id_1],
-      #   'operation2' => [objattr_id_2],
-      #   'operation3' => [objattr_id_3],
-      # }
       operations_to_objattr_ids = operations_to_filtered_opset_ids.transform_values do |opset_ids|
-        opset_ids.map { |opset_id| opset_ids_to_objattr_ids[opset_id] }.compact.uniq
+        opset_ids.map { |opset_id| opset_ids_to_objattr_ids[opset_id] || [] }.flatten.uniq
       end
 
       objects = PolicyElement.where(
-        id: operations_to_objattr_ids.values.reduce(:+).uniq,
+        id: operations_to_objattr_ids.values.reduce(:|),
         type: class_for_type('object').name
       )
-
       objects_by_id = objects.map { |obj| [obj.id, obj] }.to_h
 
-      # {
-      #   'operation1' => [obj1],
-      #   'operation2' => [obj2],
-      #   'operation3' => [obj3],
-      # }
       operations_to_objattr_ids.transform_values do |objattr_ids|
         objattr_ids.map { |objattr_id| objects_by_id[objattr_id] }.compact
       end
@@ -1081,9 +1077,22 @@ module PolicyMachineStorageAdapter
       false
     end
 
-    def prohibition_for(operation)
+    def prohibition_id(operation)
       operation_id = operation.try(:unique_identifier) || operation.to_s
-      PolicyMachineStorageAdapter::ActiveRecord::Operation.find_by_unique_identifier("~#{operation_id}")
+      "~#{operation_id}"
+    end
+
+    def prohibition_for(operation)
+      PolicyMachineStorageAdapter::ActiveRecord::Operation.find_by(
+        unique_identifier: prohibition_id(operation)
+      )
+    end
+
+    def prohibitions_for(operations)
+      prohibition_ids = operations.map { |o| prohibition_id(o) }
+      PolicyMachineStorageAdapter::ActiveRecord::Operation.where(
+        unique_identifier: prohibition_ids
+      )
     end
 
     def accessible_operations(user_or_attribute, object_or_attribute, operation_id = nil, filters: {})

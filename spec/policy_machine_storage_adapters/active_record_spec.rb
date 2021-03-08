@@ -293,7 +293,6 @@ describe 'ActiveRecord' do
           before { priv_pm.add_association(color_1, creator, object_7) }
 
           it 'only considers associations that go directly to objects' do
-            binding.pry
             expect(priv_pm.accessible_objects(
                 user_1,
                 create,
@@ -308,6 +307,64 @@ describe 'ActiveRecord' do
               create,
               direct_only: true
             ).class).to eq(Array)
+          end
+        end
+      end
+
+      describe 'accessible_objects_for_operations' do
+        context 'direct only' do
+          context 'when there are directly accessible objects' do
+            before do
+              priv_pm.add_association(color_1, creator, object_6)
+              priv_pm.add_association(color_2, creator, object_7)
+            end
+
+            it 'returns objects accessible via multiple operations' do
+              result = priv_pm.accessible_objects_for_operations(
+                user_1,
+                [create, paint],
+                direct_only: true
+              )
+              expect(result).to eq({
+                create.to_s => [object_6.stored_pe, object_7.stored_pe],
+                paint.to_s => [object_6.stored_pe, object_7.stored_pe],
+              })
+            end
+
+            it 'works with filters' do
+              filters = { user_attributes: { color: color_1.color } }
+              result = priv_pm.accessible_objects_for_operations(
+                user_1,
+                [create, paint],
+                filters: filters,
+                direct_only: true
+              )
+              expect(result).to eq({
+                create.to_s => [object_6.stored_pe],
+                paint.to_s => [object_6.stored_pe],
+              })
+            end
+          end
+
+          context 'when there are no directly accessible objects' do
+            it 'returns empty objects for each operation' do
+              result = priv_pm.accessible_objects_for_operations(
+                user_1,
+                [create, paint],
+                direct_only: true
+              )
+              expect(result).to eq({
+                create.to_s => [],
+                paint.to_s => [],
+              })
+            end
+          end
+        end
+
+        context 'not direct only' do
+          it 'raises ArgumentError' do
+            expect { priv_pm.accessible_objects_for_operations(user_1, [create, paint]) }
+              .to raise_error(ArgumentError)
           end
         end
       end
