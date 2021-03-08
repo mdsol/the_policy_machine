@@ -293,6 +293,7 @@ describe 'ActiveRecord' do
           before { priv_pm.add_association(color_1, creator, object_7) }
 
           it 'only considers associations that go directly to objects' do
+            binding.pry
             expect(priv_pm.accessible_objects(
                 user_1,
                 create,

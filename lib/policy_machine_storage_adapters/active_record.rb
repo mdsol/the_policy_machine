@@ -851,12 +851,47 @@ module PolicyMachineStorageAdapter
     end
 
     def objects_for_user_or_attribute_and_operations(user_or_attribute, operations, options)
+      unless options[:direct_only]
+        raise ArgumentError, 'Functionality for indirect objects is not yet implemented!'
+      end
+
       associations = associations_for_user_or_attribute(user_or_attribute, options)
-      operations_to_set_ids = PolicyElement.operation_sets_containing(
-        associations.pluck(&:operation_set_id), operations
+      opset_ids_to_objattr_ids = associations.pluck(:operation_set_id, :object_attribute_id).to_h
+
+      # {
+      #   'operation1' => [123],
+      #   'operation2' => [123, 789],
+      #   'operation3' => [789],
+      # }
+      operations_to_filtered_opset_ids = PolicyElement.filtered_operation_set_ids_by_operation(
+        opset_ids_to_objattr_ids.keys,
+        operations
       )
-      filtered_associations = associations.where(operation_set_id: operations_to_set_ids.values.reduce(&:+).uniq)
-      # to be continued
+
+      # {
+      #   'operation1' => [objattr_id_1],
+      #   'operation2' => [objattr_id_2],
+      #   'operation3' => [objattr_id_3],
+      # }
+      operations_to_objattr_ids = operations_to_filtered_opset_ids.transform_values do |opset_ids|
+        opset_ids.map { |opset_id| opset_ids_to_objattr_ids[opset_id] }.compact.uniq
+      end
+
+      objects = PolicyElement.where(
+        id: operations_to_objattr_ids.values.reduce(:+).uniq,
+        type: class_for_type('object').name
+      )
+
+      objects_by_id = objects.map { |obj| [obj.id, obj] }.to_h
+
+      # {
+      #   'operation1' => [obj1],
+      #   'operation2' => [obj2],
+      #   'operation3' => [obj3],
+      # }
+      operations_to_objattr_ids.transform_values do |objattr_ids|
+        objattr_ids.map { |objattr_id| objects_by_id[objattr_id] }.compact
+      end
     end
 
     # Gets the associations related to the given user or attribute or its descendants
@@ -885,7 +920,7 @@ module PolicyMachineStorageAdapter
       inclusion = options[:includes]
       scopes.map! { |s| build_inclusion_scope(s, options[:key], inclusion) } if inclusion
 
-      scopes.reduce(&:|).to_a
+      scopes.reduce(:|).to_a
     end
 
     def build_inclusion_scope(scope, key, value)

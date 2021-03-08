@@ -5,8 +5,8 @@ module PolicyMachineStorageAdapter
     class PolicyElement
 
       # Given a list of operation set ids and a list of operations
-      # Returns a map of operations to the operation set ids that contain them
-      def self.operation_sets_containing(operation_set_ids, operations)
+      # Returns a map of operations to the given operation set ids that contain them
+      def self.filtered_operation_set_ids_by_operation(operation_set_ids, operations)
         query = <<~SQL
           WITH RECURSIVE accessible_operations AS (
             (
@@ -61,8 +61,14 @@ module PolicyMachineStorageAdapter
         #
         result = connection.execute(sanitized_query)
 
-        result.to_a.reduce(Hash.new { |h, k| h[k] = [] }) do |acc, item|
-          acc[item['unique_identifier']] << item['operation_set_id']
+        # return a hash like:
+        # {
+        #   'operation1' => [123],
+        #   'operation2' => [123, 789],
+        #   'operation3' => [789],
+        # }
+        result.to_a.reduce(Hash.new { |h, k| h[k] = [] }) do |acc, row|
+          acc[row['unique_identifier']] << row['operation_set_id']
           acc
         end
       end
