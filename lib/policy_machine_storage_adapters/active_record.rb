@@ -861,6 +861,8 @@ module PolicyMachineStorageAdapter
       return {} if operations.empty?
       associations = associations_for_user_or_attribute(user_or_attribute, options)
 
+      # the operation set IDs and the object attribute IDs they connect to
+      # from the user_or_attribute's associations
       opset_ids_to_objattr_ids = associations.pluck(
         :operation_set_id,
         :object_attribute_id
@@ -872,13 +874,15 @@ module PolicyMachineStorageAdapter
       # convert to operation names if operation instances given
       operations = operations.map { |o| operation_identifier(o) }
 
+      # operation names to list of operation set IDs (from UA's associations) that contain them
       operations_to_filtered_opset_ids = PolicyElement.filtered_operation_set_ids_by_operation(
-        opset_ids_to_objattr_ids.keys,
+        opset_ids_to_objattr_ids.keys, # operation set IDs from UA's associations
         operations
       )
 
+      # replace lists operation set IDs with lists of object attribute IDs
       operations_to_objattr_ids = operations_to_filtered_opset_ids.transform_values do |opset_ids|
-        opset_ids.map { |opset_id| opset_ids_to_objattr_ids[opset_id] || [] }.flatten.uniq
+        opset_ids.map { |opset_id| opset_ids_to_objattr_ids[opset_id] || [] }.reduce(:|)
       end
 
       objects = PolicyElement.where(
@@ -887,6 +891,7 @@ module PolicyMachineStorageAdapter
       )
       objects_by_id = objects.map { |obj| [obj.id, obj] }.to_h
 
+      # replace lists of object attribute IDs with lists of object instances
       operations_to_objattr_ids.transform_values do |objattr_ids|
         objattr_ids.map { |objattr_id| objects_by_id[objattr_id] }.compact
       end

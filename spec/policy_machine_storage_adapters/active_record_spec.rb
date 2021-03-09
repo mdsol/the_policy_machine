@@ -319,7 +319,7 @@ describe 'ActiveRecord' do
               priv_pm.add_association(color_2, creator, object_7)
             end
 
-            it 'returns objects accessible via multiple operations' do
+            it 'returns objects accessible via each of multiple given operations' do
               result = priv_pm.accessible_objects_for_operations(
                 user_1,
                 [create, paint],
@@ -335,18 +335,21 @@ describe 'ActiveRecord' do
               expect(result[paint.to_s]).to contain_exactly(object_6.stored_pe, object_7.stored_pe)
             end
 
-            it 'works with filters' do
-              filters = { user_attributes: { color: color_1.color } }
-              result = priv_pm.accessible_objects_for_operations(
-                user_1,
-                [create, paint],
-                filters: filters,
-                direct_only: true
-              )
-              expect(result).to eq({
-                create.to_s => [object_6.stored_pe],
-                paint.to_s => [object_6.stored_pe],
-              })
+            context 'filters' do
+              let(:filters) { { user_attributes: { color: color_1.color } } }
+
+              it 'they work' do
+                result = priv_pm.accessible_objects_for_operations(
+                  user_1,
+                  [create, paint],
+                  filters: filters,
+                  direct_only: true
+                )
+                expect(result).to eq({
+                  create.to_s => [object_6.stored_pe],
+                  paint.to_s => [object_6.stored_pe],
+                })
+              end
             end
 
             context 'prohibitions' do
@@ -376,7 +379,7 @@ describe 'ActiveRecord' do
           end
 
           context 'when there are no directly accessible objects' do
-            it 'returns empty objects for each operation' do
+            it 'returns empty objects list for each operation' do
               result = priv_pm.accessible_objects_for_operations(
                 user_1,
                 [create, paint],
