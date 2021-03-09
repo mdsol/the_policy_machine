@@ -1,5 +1,6 @@
-dist: trusty
+dist: xenial
 language: ruby
+cache: bundler
 
 env:
   global:
@@ -31,6 +32,8 @@ before_install:
   - sudo service postgresql restart 11
   - sudo psql -c 'CREATE ROLE travis SUPERUSER LOGIN CREATEDB;' -U postgres
 
-script:
+before_script:
   - bundle exec rake pm:test:prepare
+
+script:
   - bundle exec rspec
