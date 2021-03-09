@@ -33,7 +33,18 @@ module PolicyMachineStorageAdapter
     end
 
     def self.load_db_adapter!
-      require_relative("active_record/#{PolicyElement.configurations[Rails.env]['adapter']}")
+      @_config ||= begin
+        ar_configs = PolicyElement.configurations
+        if ar_configs.respond_to?(:configs_for) # ActiveRecord 6.0+
+          ar_configs.configs_for({
+            env_name: Rails.env,
+            spec_name: 'primary',
+          }).config
+        else
+          ar_configs[Rails.env]
+        end
+      end
+      require_relative("active_record/#{@_config['adapter']}")
     end
 
     def self.buffering?
