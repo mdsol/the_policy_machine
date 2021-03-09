@@ -24,7 +24,7 @@ Gem::Specification.new do |s|
   # Only required for mysql
   s.add_dependency('mysql2')
   # Only required for postgres
-  s.add_dependency('pg', '~> 0.20')
+  s.add_dependency('pg')
   s.add_dependency('activerecord-hierarchical_query', '~> 0.0')
 
   s.add_development_dependency('rspec')
