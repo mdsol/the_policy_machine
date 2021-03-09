@@ -33,18 +33,32 @@ module PolicyMachineStorageAdapter
     end
 
     def self.load_db_adapter!
-      @_config ||= begin
+      require_relative("active_record/#{db_config['adapter']}")
+    end
+
+    def self.db_config
+      @_db_config ||= begin
         ar_configs = PolicyElement.configurations
-        if ar_configs.respond_to?(:configs_for) # ActiveRecord 6.0+
-          ar_configs.configs_for({
-            env_name: Rails.env,
-            spec_name: 'primary',
-          }).config
+
+         # ActiveRecord >= 6.0
+        if ar_configs.respond_to?(:configs_for)
+
+          # ActiveRecord >= 6.1
+          # 6.1 starts emitting a warning that "spec_name" kwarg will be renamed to "name" in 6.2
+          begin
+            ar_configs.configs_for(env_name: Rails.env, name: 'primary').config
+
+          # ActiveRecord == 6.0
+          # the kwarg is called "spec_name"
+          rescue ArgumentError
+            ar_configs.configs_for(env_name: Rails.env, spec_name: 'primary').config
+          end
+
+        # ActiveRecord < 6.0
         else
           ar_configs[Rails.env]
         end
       end
-      require_relative("active_record/#{@_config['adapter']}")
     end
 
     def self.buffering?
