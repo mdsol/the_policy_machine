@@ -325,10 +325,14 @@ describe 'ActiveRecord' do
                 [create, paint],
                 direct_only: true
               )
-              expect(result).to eq({
-                create.to_s => [object_6.stored_pe, object_7.stored_pe],
-                paint.to_s => [object_6.stored_pe, object_7.stored_pe],
-              })
+              # expected:
+              # {
+              #   create.to_s => [object_6.stored_pe, object_7.stored_pe],
+              #   paint.to_s => [object_6.stored_pe, object_7.stored_pe],
+              # }
+              expect(result.keys).to contain_exactly(create.to_s, paint.to_s)
+              expect(result[create.to_s]).to contain_exactly(object_6.stored_pe, object_7.stored_pe)
+              expect(result[paint.to_s]).to contain_exactly(object_6.stored_pe, object_7.stored_pe)
             end
 
             it 'works with filters' do
@@ -359,10 +363,14 @@ describe 'ActiveRecord' do
                   [create, paint],
                   direct_only: true
                 )
-                expect(result).to eq({
-                  create.to_s => [object_7.stored_pe],
-                  paint.to_s => [object_6.stored_pe, object_7.stored_pe],
-                })
+                # expected:
+                # {
+                #   create.to_s => [object_7.stored_pe],
+                #   paint.to_s => [object_6.stored_pe, object_7.stored_pe],
+                # }
+                expect(result.keys).to contain_exactly(create.to_s, paint.to_s)
+                expect(result[create.to_s]).to contain_exactly(object_7.stored_pe)
+                expect(result[paint.to_s]).to contain_exactly(object_6.stored_pe, object_7.stored_pe)
               end
             end
           end
