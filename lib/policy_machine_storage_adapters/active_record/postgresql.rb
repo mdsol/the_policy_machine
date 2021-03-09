@@ -1,5 +1,3 @@
-require 'active_record/hierarchical_query' # via gem activerecord-hierarchical_query
-
 module PolicyMachineStorageAdapter
   class ActiveRecord
     class PolicyElement

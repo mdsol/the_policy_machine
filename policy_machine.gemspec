@@ -25,7 +25,6 @@ Gem::Specification.new do |s|
   s.add_dependency('mysql2')
   # Only required for postgres
   s.add_dependency('pg')
-  s.add_dependency('activerecord-hierarchical_query', '~> 0.0')
 
   s.add_development_dependency('rspec')
   s.add_development_dependency('simplecov', '~> 0.7.1')
