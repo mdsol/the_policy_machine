@@ -20,7 +20,7 @@ Gem::Specification.new do |s|
   s.add_dependency('listen')
 
   # Only required in ActiveRecord mode
-  s.add_dependency('activerecord-import', '~> 0.12')
+  s.add_dependency('activerecord-import', '~> 1.0')
   # Only required for mysql
   s.add_dependency('mysql2')
   # Only required for postgres
