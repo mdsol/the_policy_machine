@@ -344,6 +344,27 @@ describe 'ActiveRecord' do
                 paint.to_s => [object_6.stored_pe],
               })
             end
+
+            context 'prohibitions' do
+              let(:cant_create) { priv_pm.create_operation_set('cant_create') }
+
+              before do
+                priv_pm.add_assignment(cant_create, create.prohibition)
+                priv_pm.add_association(color_2, cant_create, object_6)
+              end
+
+              it 'does not return objects with prohibitions' do
+                result = priv_pm.accessible_objects_for_operations(
+                  user_1,
+                  [create, paint],
+                  direct_only: true
+                )
+                expect(result).to eq({
+                  create.to_s => [object_7.stored_pe],
+                  paint.to_s => [object_6.stored_pe, object_7.stored_pe],
+                })
+              end
+            end
           end
 
           context 'when there are no directly accessible objects' do

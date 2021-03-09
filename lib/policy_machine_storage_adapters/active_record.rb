@@ -710,7 +710,7 @@ module PolicyMachineStorageAdapter
     # Returns true if the user has the operation on the object
     def is_privilege?(user_or_attribute, operation, object_or_attribute)
       policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
-      operation_id = operation.try(:unique_identifier) || operation.to_s
+      operation_id = operation_identifier(operation)
 
       if policy_classes_containing_object.size < 2
         !accessible_operations(user_or_attribute, object_or_attribute, operation_id).empty?
@@ -726,7 +726,7 @@ module PolicyMachineStorageAdapter
     # can be derived via a user attribute that passes the filter
     def is_filtered_privilege?(user_or_attribute, operation, object_or_attribute, filters: {}, options: {})
       policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
-      operation_id = operation.try(:unique_identifier) || operation.to_s
+      operation_id = operation_identifier(operation)
 
       if policy_classes_containing_object.size < 2
         !accessible_operations(user_or_attribute, object_or_attribute, operation_id, filters: filters).empty?
@@ -784,7 +784,6 @@ module PolicyMachineStorageAdapter
         raise ArgumentError, 'Functionality for indirect objects is not yet implemented!'
       end
 
-      operations = operations.map(&:to_s) # convert to operation names if operation instances given
       permitted_map = objects_for_user_or_attribute_and_operations(user_or_attribute, operations, options)
 
       return permitted_map if options[:ignore_prohibitions]
@@ -792,11 +791,11 @@ module PolicyMachineStorageAdapter
       prohibitted_map = objects_for_user_or_attribute_and_operations(
         user_or_attribute,
         prohibitions_for(operations),
-        options
+        options.except(:filters)
       )
 
       permitted_map.keys.each do |operation|
-        prohibited_objects = prohibitted_map[operation] || []
+        prohibited_objects = prohibitted_map[prohibition_id(operation)] || []
         permitted_map[operation] -= prohibited_objects
       end
 
@@ -810,7 +809,7 @@ module PolicyMachineStorageAdapter
       # If the root_object is a generic PM::Object, convert it the appropriate storage adapter Object
       root_object = root_object.try(:stored_pe) || root_object
       root_object_id = root_object.id
-      operation = operation.try(:unique_identifier) || operation.to_s
+      operation = operation_identifier(operation)
 
       unless associations_with_operation = options[:associations_with_operation]
         associations = associations_for_user_or_attribute(user_or_attribute, options.except(:associations_with_operation))
@@ -840,7 +839,7 @@ module PolicyMachineStorageAdapter
 
     # Filters a list of associations to those related to a given operation
     def associations_filtered_by_operation(associations, operation)
-      operation_id = operation.try(:unique_identifier) || operation.to_s
+      operation_id = operation_identifier(operation)
 
       if associations.present?
         PolicyElementAssociation.with_accessible_operation(associations, operation_id)
@@ -869,6 +868,9 @@ module PolicyMachineStorageAdapter
         acc[opset_id] << objattr_id
         acc
       end
+
+      # convert to operation names if operation instances given
+      operations = operations.map { |o| operation_identifier(o) }
 
       operations_to_filtered_opset_ids = PolicyElement.filtered_operation_set_ids_by_operation(
         opset_ids_to_objattr_ids.keys,
@@ -1077,9 +1079,17 @@ module PolicyMachineStorageAdapter
       false
     end
 
+    # takes an operation that can be any of:
+    #   - plain string identifier
+    #   - a PolicyMachineStorageAdapter::ActiveRecord::Operation instance
+    #   - a PM::Operation instance
+    # and returns its identifier (aka name)
+    def operation_identifier(operation)
+      operation.try(:unique_identifier) || operation.to_s
+    end
+
     def prohibition_id(operation)
-      operation_id = operation.try(:unique_identifier) || operation.to_s
-      "~#{operation_id}"
+      "~#{operation_identifier(operation)}"
     end
 
     def prohibition_for(operation)
