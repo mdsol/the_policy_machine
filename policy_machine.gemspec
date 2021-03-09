@@ -21,11 +21,11 @@ Gem::Specification.new do |s|
 
   # Only required in ActiveRecord mode
   s.add_dependency('activerecord-import', '~> 0.12')
-    # Only required for mysql
-    s.add_dependency('mysql2')
-    # Only required for postgres
-    s.add_dependency('pg', '>= 0.20', '< 2.0')
-    s.add_dependency('activerecord-hierarchical_query', '~> 0.0')
+  # Only required for mysql
+  s.add_dependency('mysql2')
+  # Only required for postgres
+  s.add_dependency('pg', '~> 0.20')
+  s.add_dependency('activerecord-hierarchical_query', '~> 0.0')
 
   s.add_development_dependency('rspec')
   s.add_development_dependency('simplecov', '~> 0.7.1')
@@ -35,5 +35,4 @@ Gem::Specification.new do |s|
   s.add_development_dependency('neography', '~> 1.1')
   s.add_development_dependency('database_cleaner')
   s.add_development_dependency('rails', '~> 6.0')
-
 end
