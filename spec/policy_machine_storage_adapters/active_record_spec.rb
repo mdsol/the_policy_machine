@@ -335,6 +335,22 @@ describe 'ActiveRecord' do
               expect(result[paint.to_s]).to contain_exactly(object_6.stored_pe, object_7.stored_pe)
             end
 
+            it 'can handle string operations' do
+              result = priv_pm.accessible_objects_for_operations(
+                user_1,
+                ['create', 'paint'],
+                direct_only: true
+              )
+              # expected:
+              # {
+              #   create.to_s => [object_6.stored_pe, object_7.stored_pe],
+              #   paint.to_s => [object_6.stored_pe, object_7.stored_pe],
+              # }
+              expect(result.keys).to contain_exactly(create.to_s, paint.to_s)
+              expect(result['create']).to contain_exactly(object_6.stored_pe, object_7.stored_pe)
+              expect(result['paint']).to contain_exactly(object_6.stored_pe, object_7.stored_pe)
+            end
+
             context 'filters' do
               let(:filters) { { user_attributes: { color: color_1.color } } }
 
