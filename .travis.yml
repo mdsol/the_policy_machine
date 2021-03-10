@@ -6,9 +6,6 @@ addons:
   postgresql: "11"
   apt:
     packages:
-    - libcurl3
-    - libcurl3-gnutls
-    - libcurl4-openssl-dev
     - postgresql-11
     - postgresql-client-11
 
