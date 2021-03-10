@@ -12,6 +12,14 @@ addons:
     - postgresql-11
     - postgresql-client-11
 
+env:
+  global:
+  - PGPORT=5433
+  - PGUSER=travis
+
+services:
+  - postgresql
+
 bundler_args: --jobs=1 --retry=3
 
 before_install:
