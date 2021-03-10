@@ -65,9 +65,8 @@ module PolicyMachineStorageAdapter
         #   'operation2' => [123, 789],
         #   'operation3' => [789],
         # }
-        result.to_a.reduce(Hash.new { |h, k| h[k] = [] }) do |acc, row|
+        result.to_a.each_with_object(Hash.new { |h, k| h[k] = [] }) do |row, acc|
           acc[row['unique_identifier']] << row['operation_set_id']
-          acc
         end
       end
     end

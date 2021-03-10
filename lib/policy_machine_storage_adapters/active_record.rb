@@ -891,9 +891,8 @@ module PolicyMachineStorageAdapter
       opset_ids_to_objattr_ids = associations.pluck(
         :operation_set_id,
         :object_attribute_id
-      ).reduce(Hash.new { |h, k| h[k] = [] }) do |acc, (opset_id, objattr_id)|
+      ).each_with_object(Hash.new { |h, k| h[k] = [] }) do |(opset_id, objattr_id), acc|
         acc[opset_id] << objattr_id
-        acc
       end
 
       # convert to operation names if operation instances given
