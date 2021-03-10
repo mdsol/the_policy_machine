@@ -809,13 +809,21 @@ module PolicyMachineStorageAdapter
         raise ArgumentError, 'Functionality for indirect objects is not yet implemented!'
       end
 
-      permitted_map = objects_for_user_or_attribute_and_operations(user_or_attribute, operations, options)
+      # convert to operation names if operation instances given
+      operations = operations.map { |o| operation_identifier(o) }
+
+      # default objects for each operation to empty list
+      permitted_map = operations.map { |o| [o, []] }.to_h
+      permitted_map.merge!(
+        objects_for_user_or_attribute_and_operations(user_or_attribute, operations, options)
+      )
 
       return permitted_map if options[:ignore_prohibitions]
 
+      prohibitions = prohibitions_for(operations).map { |p| operation_identifier(p) }
       prohibitted_map = objects_for_user_or_attribute_and_operations(
         user_or_attribute,
-        prohibitions_for(operations),
+        prohibitions,
         options.except(:filters)
       )
 
@@ -894,9 +902,6 @@ module PolicyMachineStorageAdapter
       ).each_with_object(Hash.new { |h, k| h[k] = [] }) do |(opset_id, objattr_id), acc|
         acc[opset_id] << objattr_id
       end
-
-      # convert to operation names if operation instances given
-      operations = operations.map { |o| operation_identifier(o) }
 
       # operation names to list of operation set IDs (from UA's associations) that contain them
       operations_to_filtered_opset_ids = PolicyElement.filtered_operation_set_ids_by_operation(
@@ -1117,6 +1122,8 @@ module PolicyMachineStorageAdapter
       operation.try(:unique_identifier) || operation.to_s
     end
 
+    # gives the theoretical prohibition identifier (name) for a given operation
+    # NOTE: does not confirm that this prohibition exists like the funcs below
     def prohibition_id(operation)
       "~#{operation_identifier(operation)}"
     end
