@@ -327,8 +327,8 @@ describe 'ActiveRecord' do
               )
               # expected:
               # {
-              #   create.to_s => [object_6.stored_pe, object_7.stored_pe],
-              #   paint.to_s => [object_6.stored_pe, object_7.stored_pe],
+              #   'create' => [object_6.stored_pe, object_7.stored_pe],
+              #   'paint' => [object_6.stored_pe, object_7.stored_pe],
               # }
               expect(result.keys).to contain_exactly(create.to_s, paint.to_s)
               expect(result[create.to_s]).to contain_exactly(object_6.stored_pe, object_7.stored_pe)
@@ -343,12 +343,28 @@ describe 'ActiveRecord' do
               )
               # expected:
               # {
-              #   create.to_s => [object_6.stored_pe, object_7.stored_pe],
-              #   paint.to_s => [object_6.stored_pe, object_7.stored_pe],
+              #   'create' => [object_6.stored_pe, object_7.stored_pe],
+              #   'paint' => [object_6.stored_pe, object_7.stored_pe],
               # }
-              expect(result.keys).to contain_exactly(create.to_s, paint.to_s)
+              expect(result.keys).to contain_exactly('create', 'paint')
               expect(result['create']).to contain_exactly(object_6.stored_pe, object_7.stored_pe)
               expect(result['paint']).to contain_exactly(object_6.stored_pe, object_7.stored_pe)
+            end
+
+            it 'returns an empty list of objects for non-existent operations' do
+              result = priv_pm.accessible_objects_for_operations(
+                user_1,
+                [create, 'zagnut'],
+                direct_only: true
+              )
+              # expected:
+              # {
+              #   'create' => [object_6.stored_pe, object_7.stored_pe],
+              #   'zagnut' => [],
+              # }
+              expect(result.keys).to contain_exactly(create.to_s, 'zagnut')
+              expect(result[create.to_s]).to contain_exactly(object_6.stored_pe, object_7.stored_pe)
+              expect(result['zagnut']).to eq([])
             end
 
             context 'filters' do
