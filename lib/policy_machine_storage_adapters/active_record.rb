@@ -810,29 +810,34 @@ module PolicyMachineStorageAdapter
       end
 
       # convert to operation names if operation instances given
-      operations = operations.map { |o| operation_identifier(o) }
+      operation_names = operations.map { |o| operation_identifier(o) }
 
       # default objects for each operation to empty list
-      permitted_map = operations.map { |o| [o, []] }.to_h
-      permitted_map.merge!(
-        objects_for_user_or_attribute_and_operations(user_or_attribute, operations, options)
-      )
+      accessible_map = operation_names.map { |o| [o, []] }.to_h
 
-      return permitted_map if options[:ignore_prohibitions]
-
-      prohibitions = prohibitions_for(operations).map { |p| operation_identifier(p) }
-      prohibited_map = objects_for_user_or_attribute_and_operations(
-        user_or_attribute,
-        prohibitions,
-        options.except(:filters)
-      )
-
-      permitted_map.keys.each do |operation|
-        prohibited_objects = prohibited_map[prohibition_identifier(operation)] || []
-        permitted_map[operation] -= prohibited_objects
+      if options[:ignore_prohibitions]
+        accessible_map.merge!(
+          objects_for_user_or_attribute_and_operations(user_or_attribute, operation_names, options)
+        )
+        return accessible_map
       end
 
-      permitted_map
+      # using `prohibitions_for` rather than just mapping to `prohibition_identifier`
+      # because we want to confirm that these prohibitions exist in the db
+      prohibition_names = prohibitions_for(operation_names).map { |p| operation_identifier(p) }
+      op_and_prohib_names = operation_names + prohibition_names
+      accessible_map.merge!(
+        objects_for_user_or_attribute_and_operations(user_or_attribute, op_and_prohib_names, options)
+      )
+
+      operation_names.each do |operation_name|
+        prohibition_name = prohibition_identifier(operation_name)
+        prohibited_objects = accessible_map[prohibition_name] || []
+        accessible_map[operation_name] -= prohibited_objects
+        accessible_map.delete(prohibition_name)
+      end
+
+      accessible_map
     end
 
     # Version of accessible_objects which only returns objects that are ancestors of a specified
