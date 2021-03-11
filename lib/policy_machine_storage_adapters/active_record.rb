@@ -821,14 +821,14 @@ module PolicyMachineStorageAdapter
       return permitted_map if options[:ignore_prohibitions]
 
       prohibitions = prohibitions_for(operations).map { |p| operation_identifier(p) }
-      prohibitted_map = objects_for_user_or_attribute_and_operations(
+      prohibited_map = objects_for_user_or_attribute_and_operations(
         user_or_attribute,
         prohibitions,
         options.except(:filters)
       )
 
       permitted_map.keys.each do |operation|
-        prohibited_objects = prohibitted_map[prohibition_id(operation)] || []
+        prohibited_objects = prohibited_map[prohibition_identifier(operation)] || []
         permitted_map[operation] -= prohibited_objects
       end
 
@@ -1124,20 +1124,20 @@ module PolicyMachineStorageAdapter
 
     # gives the theoretical prohibition identifier (name) for a given operation
     # NOTE: does not confirm that this prohibition exists like the funcs below
-    def prohibition_id(operation)
+    def prohibition_identifier(operation)
       "~#{operation_identifier(operation)}"
     end
 
     def prohibition_for(operation)
       PolicyMachineStorageAdapter::ActiveRecord::Operation.find_by(
-        unique_identifier: prohibition_id(operation)
+        unique_identifier: prohibition_identifier(operation)
       )
     end
 
     def prohibitions_for(operations)
-      prohibition_ids = operations.map { |o| prohibition_id(o) }
+      prohibition_identifiers = operations.map { |o| prohibition_identifier(o) }
       PolicyMachineStorageAdapter::ActiveRecord::Operation.where(
-        unique_identifier: prohibition_ids
+        unique_identifier: prohibition_identifiers
       )
     end
 
