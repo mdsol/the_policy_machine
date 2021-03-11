@@ -292,12 +292,12 @@ class PolicyMachine
     end
   end
 
-  def accessible_objects_for_operations(user_or_attribute, operation, options = {})
+  def accessible_objects_for_operations(user_or_attribute, operations, options = {})
     unless policy_machine_storage_adapter.respond_to?(:accessible_objects_for_operations)
       adapter = policy_machine_storage_adapter.class
       raise NoMethodError, "accessible_objects_for_operations is not implemented for storage adapter #{adapter}"
     end
-    policy_machine_storage_adapter.accessible_objects_for_operations(user_or_attribute, operation, options)
+    policy_machine_storage_adapter.accessible_objects_for_operations(user_or_attribute, operations, options)
   end
 
   def accessible_ancestor_objects(user_or_attribute, operation, root_object, options = {})
