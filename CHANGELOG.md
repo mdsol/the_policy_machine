@@ -4,6 +4,7 @@
 * Added `PolicyMachine#accessible_objects_for_operations` for finding a map of accessible
   objects per operation for multiple operations. Only implemented in `ActiveRecord` and
   only for directly accessible objects (option `direct_only` = `true`).
+* Moved database adapter gems `pg` and `mysql2` to development dependencies rather than full.
 
 ## 3.1.0
 * Added `direct_only` option to `PolicyMachineStorageAdapter::ActiveRecord::accessible_objects` to fetch only directly assigned objects.
