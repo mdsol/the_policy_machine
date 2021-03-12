@@ -1,40 +1,29 @@
-dist: trusty
-
+dist: xenial
 language: ruby
+cache: bundler
 
-rvm:
-  - 2.5.1
+addons:
+  postgresql: "11"
+  apt:
+    packages:
+    - postgresql-11
+    - postgresql-client-11
 
 env:
   global:
-    - DB=postgresql
-    - RAILS_ENV=test
-    - CI_NODE_TOTAL=1
-    - PGHOST=localhost
-    - PGPORT=5432
-  matrix:
-    - CI_NODE_INDEX=0
+  - PGPORT=5433
+  - PGUSER=travis
 
-before_install:
-  - gem install bundler -v 2.1.2
-
-addons:
-  apt:
-    packages:
-    - libcurl3
-    - libcurl3-gnutls
-    - libcurl4-openssl-dev
+services:
+  - postgresql
 
 bundler_args: --jobs=1 --retry=3
 
 before_install:
-  - sudo apt-get update
-  - sudo apt-get --yes remove postgresql\*
-  - sudo apt-get install -y postgresql-11 postgresql-client-11
-  - sudo cp /etc/postgresql/{9.6,11}/main/pg_hba.conf
-  - sudo service postgresql restart 11
-  - sudo psql -c 'CREATE ROLE travis SUPERUSER LOGIN CREATEDB;' -U postgres
+  - gem install bundler -v 2.1.2
+
+before_script:
+  - bundle exec rake pm:test:prepare
 
 script:
-  - bundle exec rake pm:test:prepare
   - bundle exec rspec

@@ -33,7 +33,32 @@ module PolicyMachineStorageAdapter
     end
 
     def self.load_db_adapter!
-      require_relative("active_record/#{PolicyElement.configurations[Rails.env]['adapter']}")
+      require_relative("active_record/#{db_config['adapter']}")
+    end
+
+    def self.db_config
+      @_db_config ||= begin
+        ar_configs = PolicyElement.configurations
+
+         # ActiveRecord >= 6.0
+        if ar_configs.respond_to?(:configs_for)
+
+          # ActiveRecord >= 6.1
+          # 6.1 starts emitting a warning that "spec_name" kwarg will be renamed to "name" in 6.2
+          begin
+            ar_configs.configs_for(env_name: Rails.env, name: 'primary').config
+
+          # ActiveRecord == 6.0
+          # the kwarg is called "spec_name"
+          rescue ArgumentError
+            ar_configs.configs_for(env_name: Rails.env, spec_name: 'primary').config
+          end
+
+        # ActiveRecord < 6.0
+        else
+          ar_configs[Rails.env]
+        end
+      end
     end
 
     def self.buffering?
@@ -710,7 +735,7 @@ module PolicyMachineStorageAdapter
     # Returns true if the user has the operation on the object
     def is_privilege?(user_or_attribute, operation, object_or_attribute)
       policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
-      operation_id = operation.try(:unique_identifier) || operation.to_s
+      operation_id = operation_identifier(operation)
 
       if policy_classes_containing_object.size < 2
         !accessible_operations(user_or_attribute, object_or_attribute, operation_id).empty?
@@ -726,7 +751,7 @@ module PolicyMachineStorageAdapter
     # can be derived via a user attribute that passes the filter
     def is_filtered_privilege?(user_or_attribute, operation, object_or_attribute, filters: {}, options: {})
       policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
-      operation_id = operation.try(:unique_identifier) || operation.to_s
+      operation_id = operation_identifier(operation)
 
       if policy_classes_containing_object.size < 2
         !accessible_operations(user_or_attribute, object_or_attribute, operation_id, filters: filters).empty?
@@ -778,6 +803,43 @@ module PolicyMachineStorageAdapter
       end
     end
 
+    # Returns a map of operation names to the user_or_attribute's accessible objects via each operation
+    def accessible_objects_for_operations(user_or_attribute, operations, options = {})
+      unless options[:direct_only]
+        raise ArgumentError, 'Functionality for indirect objects is not yet implemented!'
+      end
+
+      # convert to operation names if operation instances given
+      operation_names = operations.map { |o| operation_identifier(o) }
+
+      # default objects for each operation to empty list
+      accessible_map = operation_names.map { |o| [o, []] }.to_h
+
+      if options[:ignore_prohibitions]
+        accessible_map.merge!(
+          objects_for_user_or_attribute_and_operations(user_or_attribute, operation_names, options)
+        )
+        return accessible_map
+      end
+
+      # using `prohibitions_for` rather than just mapping to `prohibition_identifier`
+      # because we want to confirm that these prohibitions exist in the db
+      prohibition_names = prohibitions_for(operation_names).map { |p| operation_identifier(p) }
+      op_and_prohib_names = operation_names + prohibition_names
+      accessible_map.merge!(
+        objects_for_user_or_attribute_and_operations(user_or_attribute, op_and_prohib_names, options)
+      )
+
+      operation_names.each do |operation_name|
+        prohibition_name = prohibition_identifier(operation_name)
+        prohibited_objects = accessible_map[prohibition_name] || []
+        accessible_map[operation_name] -= prohibited_objects
+        accessible_map.delete(prohibition_name)
+      end
+
+      accessible_map
+    end
+
     # Version of accessible_objects which only returns objects that are ancestors of a specified
     # root object or the object itself. A set of policy element associations with the specified
     # operation may be optionally provided.
@@ -785,7 +847,7 @@ module PolicyMachineStorageAdapter
       # If the root_object is a generic PM::Object, convert it the appropriate storage adapter Object
       root_object = root_object.try(:stored_pe) || root_object
       root_object_id = root_object.id
-      operation = operation.try(:unique_identifier) || operation.to_s
+      operation = operation_identifier(operation)
 
       unless associations_with_operation = options[:associations_with_operation]
         associations = associations_for_user_or_attribute(user_or_attribute, options.except(:associations_with_operation))
@@ -815,7 +877,7 @@ module PolicyMachineStorageAdapter
 
     # Filters a list of associations to those related to a given operation
     def associations_filtered_by_operation(associations, operation)
-      operation_id = operation.try(:unique_identifier) || operation.to_s
+      operation_id = operation_identifier(operation)
 
       if associations.present?
         PolicyElementAssociation.with_accessible_operation(associations, operation_id)
@@ -831,6 +893,42 @@ module PolicyMachineStorageAdapter
       associations = associations_for_user_or_attribute(user_or_attribute, options)
       filtered_associations = associations_filtered_by_operation(associations, operation)
       build_accessible_object_scope(filtered_associations, options)
+    end
+
+    def objects_for_user_or_attribute_and_operations(user_or_attribute, operations, options)
+      return {} if operations.empty?
+      associations = associations_for_user_or_attribute(user_or_attribute, options)
+
+      # the operation set IDs and the object attribute IDs they connect to
+      # from the user_or_attribute's associations
+      opset_ids_to_objattr_ids = associations.pluck(
+        :operation_set_id,
+        :object_attribute_id
+      ).each_with_object(Hash.new { |h, k| h[k] = [] }) do |(opset_id, objattr_id), acc|
+        acc[opset_id] << objattr_id
+      end
+
+      # operation names to list of operation set IDs (from UA's associations) that contain them
+      operations_to_filtered_opset_ids = PolicyElement.filtered_operation_set_ids_by_operation(
+        opset_ids_to_objattr_ids.keys, # operation set IDs from UA's associations
+        operations
+      )
+
+      # replace lists operation set IDs with lists of object attribute IDs
+      operations_to_objattr_ids = operations_to_filtered_opset_ids.transform_values do |opset_ids|
+        opset_ids.map { |opset_id| opset_ids_to_objattr_ids[opset_id] || [] }.reduce(:|)
+      end
+
+      objects = PolicyElement.where(
+        id: operations_to_objattr_ids.values.reduce(:|),
+        type: class_for_type('object').name
+      )
+      objects_by_id = objects.map { |obj| [obj.id, obj] }.to_h
+
+      # replace lists of object attribute IDs with lists of object instances
+      operations_to_objattr_ids.transform_values do |objattr_ids|
+        objattr_ids.map { |objattr_id| objects_by_id[objattr_id] }.compact
+      end
     end
 
     # Gets the associations related to the given user or attribute or its descendants
@@ -859,7 +957,7 @@ module PolicyMachineStorageAdapter
       inclusion = options[:includes]
       scopes.map! { |s| build_inclusion_scope(s, options[:key], inclusion) } if inclusion
 
-      scopes.reduce(&:|).to_a
+      scopes.reduce(:|).to_a
     end
 
     def build_inclusion_scope(scope, key, value)
@@ -1020,9 +1118,32 @@ module PolicyMachineStorageAdapter
       false
     end
 
+    # takes an operation that can be any of:
+    #   - plain string identifier
+    #   - a PolicyMachineStorageAdapter::ActiveRecord::Operation instance
+    #   - a PM::Operation instance
+    # and returns its identifier (aka name)
+    def operation_identifier(operation)
+      operation.try(:unique_identifier) || operation.to_s
+    end
+
+    # gives the theoretical prohibition identifier (name) for a given operation
+    # NOTE: does not confirm that this prohibition exists like the funcs below
+    def prohibition_identifier(operation)
+      "~#{operation_identifier(operation)}"
+    end
+
     def prohibition_for(operation)
-      operation_id = operation.try(:unique_identifier) || operation.to_s
-      PolicyMachineStorageAdapter::ActiveRecord::Operation.find_by_unique_identifier("~#{operation_id}")
+      PolicyMachineStorageAdapter::ActiveRecord::Operation.find_by(
+        unique_identifier: prohibition_identifier(operation)
+      )
+    end
+
+    def prohibitions_for(operations)
+      prohibition_identifiers = operations.map { |o| prohibition_identifier(o) }
+      PolicyMachineStorageAdapter::ActiveRecord::Operation.where(
+        unique_identifier: prohibition_identifiers
+      )
     end
 
     def accessible_operations(user_or_attribute, object_or_attribute, operation_id = nil, filters: {})

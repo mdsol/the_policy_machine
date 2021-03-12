@@ -20,12 +20,11 @@ Gem::Specification.new do |s|
   s.add_dependency('listen')
 
   # Only required in ActiveRecord mode
-  s.add_dependency('activerecord-import', '~> 0.12')
-    # Only required for mysql
-    s.add_dependency('mysql2')
-    # Only required for postgres
-    s.add_dependency('pg', '< 1.0.0')
-    s.add_dependency('activerecord-hierarchical_query', '~> 0.0')
+  s.add_dependency('activerecord-import', '~> 1.0')
+
+  # projects using this gem should add the gem for whichever adapter they use
+  s.add_development_dependency('mysql2')
+  s.add_development_dependency('pg')
 
   s.add_development_dependency('rspec')
   s.add_development_dependency('simplecov', '~> 0.7.1')
@@ -35,5 +34,4 @@ Gem::Specification.new do |s|
   s.add_development_dependency('neography', '~> 1.1')
   s.add_development_dependency('database_cleaner')
   s.add_development_dependency('rails', '~> 6.0')
-
 end

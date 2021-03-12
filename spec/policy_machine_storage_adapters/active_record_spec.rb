@@ -311,6 +311,128 @@ describe 'ActiveRecord' do
         end
       end
 
+      describe 'accessible_objects_for_operations' do
+        context 'direct only' do
+          context 'when there are directly accessible objects' do
+            before do
+              priv_pm.add_association(color_1, creator, object_6)
+              priv_pm.add_association(color_2, creator, object_7)
+            end
+
+            it 'returns objects accessible via each of multiple given operations' do
+              result = priv_pm.accessible_objects_for_operations(
+                user_1,
+                [create, paint],
+                direct_only: true
+              )
+              # expected:
+              # {
+              #   'create' => [object_6.stored_pe, object_7.stored_pe],
+              #   'paint' => [object_6.stored_pe, object_7.stored_pe],
+              # }
+              expect(result.keys).to contain_exactly(create.to_s, paint.to_s)
+              expect(result[create.to_s]).to contain_exactly(object_6.stored_pe, object_7.stored_pe)
+              expect(result[paint.to_s]).to contain_exactly(object_6.stored_pe, object_7.stored_pe)
+            end
+
+            it 'can handle string operations' do
+              result = priv_pm.accessible_objects_for_operations(
+                user_1,
+                ['create', 'paint'],
+                direct_only: true
+              )
+              # expected:
+              # {
+              #   'create' => [object_6.stored_pe, object_7.stored_pe],
+              #   'paint' => [object_6.stored_pe, object_7.stored_pe],
+              # }
+              expect(result.keys).to contain_exactly('create', 'paint')
+              expect(result['create']).to contain_exactly(object_6.stored_pe, object_7.stored_pe)
+              expect(result['paint']).to contain_exactly(object_6.stored_pe, object_7.stored_pe)
+            end
+
+            it 'returns an empty list of objects for non-existent operations' do
+              result = priv_pm.accessible_objects_for_operations(
+                user_1,
+                [create, 'zagnut'],
+                direct_only: true
+              )
+              # expected:
+              # {
+              #   'create' => [object_6.stored_pe, object_7.stored_pe],
+              #   'zagnut' => [],
+              # }
+              expect(result.keys).to contain_exactly(create.to_s, 'zagnut')
+              expect(result[create.to_s]).to contain_exactly(object_6.stored_pe, object_7.stored_pe)
+              expect(result['zagnut']).to eq([])
+            end
+
+            context 'filters' do
+              let(:filters) { { user_attributes: { color: color_1.color } } }
+
+              it 'they work' do
+                result = priv_pm.accessible_objects_for_operations(
+                  user_1,
+                  [create, paint],
+                  filters: filters,
+                  direct_only: true
+                )
+                expect(result).to eq({
+                  create.to_s => [object_6.stored_pe],
+                  paint.to_s => [object_6.stored_pe],
+                })
+              end
+            end
+
+            context 'prohibitions' do
+              let(:cant_create) { priv_pm.create_operation_set('cant_create') }
+
+              before do
+                priv_pm.add_assignment(cant_create, create.prohibition)
+                priv_pm.add_association(color_2, cant_create, object_6)
+              end
+
+              it 'does not return objects with prohibitions' do
+                result = priv_pm.accessible_objects_for_operations(
+                  user_1,
+                  [create, paint],
+                  direct_only: true
+                )
+                # expected:
+                # {
+                #   create.to_s => [object_7.stored_pe],
+                #   paint.to_s => [object_6.stored_pe, object_7.stored_pe],
+                # }
+                expect(result.keys).to contain_exactly(create.to_s, paint.to_s)
+                expect(result[create.to_s]).to contain_exactly(object_7.stored_pe)
+                expect(result[paint.to_s]).to contain_exactly(object_6.stored_pe, object_7.stored_pe)
+              end
+            end
+          end
+
+          context 'when there are no directly accessible objects' do
+            it 'returns empty objects list for each operation' do
+              result = priv_pm.accessible_objects_for_operations(
+                user_1,
+                [create, paint],
+                direct_only: true
+              )
+              expect(result).to eq({
+                create.to_s => [],
+                paint.to_s => [],
+              })
+            end
+          end
+        end
+
+        context 'not direct only' do
+          it 'raises ArgumentError' do
+            expect { priv_pm.accessible_objects_for_operations(user_1, [create, paint]) }
+              .to raise_error(ArgumentError)
+          end
+        end
+      end
+
       describe 'accessible_ancestor_objects' do
         context 'when policy element associations are not provided as an argument' do
           it 'returns objects accessible via the filtered attribute on an object scope' do
