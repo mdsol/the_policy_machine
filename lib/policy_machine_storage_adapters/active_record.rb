@@ -822,7 +822,7 @@ module PolicyMachineStorageAdapter
       unless options[:ignore_prohibitions]
         prohibited_operation_names = Set.new(operation_names.select { |op| op.start_with?('~') })
 
-        operation_names.reject do |op|
+        operation_names.reject! do |op|
           op.start_with?('~') || prohibited_operation_names.include?(prohibition_identifier(op))
         end
       end
