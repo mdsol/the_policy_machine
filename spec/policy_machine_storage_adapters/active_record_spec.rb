@@ -311,6 +311,70 @@ describe 'ActiveRecord' do
         end
       end
 
+      describe 'accessible_operations_for_user_or_attribute_and_object' do
+        let(:color_4) { priv_pm.create_user_attribute('color_4', color: 'blue') }
+        let(:sketcher) { priv_pm.create_operation_set('sketcher') }
+        let(:sketch) { priv_pm.create_operation('sketch') }
+
+        before do
+          priv_pm.add_assignment(user_1, color_4)
+          priv_pm.add_assignment(sketcher, sketch)
+          priv_pm.add_association(color_4, sketcher, object_7)
+          priv_pm.add_association(color_3, painter, object_7)
+        end
+
+        it 'returns operations accessible to the given user and object' do
+          result = priv_pm.accessible_operations_for_user_or_attribute_and_object(
+            user_1,
+            [object_7.id],
+          )
+
+          expect(result).to contain_exactly(paint.to_s, sketch.to_s)
+        end
+
+        context 'prohibitions' do
+          let(:cant_paint) { priv_pm.create_operation_set('cant_paint') }
+
+          before do
+            priv_pm.add_assignment(cant_paint, paint.prohibition)
+            priv_pm.add_association(color_3, cant_paint, object_7)
+          end
+
+          it 'does not return prohibited operations' do
+            result = priv_pm.accessible_operations_for_user_or_attribute_and_object(
+              user_1,
+              [object_7.id],
+            )
+
+            expect(result).to contain_exactly(sketch.to_s)
+          end
+
+          it 'ignores prohibitions if ignore_prohibitions is set to true' do
+            result = priv_pm.accessible_operations_for_user_or_attribute_and_object(
+              user_1,
+              [object_7.id],
+              ignore_prohibitions: true
+            )
+
+            expect(result).to contain_exactly(paint.to_s, sketch.to_s)
+          end
+        end
+
+        context 'filters' do
+          let(:filters) { { user_attributes: { color: color_3.color } } }
+
+          it 'they work' do
+            result = priv_pm.accessible_operations_for_user_or_attribute_and_object(
+              user_1,
+              [object_7.id],
+              filters: filters
+            )
+
+          expect(result).to contain_exactly(paint.to_s)
+          end
+        end
+      end
+
       describe 'accessible_objects_for_operations' do
         context 'direct only' do
           context 'when there are directly accessible objects' do

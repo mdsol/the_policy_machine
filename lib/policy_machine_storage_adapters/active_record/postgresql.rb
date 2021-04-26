@@ -4,7 +4,7 @@ module PolicyMachineStorageAdapter
 
       # Given a list of operation set ids and a list of operations
       # Returns a map of operations to the given operation set ids that contain them
-      def self.filtered_operation_set_ids_by_operation(operation_set_ids, operations)
+      def self.filtered_operation_set_ids_by_operation(operation_set_ids, operations = [], map_by_operation: true, ignore_prohibitions: false)
         query = <<~SQL
           WITH RECURSIVE accessible_operations AS (
             (
@@ -31,14 +31,19 @@ module PolicyMachineStorageAdapter
           FROM accessible_operations
           JOIN policy_elements ops
             ON ops.id = accessible_operations.child_id
-          WHERE ops.unique_identifier IN (?)
         SQL
 
-        sanitized_query = sanitize_sql_for_assignment([
-          query,
-          operation_set_ids,
-          operations,
-        ])
+        # TODO: clean up?
+        query << " WHERE ops.unique_identifier IN ('#{operations.to_a.join("','")}')" unless operations.empty?
+
+        sanitized_query_params = [query, operation_set_ids]
+
+        if ignore_prohibitions && operations.empty?
+          query << " WHERE ops.unique_identifier NOT LIKE ?"
+          sanitized_query_params << '~%'
+        end
+
+        sanitized_query = sanitize_sql_for_assignment(sanitized_query_params)
 
         # gives pairs of (opset_id, operation) representing all operations contained by an operation set
         # accounts for any nested operation sets
@@ -65,8 +70,13 @@ module PolicyMachineStorageAdapter
         #   'operation2' => [123, 789],
         #   'operation3' => [789],
         # }
-        result.to_a.each_with_object(Hash.new { |h, k| h[k] = [] }) do |row, acc|
-          acc[row['unique_identifier']] << row['operation_set_id']
+
+        if map_by_operation
+          result.to_a.each_with_object(Hash.new { |h, k| h[k] = [] }) do |row, acc|
+            acc[row['unique_identifier']] << row['operation_set_id']
+          end
+        else
+          result
         end
       end
     end

@@ -803,6 +803,33 @@ module PolicyMachineStorageAdapter
       end
     end
 
+    def accessible_operations_for_user_or_attribute_and_object(user_or_attribute, object_attribute_ids, options)
+      return {} if object_attribute_ids.empty?
+
+      options.merge!(object_attribute_ids: object_attribute_ids)
+
+      # grab all associations associated with user and given objects
+      associations = associations_for_user_or_attribute(user_or_attribute, options)
+
+      opset_ids = associations.pluck(:operation_set_id)
+
+      operation_names = PolicyElement.filtered_operation_set_ids_by_operation(
+        opset_ids,
+        map_by_operation: false,
+        ignore_prohibitions: options[:ignore_prohibitions]
+      ).map { |o| o["unique_identifier"] }
+
+      unless options[:ignore_prohibitions]
+        prohibited_operation_names = Set.new(operation_names.select { |op| op.start_with?('~') })
+
+        operation_names.reject do |op|
+          op.start_with?('~') || prohibited_operation_names.include?(prohibition_identifier(op))
+        end
+      end
+
+      operation_names
+    end
+
     # Returns a map of operation names to the user_or_attribute's accessible objects via each operation
     def accessible_objects_for_operations(user_or_attribute, operations, options = {})
       unless options[:direct_only]
@@ -936,7 +963,10 @@ module PolicyMachineStorageAdapter
       user_attribute_filter = options[:filters][:user_attributes] if options[:filters] && options[:filters][:user_attributes]
 
       user_attribute_ids = user_or_attribute.descendants.where(user_attribute_filter).pluck(:id) | [user_or_attribute.id]
-      PolicyElementAssociation.where(user_attribute_id: user_attribute_ids)
+
+      search_params = { user_attribute_id: user_attribute_ids }
+      search_params.merge!(object_attribute_id: options[:object_attribute_ids]) if options[:object_attribute_ids]
+      PolicyElementAssociation.where(search_params)
     end
 
     # Builds an array of PolicyElement objects within the scope of a given
