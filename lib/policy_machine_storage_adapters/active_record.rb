@@ -765,6 +765,8 @@ module PolicyMachineStorageAdapter
     def scoped_privileges(user_or_attribute, object_or_attribute, options = {})
       policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
 
+      binding.pry
+
       operations =
         if policy_classes_containing_object.size < 2
           accessible_operations(user_or_attribute, object_or_attribute, filters: options[:filters])
@@ -803,31 +805,29 @@ module PolicyMachineStorageAdapter
       end
     end
 
-    def accessible_operations_for_user_or_attribute_and_object(user_or_attribute, object_attribute_ids, options)
+    def all_operations_for_user_or_attr_and_objs_or_attrs(user_or_attribute, object_attribute_ids, options)
       return {} if object_attribute_ids.empty?
 
-      options.merge!(object_attribute_ids: object_attribute_ids)
+      associations = associations_for_user_or_attribute(user_or_attribute, options).where(
+        object_attribute_id: object_attribute_ids
+      )
 
-      # grab all associations associated with user and given objects
-      associations = associations_for_user_or_attribute(user_or_attribute, options)
+      obj_attr_ids_to_opset_ids = association.map { |a| a.object_attribute_id, a.operation_set_id }.to_h
 
-      opset_ids = associations.pluck(:operation_set_id)
-
-      operation_names = PolicyElement.filtered_operation_set_ids_by_operation(
-        opset_ids,
+      opset_id_operation_rows = PolicyElement.filtered_operation_set_ids_by_operation(
+        obj_attr_ids_to_opset_ids.values,
         map_by_operation: false,
-        ignore_prohibitions: options[:ignore_prohibitions]
-      ).map { |o| o["unique_identifier"] }
+      )
 
-      unless options[:ignore_prohibitions]
-        prohibited_operation_names = Set.new(operation_names.select { |op| op.start_with?('~') })
-
-        operation_names.reject! do |op|
-          op.start_with?('~') || prohibited_operation_names.include?(prohibition_identifier(op))
-        end
+      opset_ids_to_operation = opset_id_operation_rows.each_with_object(Hash.new { |h, k| h[k] = [] }) do |row, acc|
+        acc[row['operation_set_id']] << row['unique_identifier']
       end
 
-      operation_names
+      object_attribute_ids.each_with_object({}) do |obj_attr_id, acc|
+        opset_id = obj_attr_ids_to_opset_ids[obj_attr_id]
+        operations = opset_ids_to_operation[opset_id]
+        acc[obj_attr_id] = operations || []
+      end
     end
 
     # Returns a map of operation names to the user_or_attribute's accessible objects via each operation
@@ -963,11 +963,11 @@ module PolicyMachineStorageAdapter
       user_attribute_filter = options[:filters][:user_attributes] if options[:filters] && options[:filters][:user_attributes]
 
       user_attribute_ids = user_or_attribute.descendants.where(user_attribute_filter).pluck(:id) | [user_or_attribute.id]
-
-      search_params = { user_attribute_id: user_attribute_ids }
-      search_params.merge!(object_attribute_id: options[:object_attribute_ids]) if options[:object_attribute_ids]
-      PolicyElementAssociation.where(search_params)
+      PolicyElementAssociation.where(user_attribute_id: user_attribute_ids)
     end
+
+    # SQL will run
+    # select * from peas  where user_attribute_id IN (fidfiosdhgidos) and object_attribute
 
     # Builds an array of PolicyElement objects within the scope of a given
     # array of associations
@@ -1178,6 +1178,7 @@ module PolicyMachineStorageAdapter
 
     def accessible_operations(user_or_attribute, object_or_attribute, operation_id = nil, filters: {})
       transaction_without_mergejoin do
+        binding.pry
         user_attribute_filter = filters[:user_attributes] if filters
 
         user_attribute_ids = Assignment.descendants_of(user_or_attribute).where(user_attribute_filter).pluck(:id) | [user_or_attribute.id]
