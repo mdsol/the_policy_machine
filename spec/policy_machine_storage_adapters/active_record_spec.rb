@@ -328,8 +328,7 @@ describe 'ActiveRecord' do
               user_1,
               [object_7.id]
             )
-
-            expect(result[object_7.id]).to contain_exactly(sketch.to_s)
+            expect(result).to eq({ object_7.id => [sketch.to_s] })
           end
         end
 
@@ -345,7 +344,7 @@ describe 'ActiveRecord' do
               user_1,
               [object_7.id]
             )
-
+            expect(result.keys).to contain_exactly(object_7.id)
             expect(result[object_7.id]).to contain_exactly(paint.to_s, sketch.to_s)
           end
 
@@ -354,7 +353,7 @@ describe 'ActiveRecord' do
               user_1,
               [oa_1.id, object_7.id]
             )
-
+            expect(result.keys).to contain_exactly(oa_1.id, object_7.id)
             expect(result[oa_1.id]).to contain_exactly(create.to_s, paint.to_s)
             expect(result[object_7.id]).to contain_exactly(sketch.to_s, paint.to_s)
           end
@@ -372,7 +371,7 @@ describe 'ActiveRecord' do
                 user_1,
                 [object_7.id],
               )
-
+              expect(result.keys).to contain_exactly(object_7.id)
               expect(result[object_7.id]).to contain_exactly(sketch.to_s, paint.to_s, paint.prohibition.to_s)
             end
           end
@@ -386,7 +385,7 @@ describe 'ActiveRecord' do
                 [object_7.id],
                 filters: filters
               )
-
+              expect(result.keys).to contain_exactly(object_7.id)
               expect(result[object_7.id]).to contain_exactly(paint.to_s)
             end
           end

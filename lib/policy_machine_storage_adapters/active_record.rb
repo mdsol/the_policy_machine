@@ -813,20 +813,26 @@ module PolicyMachineStorageAdapter
     def all_operations_for_user_or_attr_and_objs_or_attrs(user_or_attribute, object_attribute_ids, options)
       return {} if object_attribute_ids.empty?
 
+      opset_ids_and_obj_attr_ids = associations_for_user_or_attribute(user_or_attribute, options).where(
+        object_attribute_id: object_attribute_ids
+      ).pluck(:operation_set_id, :object_attribute_id)
+
       # generate a hash of object attribute ids to lists of operation sets from their
       # associations with the given user / user attribute
-      associations = associations_for_user_or_attribute(user_or_attribute, options).where(
-        object_attribute_id: object_attribute_ids
-      )
-      obj_attr_ids_to_opset_ids = associations.each_with_object(Hash.new { |h, k| h[k] = [] }) do |a, memo|
-        memo[a.object_attribute_id] << a.operation_set_id
+      obj_attr_ids_to_opset_ids = opset_ids_and_obj_attr_ids.each_with_object(
+        Hash.new { |h, k| h[k] = [] }
+      ) do |(opset_id, objattr_id), acc|
+        acc[objattr_id] << opset_id
       end
 
-      # generate a hash of opset ids to lists of operations the opsets contain
       opset_id_operation_rows = PolicyElement.operations_for_operation_sets(
         obj_attr_ids_to_opset_ids.values.flatten.uniq,
       )
-      opset_ids_to_operations = opset_id_operation_rows.each_with_object(Hash.new { |h, k| h[k] = [] }) do |row, acc|
+
+      # generate a hash of opset ids to lists of operations the opsets contain
+      opset_ids_to_operations = opset_id_operation_rows.each_with_object(
+        Hash.new { |h, k| h[k] = [] }
+      ) do |row, acc|
         acc[row['operation_set_id']] << row['unique_identifier']
       end
 
@@ -947,7 +953,7 @@ module PolicyMachineStorageAdapter
         operations
       )
 
-      # return a hash like:
+      # generate a hash like:
       # {
       #   'operation1' => [123],
       #   'operation2' => [123, 789],
