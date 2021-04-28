@@ -953,12 +953,7 @@ module PolicyMachineStorageAdapter
         operations
       )
 
-      # generate a hash like:
-      # {
-      #   'operation1' => [123],
-      #   'operation2' => [123, 789],
-      #   'operation3' => [789],
-      # }
+      # generate a hash of operations to lists of the ids of operation sets that contain them
       operations_to_filtered_opset_ids = opset_ids_operation_rows.to_a.each_with_object(Hash.new { |h, k| h[k] = [] }) do |row, acc|
         acc[row['unique_identifier']] << row['operation_set_id']
       end
