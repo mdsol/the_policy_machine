@@ -4,7 +4,7 @@ module PolicyMachineStorageAdapter
 
       # Given a list of operation set ids and a list of operations
       # Returns a map of operations to the given operation set ids that contain them
-      def self.filtered_operation_set_ids_by_operation(operation_set_ids, operations = [], map_by_operation: true, ignore_prohibitions: false)
+      def self.operations_for_operation_sets(operation_set_ids, operations = nil)
         query = <<~SQL
           WITH RECURSIVE accessible_operations AS (
             (
@@ -33,17 +33,16 @@ module PolicyMachineStorageAdapter
             ON ops.id = accessible_operations.child_id
         SQL
 
-        # TODO: clean up?
-        query << " WHERE ops.unique_identifier IN ('#{operations.to_a.join("','")}')" unless operations.empty?
+        sanitize_arg = [query, operation_set_ids]
 
-        sanitized_query_params = [query, operation_set_ids]
-
-        if ignore_prohibitions && operations.empty?
-          query << " WHERE ops.unique_identifier NOT LIKE ?"
-          sanitized_query_params << '~%'
+        if operations
+          query << "WHERE ops.unique_identifier IN (?)"
+          sanitize_arg << operations
+        else
+          query << "WHERE ops.type = '#{PolicyMachineStorageAdapter::ActiveRecord.class_for_type('operation').name}'"
         end
 
-        sanitized_query = sanitize_sql_for_assignment(sanitized_query_params)
+        sanitized_query = sanitize_sql_for_assignment(sanitize_arg)
 
         # gives pairs of (opset_id, operation) representing all operations contained by an operation set
         # accounts for any nested operation sets
@@ -63,21 +62,6 @@ module PolicyMachineStorageAdapter
         #   (789, operation3)
         #
         result = connection.execute(sanitized_query)
-
-        # return a hash like:
-        # {
-        #   'operation1' => [123],
-        #   'operation2' => [123, 789],
-        #   'operation3' => [789],
-        # }
-
-        if map_by_operation
-          result.to_a.each_with_object(Hash.new { |h, k| h[k] = [] }) do |row, acc|
-            acc[row['unique_identifier']] << row['operation_set_id']
-          end
-        else
-          result
-        end
       end
     end
 

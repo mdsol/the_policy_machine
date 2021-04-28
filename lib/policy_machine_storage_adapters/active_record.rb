@@ -120,6 +120,11 @@ module PolicyMachineStorageAdapter
       true #TODO: More useful return value?
     end
 
+    def self.class_for_type(pe_type)
+      @pe_type_class_hash ||= Hash.new { |h,k| h[k] = "PolicyMachineStorageAdapter::ActiveRecord::#{k.camelize}".constantize }
+      @pe_type_class_hash[pe_type]
+    end
+
     class ApplicationRecord < ::ActiveRecord::Base
       require 'will_paginate/active_record'
       self.abstract_class = true
@@ -521,8 +526,7 @@ module PolicyMachineStorageAdapter
     end
 
     def class_for_type(pe_type)
-      @pe_type_class_hash ||= Hash.new { |h,k| h[k] = "PolicyMachineStorageAdapter::ActiveRecord::#{k.camelize}".constantize }
-      @pe_type_class_hash[pe_type]
+      self.class.class_for_type(pe_type)
     end
 
     ##
@@ -765,8 +769,6 @@ module PolicyMachineStorageAdapter
     def scoped_privileges(user_or_attribute, object_or_attribute, options = {})
       policy_classes_containing_object = policy_classes_for_object_attribute(object_or_attribute)
 
-      binding.pry
-
       operations =
         if policy_classes_containing_object.size < 2
           accessible_operations(user_or_attribute, object_or_attribute, filters: options[:filters])
@@ -812,21 +814,20 @@ module PolicyMachineStorageAdapter
         object_attribute_id: object_attribute_ids
       )
 
-      obj_attr_ids_to_opset_ids = association.map { |a| a.object_attribute_id, a.operation_set_id }.to_h
+      obj_attr_ids_to_opset_ids = associations.each_with_object(Hash.new { |h, k| h[k] = [] }) do |a, memo|
+        memo[a.object_attribute_id] << a.operation_set_id
+      end
 
-      opset_id_operation_rows = PolicyElement.filtered_operation_set_ids_by_operation(
-        obj_attr_ids_to_opset_ids.values,
-        map_by_operation: false,
+      opset_id_operation_rows = PolicyElement.operations_for_operation_sets(
+        obj_attr_ids_to_opset_ids.values.flatten.uniq,
       )
 
       opset_ids_to_operation = opset_id_operation_rows.each_with_object(Hash.new { |h, k| h[k] = [] }) do |row, acc|
         acc[row['operation_set_id']] << row['unique_identifier']
       end
 
-      object_attribute_ids.each_with_object({}) do |obj_attr_id, acc|
-        opset_id = obj_attr_ids_to_opset_ids[obj_attr_id]
-        operations = opset_ids_to_operation[opset_id]
-        acc[obj_attr_id] = operations || []
+      obj_attr_ids_to_opset_ids.each_with_object({}) do |(obj_attr_id, opset_ids), memo|
+        memo[obj_attr_id] = opset_ids.map { |opset_id| opset_ids_to_operation[opset_id] || [] }.flatten.uniq
       end
     end
 
@@ -936,10 +937,20 @@ module PolicyMachineStorageAdapter
       end
 
       # operation names to list of operation set IDs (from UA's associations) that contain them
-      operations_to_filtered_opset_ids = PolicyElement.filtered_operation_set_ids_by_operation(
+      opset_ids_operation_rows = PolicyElement.operations_for_operation_sets(
         opset_ids_to_objattr_ids.keys, # operation set IDs from UA's associations
         operations
       )
+
+      # return a hash like:
+      # {
+      #   'operation1' => [123],
+      #   'operation2' => [123, 789],
+      #   'operation3' => [789],
+      # }
+      operations_to_filtered_opset_ids = opset_ids_operation_rows.to_a.each_with_object(Hash.new { |h, k| h[k] = [] }) do |row, acc|
+        acc[row['unique_identifier']] << row['operation_set_id']
+      end
 
       # replace lists operation set IDs with lists of object attribute IDs
       operations_to_objattr_ids = operations_to_filtered_opset_ids.transform_values do |opset_ids|
@@ -1178,7 +1189,6 @@ module PolicyMachineStorageAdapter
 
     def accessible_operations(user_or_attribute, object_or_attribute, operation_id = nil, filters: {})
       transaction_without_mergejoin do
-        binding.pry
         user_attribute_filter = filters[:user_attributes] if filters
 
         user_attribute_ids = Assignment.descendants_of(user_or_attribute).where(user_attribute_filter).pluck(:id) | [user_or_attribute.id]
