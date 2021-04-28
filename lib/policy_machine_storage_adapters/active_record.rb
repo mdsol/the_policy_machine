@@ -977,9 +977,6 @@ module PolicyMachineStorageAdapter
       PolicyElementAssociation.where(user_attribute_id: user_attribute_ids)
     end
 
-    # SQL will run
-    # select * from peas  where user_attribute_id IN (fidfiosdhgidos) and object_attribute
-
     # Builds an array of PolicyElement objects within the scope of a given
     # array of associations
     def build_accessible_object_scope(associations, options = {})
