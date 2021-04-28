@@ -26,7 +26,7 @@ module PolicyMachineStorageAdapter
     def self.const_missing(name)
       if %w[Assignment LogicalLink Adapter].include?(name.to_s)
         load_db_adapter!
-        const_get(name)
+        "::PolicyMachineStorageAdapter::ActiveRecord::#{name.to_s}".constantize
       else
         super
       end
