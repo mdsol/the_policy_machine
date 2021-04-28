@@ -826,7 +826,7 @@ module PolicyMachineStorageAdapter
       end
 
       opset_id_operation_rows = PolicyElement.operations_for_operation_sets(
-        obj_attr_ids_to_opset_ids.values.flatten.uniq,
+        obj_attr_ids_to_opset_ids.values.flatten.uniq
       )
 
       # generate a hash of opset ids to lists of operations the opsets contain
