@@ -807,27 +807,32 @@ module PolicyMachineStorageAdapter
       end
     end
 
+    # given a user / user attribute and a list object / object attribute ids
+    # return a map of object attribute ids to all operation names between each of them and the given user / user attribute
+    # all operations names means for both positive operations and negative operations (prohibitions)
     def all_operations_for_user_or_attr_and_objs_or_attrs(user_or_attribute, object_attribute_ids, options)
       return {} if object_attribute_ids.empty?
 
+      # generate a hash of object attribute ids to lists of operation sets from their
+      # associations with the given user / user attribute
       associations = associations_for_user_or_attribute(user_or_attribute, options).where(
         object_attribute_id: object_attribute_ids
       )
-
       obj_attr_ids_to_opset_ids = associations.each_with_object(Hash.new { |h, k| h[k] = [] }) do |a, memo|
         memo[a.object_attribute_id] << a.operation_set_id
       end
 
+      # generate a hash of opset ids to lists of operations the opsets contain
       opset_id_operation_rows = PolicyElement.operations_for_operation_sets(
         obj_attr_ids_to_opset_ids.values.flatten.uniq,
       )
-
-      opset_ids_to_operation = opset_id_operation_rows.each_with_object(Hash.new { |h, k| h[k] = [] }) do |row, acc|
+      opset_ids_to_operations = opset_id_operation_rows.each_with_object(Hash.new { |h, k| h[k] = [] }) do |row, acc|
         acc[row['operation_set_id']] << row['unique_identifier']
       end
 
+      # stitch the two hashes together to get object attribute ids to lists of operations
       obj_attr_ids_to_opset_ids.each_with_object({}) do |(obj_attr_id, opset_ids), memo|
-        memo[obj_attr_id] = opset_ids.map { |opset_id| opset_ids_to_operation[opset_id] || [] }.flatten.uniq
+        memo[obj_attr_id] = opset_ids.flat_map { |opset_id| opset_ids_to_operations[opset_id] || [] }.uniq
       end
     end
 

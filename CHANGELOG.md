@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.3.0
+* Added `PolicyMachine#all_operations_for_user_or_attr_and_objs_or_attrs` for finding a map of all operations
+  between give objects and a given user.
+
 ## 3.2.0
 * Added `PolicyMachine#accessible_objects_for_operations` for finding a map of accessible
   objects per operation for multiple operations. Only implemented in `ActiveRecord` and

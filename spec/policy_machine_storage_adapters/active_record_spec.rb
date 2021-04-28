@@ -387,7 +387,7 @@ describe 'ActiveRecord' do
                 filters: filters
               )
 
-            expect(result[object_7.id]).to contain_exactly(paint.to_s)
+              expect(result[object_7.id]).to contain_exactly(paint.to_s)
             end
           end
         end
