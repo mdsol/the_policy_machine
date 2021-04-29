@@ -2,9 +2,11 @@ module PolicyMachineStorageAdapter
   class ActiveRecord
     class PolicyElement
 
-      # Given a list of operation set ids and a list of operations
-      # Returns a map of operations to the given operation set ids that contain them
-      def self.filtered_operation_set_ids_by_operation(operation_set_ids, operations)
+      # given a list of operation set ids
+      # return row hashes of operation_set_id, unique_identifier pairs
+      # representing all operations contained by the given operation set ids
+      # optionally can give a list of operation names to filter by
+      def self.operations_for_operation_sets(operation_set_ids, operation_names = nil)
         query = <<~SQL
           WITH RECURSIVE accessible_operations AS (
             (
@@ -31,14 +33,19 @@ module PolicyMachineStorageAdapter
           FROM accessible_operations
           JOIN policy_elements ops
             ON ops.id = accessible_operations.child_id
-          WHERE ops.unique_identifier IN (?)
         SQL
 
-        sanitized_query = sanitize_sql_for_assignment([
-          query,
-          operation_set_ids,
-          operations,
-        ])
+        sanitize_arg = [query, operation_set_ids]
+
+        if operation_names
+          query << "WHERE ops.unique_identifier IN (?)"
+          sanitize_arg << operation_names
+        else
+          type = PolicyMachineStorageAdapter::ActiveRecord.class_for_type('operation').name
+          query << "WHERE ops.type = '#{type}'"
+        end
+
+        sanitized_query = sanitize_sql_for_assignment(sanitize_arg)
 
         # gives pairs of (opset_id, operation) representing all operations contained by an operation set
         # accounts for any nested operation sets
@@ -57,17 +64,7 @@ module PolicyMachineStorageAdapter
         #   (789, operation2)
         #   (789, operation3)
         #
-        result = connection.execute(sanitized_query)
-
-        # return a hash like:
-        # {
-        #   'operation1' => [123],
-        #   'operation2' => [123, 789],
-        #   'operation3' => [789],
-        # }
-        result.to_a.each_with_object(Hash.new { |h, k| h[k] = [] }) do |row, acc|
-          acc[row['unique_identifier']] << row['operation_set_id']
-        end
+        connection.execute(sanitized_query)
       end
     end
 
