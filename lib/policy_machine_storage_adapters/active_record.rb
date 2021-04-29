@@ -817,8 +817,13 @@ module PolicyMachineStorageAdapter
         object_attribute_id: object_attribute_ids
       ).pluck(:operation_set_id, :object_attribute_id)
 
-      # generate a hash of object attribute ids to lists of operation sets from their
+      # generate a hash of object attribute ids to lists of operation set ids from their
       # associations with the given user / user attribute
+      # ex:
+      # {
+      #   obj_attr1_id => [opset1_id, opset2_id, opset3_id],
+      #   obj_attr2_id => [opset1_id],
+      # }
       obj_attr_ids_to_opset_ids = opset_ids_and_obj_attr_ids.each_with_object(
         Hash.new { |h, k| h[k] = [] }
       ) do |(opset_id, objattr_id), acc|
@@ -830,6 +835,12 @@ module PolicyMachineStorageAdapter
       )
 
       # generate a hash of opset ids to lists of operations the opsets contain
+      # ex:
+      # {
+      #   opset1_id => ['read', 'write', 'foo', '~bar'],
+      #   opset2_id => ['read', 'edit', '~foo'],
+      #   opset3_id => ['create_zagnuts'],
+      # }
       opset_ids_to_operations = opset_id_operation_rows.each_with_object(
         Hash.new { |h, k| h[k] = [] }
       ) do |row, acc|
@@ -837,6 +848,11 @@ module PolicyMachineStorageAdapter
       end
 
       # stitch the two hashes together to get object attribute ids to lists of operations
+      # ex:
+      # {
+      #   obj_attr1_id => ['read', 'write', 'foo', '~bar', 'edit', '~foo', 'create_zagnuts'],
+      #   obj_attr2_id => ['read', 'write', 'foo', '~bar'],
+      # }
       obj_attr_ids_to_opset_ids.each_with_object({}) do |(obj_attr_id, opset_ids), memo|
         memo[obj_attr_id] = opset_ids.flat_map { |opset_id| opset_ids_to_operations[opset_id] || [] }.uniq
       end
