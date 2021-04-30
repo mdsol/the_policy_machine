@@ -120,6 +120,11 @@ module PolicyMachineStorageAdapter
       true #TODO: More useful return value?
     end
 
+    def self.class_for_type(pe_type)
+      @pe_type_class_hash ||= Hash.new { |h,k| h[k] = "PolicyMachineStorageAdapter::ActiveRecord::#{k.camelize}".constantize }
+      @pe_type_class_hash[pe_type]
+    end
+
     class ApplicationRecord < ::ActiveRecord::Base
       require 'will_paginate/active_record'
       self.abstract_class = true
@@ -521,8 +526,7 @@ module PolicyMachineStorageAdapter
     end
 
     def class_for_type(pe_type)
-      @pe_type_class_hash ||= Hash.new { |h,k| h[k] = "PolicyMachineStorageAdapter::ActiveRecord::#{k.camelize}".constantize }
-      @pe_type_class_hash[pe_type]
+      self.class.class_for_type(pe_type)
     end
 
     ##
@@ -803,6 +807,57 @@ module PolicyMachineStorageAdapter
       end
     end
 
+    # given a user / user attribute and a list object / object attribute ids
+    # return a map of object attribute ids to all operation names between each of them and the given user / user attribute
+    # all operations names means for both positive operations and negative operations (prohibitions)
+    def all_operations_for_user_or_attr_and_objs_or_attrs(user_or_attribute, object_attribute_ids, options)
+      return {} if object_attribute_ids.empty?
+
+      opset_ids_and_obj_attr_ids = associations_for_user_or_attribute(user_or_attribute, options).where(
+        object_attribute_id: object_attribute_ids
+      ).pluck(:operation_set_id, :object_attribute_id)
+
+      # generate a hash of object attribute ids to lists of operation set ids from their
+      # associations with the given user / user attribute
+      # ex:
+      # {
+      #   obj_attr1_id => [opset1_id, opset2_id, opset3_id],
+      #   obj_attr2_id => [opset1_id],
+      # }
+      obj_attr_ids_to_opset_ids = opset_ids_and_obj_attr_ids.each_with_object(
+        Hash.new { |h, k| h[k] = [] }
+      ) do |(opset_id, objattr_id), acc|
+        acc[objattr_id] << opset_id
+      end
+
+      opset_id_operation_rows = PolicyElement.operations_for_operation_sets(
+        obj_attr_ids_to_opset_ids.values.flatten.uniq
+      )
+
+      # generate a hash of opset ids to lists of operations the opsets contain
+      # ex:
+      # {
+      #   opset1_id => ['read', 'write', 'foo', '~bar'],
+      #   opset2_id => ['read', 'edit', '~foo'],
+      #   opset3_id => ['create_zagnuts'],
+      # }
+      opset_ids_to_operations = opset_id_operation_rows.each_with_object(
+        Hash.new { |h, k| h[k] = [] }
+      ) do |row, acc|
+        acc[row['operation_set_id']] << row['unique_identifier']
+      end
+
+      # stitch the two hashes together to get object attribute ids to lists of operations
+      # ex:
+      # {
+      #   obj_attr1_id => ['read', 'write', 'foo', '~bar', 'edit', '~foo', 'create_zagnuts'],
+      #   obj_attr2_id => ['read', 'write', 'foo', '~bar'],
+      # }
+      obj_attr_ids_to_opset_ids.each_with_object({}) do |(obj_attr_id, opset_ids), memo|
+        memo[obj_attr_id] = opset_ids.flat_map { |opset_id| opset_ids_to_operations[opset_id] || [] }.uniq
+      end
+    end
+
     # Returns a map of operation names to the user_or_attribute's accessible objects via each operation
     def accessible_objects_for_operations(user_or_attribute, operations, options = {})
       unless options[:direct_only]
@@ -909,10 +964,15 @@ module PolicyMachineStorageAdapter
       end
 
       # operation names to list of operation set IDs (from UA's associations) that contain them
-      operations_to_filtered_opset_ids = PolicyElement.filtered_operation_set_ids_by_operation(
+      opset_ids_operation_rows = PolicyElement.operations_for_operation_sets(
         opset_ids_to_objattr_ids.keys, # operation set IDs from UA's associations
         operations
       )
+
+      # generate a hash of operations to lists of the ids of operation sets that contain them
+      operations_to_filtered_opset_ids = opset_ids_operation_rows.to_a.each_with_object(Hash.new { |h, k| h[k] = [] }) do |row, acc|
+        acc[row['unique_identifier']] << row['operation_set_id']
+      end
 
       # replace lists operation set IDs with lists of object attribute IDs
       operations_to_objattr_ids = operations_to_filtered_opset_ids.transform_values do |opset_ids|

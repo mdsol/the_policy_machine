@@ -215,6 +215,10 @@ module PM
       end
     end
 
+    def self.prohibition?(unique_identifier)
+      unique_identifier.start_with?('~')
+    end
+
     def to_s
       unique_identifier
     end
@@ -228,7 +232,7 @@ module PM
     end
 
     def prohibition?
-      unique_identifier =~ /^~/
+      self.class.prohibition?(unique_identifier)
     end
 
     # Return all associations in which this Operation is included

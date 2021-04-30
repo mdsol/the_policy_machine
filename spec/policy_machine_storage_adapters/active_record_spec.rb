@@ -311,6 +311,87 @@ describe 'ActiveRecord' do
         end
       end
 
+      describe 'all_operations_for_user_or_attr_and_objs_or_attrs' do
+        let(:color_4) { priv_pm.create_user_attribute('color_4', color: 'blue') }
+        let(:sketcher) { priv_pm.create_operation_set('sketcher') }
+        let(:sketch) { priv_pm.create_operation('sketch') }
+
+        before do
+          priv_pm.add_assignment(user_1, color_4)
+          priv_pm.add_assignment(sketcher, sketch)
+          priv_pm.add_association(color_4, sketcher, object_7)
+        end
+
+        context 'single association' do
+          it 'returns operations for the given object_attribute_id' do
+            result = priv_pm.all_operations_for_user_or_attr_and_objs_or_attrs(
+              user_1,
+              [object_7.id]
+            )
+            expect(result).to eq({ object_7.id => [sketch.to_s] })
+          end
+        end
+
+        context 'multiple associations' do
+          before do
+            priv_pm.add_association(color_3, painter, object_7)
+          end
+
+          it 'returns operations for the given object_attribute_id' do
+            priv_pm.add_association(color_3, painter, object_7)
+
+            result = priv_pm.all_operations_for_user_or_attr_and_objs_or_attrs(
+              user_1,
+              [object_7.id]
+            )
+            expect(result.keys).to contain_exactly(object_7.id)
+            expect(result[object_7.id]).to contain_exactly(paint.to_s, sketch.to_s)
+          end
+
+          it 'returns operations for multiple object_attribute_ids' do
+            result = priv_pm.all_operations_for_user_or_attr_and_objs_or_attrs(
+              user_1,
+              [oa_1.id, object_7.id]
+            )
+            expect(result.keys).to contain_exactly(oa_1.id, object_7.id)
+            expect(result[oa_1.id]).to contain_exactly(create.to_s, paint.to_s)
+            expect(result[object_7.id]).to contain_exactly(sketch.to_s, paint.to_s)
+          end
+
+          context 'prohibitions' do
+            let(:cant_paint) { priv_pm.create_operation_set('cant_paint') }
+
+            before do
+              priv_pm.add_assignment(cant_paint, paint.prohibition)
+              priv_pm.add_association(color_3, cant_paint, object_7)
+            end
+
+            it 'returns prohibited operations' do
+              result = priv_pm.all_operations_for_user_or_attr_and_objs_or_attrs(
+                user_1,
+                [object_7.id],
+              )
+              expect(result.keys).to contain_exactly(object_7.id)
+              expect(result[object_7.id]).to contain_exactly(sketch.to_s, paint.to_s, paint.prohibition.to_s)
+            end
+          end
+
+          context 'filters' do
+            let(:filters) { { user_attributes: { color: color_3.color } } }
+
+            it 'they work' do
+              result = priv_pm.all_operations_for_user_or_attr_and_objs_or_attrs(
+                user_1,
+                [object_7.id],
+                filters: filters
+              )
+              expect(result.keys).to contain_exactly(object_7.id)
+              expect(result[object_7.id]).to contain_exactly(paint.to_s)
+            end
+          end
+        end
+      end
+
       describe 'accessible_objects_for_operations' do
         context 'direct only' do
           context 'when there are directly accessible objects' do
