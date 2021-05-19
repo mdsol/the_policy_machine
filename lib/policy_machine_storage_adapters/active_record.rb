@@ -983,7 +983,7 @@ module PolicyMachineStorageAdapter
       #   'write' => [opset1_id],
       #   'delete' => [opset2_id],
       # }
-      operations_to_opset_ids = opset_id_operation_rows.to_a.each_with_object(
+      operations_to_opset_ids = opset_id_operation_rows.each_with_object(
         Hash.new { |h, k| h[k] = [] }
       ) do |row, acc|
         acc[row['unique_identifier']] << row['operation_set_id']
