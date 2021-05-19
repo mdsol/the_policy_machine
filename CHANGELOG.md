@@ -1,7 +1,10 @@
 # Changelog
 
+## 3.3.2
+* Fixed incorrect handling of filters with prohibitions in ActiveRecord `accessible_objects_for_operations`.
+
 ## 3.3.1
-* Fix intermittent incorrect constant resolution.
+* Fixed intermittent incorrect constant resolution.
 
 ## 3.3.0
 * Added `PolicyMachine#all_operations_for_user_or_attr_and_objs_or_attrs` for finding a map of all operations
