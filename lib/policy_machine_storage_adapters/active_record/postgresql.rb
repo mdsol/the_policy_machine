@@ -64,6 +64,14 @@ module PolicyMachineStorageAdapter
         #   (789, operation2)
         #   (789, operation3)
         #
+        # NOTE:
+        # actual output will be row hashes like:
+        # [
+        #   { 'operation_set_id' => 123, 'unique_identifier' => 'operation1' },
+        #   { 'operation_set_id' => 123, 'unique_identifier' => 'operation2' },
+        #   { 'operation_set_id' => 789, 'unique_identifier' => 'operation2' },
+        #   { 'operation_set_id' => 789, 'unique_identifier' => 'operation3' },
+        # ]
         connection.execute(sanitized_query)
       end
     end

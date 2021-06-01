@@ -817,8 +817,8 @@ module PolicyMachineStorageAdapter
         object_attribute_id: object_attribute_ids
       ).pluck(:operation_set_id, :object_attribute_id)
 
-      # generate a hash of object attribute ids to lists of operation set ids from their
-      # associations with the given user / user attribute
+      # generate a hash of object attribute ids to lists of operation set ids
+      # from the given user_or_attribute's associations
       # ex:
       # {
       #   obj_attr1_id => [opset1_id, opset2_id, opset3_id],
@@ -853,8 +853,8 @@ module PolicyMachineStorageAdapter
       #   obj_attr1_id => ['read', 'write', 'foo', '~bar', 'edit', '~foo', 'create_zagnuts'],
       #   obj_attr2_id => ['read', 'write', 'foo', '~bar'],
       # }
-      obj_attr_ids_to_opset_ids.each_with_object({}) do |(obj_attr_id, opset_ids), memo|
-        memo[obj_attr_id] = opset_ids.flat_map { |opset_id| opset_ids_to_operations[opset_id] || [] }.uniq
+      obj_attr_ids_to_opset_ids.transform_values do |opset_ids|
+        opset_ids.map { |opset_id| opset_ids_to_operations[opset_id] || [] }.reduce(:|)
       end
     end
 
@@ -870,20 +870,23 @@ module PolicyMachineStorageAdapter
       # default objects for each operation to empty list
       accessible_map = operation_names.map { |o| [o, []] }.to_h
 
-      if options[:ignore_prohibitions]
-        accessible_map.merge!(
-          objects_for_user_or_attribute_and_operations(user_or_attribute, operation_names, options)
-        )
-        return accessible_map
-      end
+      accessible_map.merge!(objects_for_user_or_attribute_and_operations(
+        user_or_attribute,
+        operation_names,
+        options
+      ))
+
+      return accessible_map if options[:ignore_prohibitions]
 
       # using `prohibitions_for` rather than just mapping to `prohibition_identifier`
       # because we want to confirm that these prohibitions exist in the db
       prohibition_names = prohibitions_for(operation_names).map { |p| operation_identifier(p) }
-      op_and_prohib_names = operation_names + prohibition_names
-      accessible_map.merge!(
-        objects_for_user_or_attribute_and_operations(user_or_attribute, op_and_prohib_names, options)
-      )
+
+      accessible_map.merge!(objects_for_user_or_attribute_and_operations(
+        user_or_attribute,
+        prohibition_names,
+        options.except(:filters)
+      ))
 
       operation_names.each do |operation_name|
         prohibition_name = prohibition_identifier(operation_name)
@@ -954,8 +957,13 @@ module PolicyMachineStorageAdapter
       return {} if operations.empty?
       associations = associations_for_user_or_attribute(user_or_attribute, options)
 
-      # the operation set IDs and the object attribute IDs they connect to
-      # from the user_or_attribute's associations
+      # generate a hash of operation set ids to lists of object attribute ids
+      # from the given user_or_attribute's associations
+      # ex:
+      # {
+      #   opset1_id => [obj_attr1_id, obj_attr2_id, obj_attr3_id],
+      #   opset2_id => [obj_attr1_id],
+      # }
       opset_ids_to_objattr_ids = associations.pluck(
         :operation_set_id,
         :object_attribute_id
@@ -963,19 +971,32 @@ module PolicyMachineStorageAdapter
         acc[opset_id] << objattr_id
       end
 
-      # operation names to list of operation set IDs (from UA's associations) that contain them
-      opset_ids_operation_rows = PolicyElement.operations_for_operation_sets(
-        opset_ids_to_objattr_ids.keys, # operation set IDs from UA's associations
+      opset_id_operation_rows = PolicyElement.operations_for_operation_sets(
+        opset_ids_to_objattr_ids.keys,
         operations
       )
 
-      # generate a hash of operations to lists of the ids of operation sets that contain them
-      operations_to_filtered_opset_ids = opset_ids_operation_rows.to_a.each_with_object(Hash.new { |h, k| h[k] = [] }) do |row, acc|
+      # generate a hash of operation names to lists of the ids of operation sets that contain them
+      # ex:
+      # {
+      #   'read' => [opset1_id, opset2_id],
+      #   'write' => [opset1_id],
+      #   'delete' => [opset2_id],
+      # }
+      operations_to_opset_ids = opset_id_operation_rows.each_with_object(
+        Hash.new { |h, k| h[k] = [] }
+      ) do |row, acc|
         acc[row['unique_identifier']] << row['operation_set_id']
       end
 
-      # replace lists operation set IDs with lists of object attribute IDs
-      operations_to_objattr_ids = operations_to_filtered_opset_ids.transform_values do |opset_ids|
+      # stitch the two hashes together to get operation names to lists of object attribute ids
+      # ex:
+      # {
+      #   'read' => [obj_attr1_id, obj_attr2_id, obj_attr3_id],
+      #   'write' => [obj_attr1_id, obj_attr2_id, obj_attr3_id],
+      #   'delete' => [obj_attr1_id],
+      # }
+      operations_to_objattr_ids = operations_to_opset_ids.transform_values do |opset_ids|
         opset_ids.map { |opset_id| opset_ids_to_objattr_ids[opset_id] || [] }.reduce(:|)
       end
 
