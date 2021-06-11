@@ -59,9 +59,9 @@ module PolicyMachineStorageAdapter
 
       @_db_config =
         # AR 6.1 also emits a warning that `.config` is deprecated
-        # and `.config_hash` is The New Way
-        if config.respond_to?(:config_hash)
-          config.config_hash
+        # and `.configuration_hash` is The New Way
+        if config.respond_to?(:configuration_hash)
+          config.configuration_hash
         else
           config.config.symbolize_keys
         end
