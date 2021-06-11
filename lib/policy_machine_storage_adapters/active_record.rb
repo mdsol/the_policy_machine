@@ -33,31 +33,35 @@ module PolicyMachineStorageAdapter
     end
 
     def self.load_db_adapter!
-      require_relative("active_record/#{db_config['adapter']}")
+      require_relative("active_record/#{db_config[:adapter]}")
     end
 
     def self.db_config
       @_db_config ||= begin
         ar_configs = PolicyElement.configurations
 
-         # ActiveRecord >= 6.0
-        if ar_configs.respond_to?(:configs_for)
+        config_hash =
+          # ActiveRecord >= 6.0
+          if ar_configs.respond_to?(:configs_for)
 
-          # ActiveRecord >= 6.1
-          # 6.1 starts emitting a warning that "spec_name" kwarg will be renamed to "name" in 6.2
-          begin
-            ar_configs.configs_for(env_name: Rails.env, name: 'primary').config
+            # ActiveRecord >= 6.1
+            # 6.1 starts emitting a warning that "spec_name" kwarg will be renamed to "name" in 6.2
+            # also need to call `.config_hash` rather than `.config` as the latter emits deprecation warning
+            begin
+              ar_configs.configs_for(env_name: Rails.env, name: 'primary').config_hash
 
-          # ActiveRecord == 6.0
-          # the kwarg is called "spec_name"
-          rescue ArgumentError
-            ar_configs.configs_for(env_name: Rails.env, spec_name: 'primary').config
+            # ActiveRecord == 6.0
+            # the kwarg is called "spec_name"
+            rescue ArgumentError
+              ar_configs.configs_for(env_name: Rails.env, spec_name: 'primary').config
+            end
+
+          # ActiveRecord < 6.0
+          else
+            ar_configs[Rails.env]
           end
 
-        # ActiveRecord < 6.0
-        else
-          ar_configs[Rails.env]
-        end
+         config_hash.symbolize_keys
       end
     end
 
