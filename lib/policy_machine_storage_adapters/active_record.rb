@@ -49,11 +49,12 @@ module PolicyMachineStorageAdapter
 
       config = begin
         # ActiveRecord >= 6.1:
-        # there is a deprecation warnning for using kwarg 'spec_name'
+        # there is a deprecation warning for using kwarg 'spec_name'
         # so try the new 'name' kwarg first
         ar_configs.configs_for(env_name: Rails.env, name: 'primary')
       rescue ArgumentError
-        # ActiveRecord == 6.0: the kwarg is called 'spec_name'
+        # ActiveRecord == 6.0:
+        # the kwarg is called 'spec_name'
         ar_configs.configs_for(env_name: Rails.env, spec_name: 'primary')
       end
 
