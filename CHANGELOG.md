@@ -1,5 +1,8 @@
 # Changelog
 
+## 3.3.3
+* Fixed a deprecation warning from Rails 6.1.
+
 ## 3.3.2
 * Fixed incorrect handling of filters with prohibitions in ActiveRecord `accessible_objects_for_operations`.
 

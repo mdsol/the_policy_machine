@@ -33,32 +33,39 @@ module PolicyMachineStorageAdapter
     end
 
     def self.load_db_adapter!
-      require_relative("active_record/#{db_config['adapter']}")
+      require_relative("active_record/#{db_config[:adapter]}")
     end
 
     def self.db_config
-      @_db_config ||= begin
-        ar_configs = PolicyElement.configurations
+      return @_db_config if @_db_config
 
-         # ActiveRecord >= 6.0
-        if ar_configs.respond_to?(:configs_for)
+      ar_configs = PolicyElement.configurations
 
-          # ActiveRecord >= 6.1
-          # 6.1 starts emitting a warning that "spec_name" kwarg will be renamed to "name" in 6.2
-          begin
-            ar_configs.configs_for(env_name: Rails.env, name: 'primary').config
-
-          # ActiveRecord == 6.0
-          # the kwarg is called "spec_name"
-          rescue ArgumentError
-            ar_configs.configs_for(env_name: Rails.env, spec_name: 'primary').config
-          end
-
-        # ActiveRecord < 6.0
-        else
-          ar_configs[Rails.env]
-        end
+      # ActiveRecord < 6.0
+      unless ar_configs.respond_to?(:configs_for)
+        @_db_config = ar_configs[Rails.env].symbolize_keys
+        return @_db_config
       end
+
+      config = begin
+        # ActiveRecord >= 6.1:
+        # there is a deprecation warning for using kwarg 'spec_name'
+        # so try the new 'name' kwarg first
+        ar_configs.configs_for(env_name: Rails.env, name: 'primary')
+      rescue ArgumentError
+        # ActiveRecord == 6.0:
+        # the kwarg is called 'spec_name'
+        ar_configs.configs_for(env_name: Rails.env, spec_name: 'primary')
+      end
+
+      @_db_config =
+        # AR 6.1 also emits a warning that `.config` is deprecated
+        # and `.configuration_hash` is The New Way
+        if config.respond_to?(:configuration_hash)
+          config.configuration_hash
+        else
+          config.config.symbolize_keys
+        end
     end
 
     def self.buffering?
