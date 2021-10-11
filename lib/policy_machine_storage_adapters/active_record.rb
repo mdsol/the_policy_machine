@@ -1011,7 +1011,23 @@ module PolicyMachineStorageAdapter
         id: operations_to_objattr_ids.values.reduce(:|),
         type: class_for_type('object').name
       )
-      objects_by_id = objects.map { |obj| [obj.id, obj] }.to_h
+
+      objects_by_id =
+        if fields = options[:fields]
+          id_index = fields.index(:id)
+          # Need id to join with operations_to_objattr_ids
+          pluck_fields = id_index ? fields : [:id] | fields
+
+          objects.pluck(*pluck_fields).map do |p|
+            # Read or remove id depending on fields
+            id = id_index ? p[id_index] : p.shift
+            hash = fields.zip(p).to_h
+
+            [id, hash]
+          end
+        else
+          objects.map { |obj| [obj.id, obj] }
+        end.to_h
 
       # replace lists of object attribute IDs with lists of object instances
       operations_to_objattr_ids.transform_values do |objattr_ids|
@@ -1045,7 +1061,13 @@ module PolicyMachineStorageAdapter
       inclusion = options[:includes]
       scopes.map! { |s| build_inclusion_scope(s, options[:key], inclusion) } if inclusion
 
-      scopes.reduce(:|).to_a
+      objects = scopes.reduce(:|).to_a
+
+      if fields = options[:fields]
+        objects.map { |o| o.slice(fields) }
+      else
+        objects
+      end
     end
 
     def build_inclusion_scope(scope, key, value)

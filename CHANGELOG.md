@@ -1,5 +1,9 @@
 # Changelog
 
+## 3.3.4
+* Added `fields` option to `PolicyMachineStorageAdapter::ActiveRecord` for `#accessible_objects` and
+  `#accessible_objects_for_operations` to fetch only requested fields as a hash.
+
 ## 3.3.3
 * Fixed a deprecation warning from Rails 6.1.
 
