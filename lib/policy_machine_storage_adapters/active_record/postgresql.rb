@@ -253,29 +253,11 @@ module PolicyMachineStorageAdapter
       end
 
       def self.ancestors_of(element_or_scope)
-        query = <<-SQL
-          id IN (
-            WITH RECURSIVE assignments_recursive AS (
-              (
-                SELECT parent_id, child_id
-                FROM assignments
-                WHERE child_id IN (?)
-              )
-              UNION ALL
-              (
-                SELECT assignments.parent_id, assignments.child_id
-                FROM assignments
-                INNER JOIN assignments_recursive
-                ON assignments_recursive.parent_id = assignments.child_id
-              )
-            )
+        PolicyElement.where(ancestors_of_query, [*element_or_scope].map(&:id))
+      end
 
-            SELECT assignments_recursive.parent_id
-            FROM assignments_recursive
-          )
-        SQL
-
-        PolicyElement.where(query, [*element_or_scope].map(&:id))
+      def self.ancestors_of_with_pluck(element_or_scope)
+        PolicyElement.where(ancestors_of_query, element_or_scope.pluck(:id))
       end
 
       # Return an ActiveRecord::Relation containing the ids of all ancestors and the
@@ -334,6 +316,32 @@ module PolicyMachineStorageAdapter
         SQL
 
         PolicyElement.connection.exec_query(query).rows.flatten.map(&:to_i)
+      end
+
+      private
+
+      def self.ancestors_of_query
+        <<-SQL
+          id IN (
+            WITH RECURSIVE assignments_recursive AS (
+              (
+                SELECT parent_id, child_id
+                FROM assignments
+                WHERE child_id IN (?)
+              )
+              UNION ALL
+              (
+                SELECT assignments.parent_id, assignments.child_id
+                FROM assignments
+                INNER JOIN assignments_recursive
+                ON assignments_recursive.parent_id = assignments.child_id
+              )
+            )
+
+            SELECT assignments_recursive.parent_id
+            FROM assignments_recursive
+          )
+        SQL
       end
     end
 

@@ -1013,21 +1013,19 @@ module PolicyMachineStorageAdapter
       )
 
       objects_by_id =
-        if fields = options[:fields]
-          id_index = fields.index(:id)
-          # Need id to join with operations_to_objattr_ids
-          pluck_fields = id_index ? fields : [:id] | fields
+        if options[:fields]
+          fields = options[:fields].map(&:to_sym)
+          pluck_fields = %i(id) | fields # force id to be first item
+          id_requested = fields.size == pluck_fields.size
 
-          objects.pluck(*pluck_fields).map do |p|
-            # Read or remove id depending on fields
-            id = id_index ? p[id_index] : p.shift
-            hash = fields.zip(p).to_h
-
-            [id, hash]
-          end
+          objects.pluck(*pluck_fields).map do |values|
+            zipped = pluck_fields.zip(values)
+            hash = (id_requested ? zipped : zipped.drop(1)).to_h
+            [values.first, hash]
+          end.to_h
         else
-          objects.map { |obj| [obj.id, obj] }
-        end.to_h
+          objects.index_by(&:id)
+        end
 
       # replace lists of object attribute IDs with lists of object instances
       operations_to_objattr_ids.transform_values do |objattr_ids|
@@ -1046,27 +1044,33 @@ module PolicyMachineStorageAdapter
     # Builds an array of PolicyElement objects within the scope of a given
     # array of associations
     def build_accessible_object_scope(associations, options = {})
-      permitting_oas = PolicyElement.where(id: associations.pluck(:object_attribute_id))
+      fields = options[:fields]
+      inclusion = options[:includes]
+      key = options[:key]
 
-      scopes = []
+      permitting_oas = PolicyElement.where(id: associations.pluck(:object_attribute_id))
+      object_type = class_for_type('object').name
+      ids = []
 
       # Direct scope: the set of objects on which the operator is directly assigned
-      scopes << permitting_oas.where(type: class_for_type('object').name)
+      directly_assigned = permitting_oas.where(type: object_type)
+      directly_assigned = build_inclusion_scope(directly_assigned, key, inclusion) if inclusion
+      ids.concat(directly_assigned.pluck(:id))
 
       # Indirect scope: the set of objects which the operator can access via ancestral hierarchy
       unless options[:direct_only]
-        scopes << Assignment.ancestors_of(permitting_oas).where(type: class_for_type('object').name)
+        ancestors = Assignment.ancestors_of_with_pluck(permitting_oas).where(type: object_type)
+        ancestors = build_inclusion_scope(ancestors, key, inclusion) if inclusion
+        ids.concat(ancestors.pluck(:id))
       end
 
-      inclusion = options[:includes]
-      scopes.map! { |s| build_inclusion_scope(s, options[:key], inclusion) } if inclusion
+      # Combine scopes: using ids for efficiency
+      objects = PolicyElement.where(id: ids)
 
-      objects = scopes.reduce(:|).to_a
-
-      if fields = options[:fields]
-        objects.map { |o| o.slice(fields) }
+      if fields
+        objects.pluck(*fields).map { |values| fields.zip(values).to_h }
       else
-        objects
+        objects.to_a
       end
     end
 

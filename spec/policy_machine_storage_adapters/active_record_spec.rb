@@ -310,6 +310,19 @@ describe 'ActiveRecord' do
           end
         end
 
+        context 'includes' do
+          it 'returns only objects that match' do
+            expect(
+              priv_pm.accessible_objects(
+                user_1,
+                create,
+                key: :unique_identifier,
+                includes: '4'
+              ).map(&:unique_identifier)
+            ).to eq(['object_4'])
+          end
+        end
+
         context 'fields' do
           it 'plucks only requested fields' do
             expect(
