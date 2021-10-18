@@ -1068,7 +1068,10 @@ module PolicyMachineStorageAdapter
       objects = PolicyElement.where(id: ids)
 
       if fields
-        objects.pluck(*fields).map { |values| fields.zip(values).to_h }
+        objects.pluck(*fields).map do |values|
+          values = [values] if fields.one?
+          fields.zip(values).to_h
+        end
       else
         objects.to_a
       end

@@ -358,6 +358,23 @@ describe 'ActiveRecord' do
               }
             ])
           end
+
+          it 'plucks a single field' do
+            expect(
+              priv_pm.accessible_objects(
+                user_1,
+                create,
+                fields: [:unique_identifier]
+              )
+            ).to match_array([
+              { unique_identifier: object_1.unique_identifier },
+              { unique_identifier: object_2.unique_identifier },
+              { unique_identifier: object_3.unique_identifier },
+              { unique_identifier: object_4.unique_identifier },
+              { unique_identifier: object_5.unique_identifier },
+              { unique_identifier: object_6.unique_identifier }
+            ])
+          end
         end
       end
 
@@ -573,6 +590,25 @@ describe 'ActiveRecord' do
                 expect(result[paint.to_s]).to contain_exactly(
                   { id: object_6.id, unique_identifier: object_6.unique_identifier },
                   { id: object_7.id, unique_identifier: object_7.unique_identifier }
+                )
+              end
+
+              it 'plucks a single field' do
+                result = priv_pm.accessible_objects_for_operations(
+                  user_1,
+                  [create, paint],
+                  direct_only: true,
+                  fields: [:unique_identifier]
+                )
+
+                expect(result.keys).to contain_exactly(create.to_s, paint.to_s)
+                expect(result[create.to_s]).to contain_exactly(
+                  { unique_identifier: object_6.unique_identifier },
+                  { unique_identifier: object_7.unique_identifier }
+                )
+                expect(result[paint.to_s]).to contain_exactly(
+                  { unique_identifier: object_6.unique_identifier },
+                  { unique_identifier: object_7.unique_identifier }
                 )
               end
 
