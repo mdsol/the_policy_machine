@@ -262,7 +262,7 @@ module PM
       negation = "~#{operation}"
       case operation
       when PM::Operation
-        PM::Operation.find_or_create(
+        PM::Operation.find!(
           negation,
           operation.policy_machine_uuid,
           operation.pm_storage_adapter,
