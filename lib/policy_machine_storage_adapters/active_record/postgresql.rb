@@ -74,6 +74,40 @@ module PolicyMachineStorageAdapter
         # ]
         connection.execute(sanitized_query)
       end
+
+      def self.accessible_objects_for_operations(user_id, operation_names, options)
+        field = options[:fields].first
+        filters = options.dig(:filters, :user_attributes) || {}
+
+        query = <<~SQL.squish
+          SELECT *
+          FROM pm_accessible_objects_for_operations(?, ?, ?, ?)
+        SQL
+
+        sanitized_query = sanitize_sql_for_assignment([
+          query,
+          user_id,
+          ActiveRecord.array_to_string(operation_names),
+          field,
+          JSON.dump(filters)
+        ])
+
+        # [
+        #   { 'unique_identifier' => 'op1', 'objects' => '{obj1,obj2,obj3}' },
+        #   { 'unique_identifier' => 'op2', 'objects' => '{obj1,obj2,obj3}' },
+        # ]
+        result = connection.execute(sanitized_query).to_a
+
+        # {
+        #    'op1' => [{ :field => 'obj1' }, { :field => 'obj2' }, { :field => 'obj3' }],
+        #    'op2' => [{ :field => 'obj2' }, { :field => 'obj3' }, { :field => 'obj4' }],
+        # }
+        result.map do |h|
+          objects = ActiveRecord.string_to_array(h['objects'])
+          value = objects.map { |o| { field => o }}
+          [h['unique_identifier'], value]
+        end.to_h
+      end
     end
 
     class PolicyElementAssociation
@@ -416,6 +450,18 @@ module PolicyMachineStorageAdapter
           scope.where("#{key} LIKE '%#{value.to_s.gsub(/([%_])/, '\\\\\0')}%'", )
         end
       end
+    end
+
+    private
+
+    # Convert array to '{element1,element2,element3}'
+    def self.array_to_string(array)
+      "{#{array.join(',')}}"
+    end
+
+    # Convert '{element1,element2,element3}' to array
+    def self.string_to_array(string)
+      string[1..-2].split(',')
     end
   end
 end

@@ -871,6 +871,11 @@ module PolicyMachineStorageAdapter
         raise ArgumentError, 'Functionality for indirect objects is not yet implemented!'
       end
 
+      # Performance optimized function for PostgreSQL
+      if postgres? && options[:fields]&.one?
+        return accessible_objects_for_operations_function(user_or_attribute.id, operations, options)
+      end
+
       # convert to operation names if operation instances given
       operation_names = operations.map { |o| operation_identifier(o) }
 
@@ -1075,6 +1080,43 @@ module PolicyMachineStorageAdapter
       else
         objects.to_a
       end
+    end
+
+    def accessible_objects_for_operations_function(user_id, operations, options)
+      prohibition_names = []
+
+      operation_names = operations.map do |o|
+        name = operation_identifier(o)
+        # Store prohition name if not ignoring prohibitions
+        prohibition_names << prohibition_identifier(name) unless options[:ignore_prohibitions]
+        name
+      end
+
+      all_names = operation_names + prohibition_names
+      accessible_map = all_names.map { |o| [o, []] }.to_h
+
+      # Filtering should never apply to prohibitions. It is less efficient to run the function twice but still an
+      # improvement over many ad hoc ActiveRecord calls.
+      if options[:filters] && options[:ignore_prohibitions] != true
+        result = PolicyElement.accessible_objects_for_operations(user_id, operation_names, options)
+        accessible_map.merge!(result)
+        result = PolicyElement.accessible_objects_for_operations(user_id, prohibition_names, options.except(:filters))
+        accessible_map.merge!(result)
+      else
+        result = PolicyElement.accessible_objects_for_operations(user_id, all_names, options)
+        accessible_map.merge!(result)
+      end
+
+      return accessible_map if options[:ignore_prohibitions]
+
+      operation_names.each do |operation_name|
+        prohibition_name = prohibition_identifier(operation_name)
+        prohibited_objects = accessible_map[prohibition_name] || []
+        accessible_map[operation_name] -= prohibited_objects
+        accessible_map.delete(prohibition_name)
+      end
+
+      accessible_map
     end
 
     def build_inclusion_scope(scope, key, value)
@@ -1325,6 +1367,10 @@ module PolicyMachineStorageAdapter
       else
         yield
       end
+    end
+
+    def postgres?
+      ::ActiveRecord::Base.connection.class.name == 'ActiveRecord::ConnectionAdapters::PostgreSQLAdapter'
     end
   end
 end unless active_record_unavailable
