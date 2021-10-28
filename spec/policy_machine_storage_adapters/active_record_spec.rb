@@ -461,7 +461,7 @@ describe 'ActiveRecord' do
 
       describe 'accessible_objects_for_operations' do
         before do
-          allow_any_instance_of(PolicyMachineStorageAdapter::ActiveRecord).to receive(:postgres?).and_return(false)
+          allow(PolicyMachineStorageAdapter).to receive(:postgres?).and_return(false)
           expect_any_instance_of(PolicyMachineStorageAdapter::ActiveRecord)
             .not_to receive(:accessible_objects_for_operations_function)
         end

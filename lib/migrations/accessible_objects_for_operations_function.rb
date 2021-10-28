@@ -1,6 +1,6 @@
 class AccessibleObjectsForOperationsFunction < ActiveRecord::Migration[5.2]
   def up
-    return unless postgres?
+    return unless PolicyMachineStorageAdapter.postgres?
 
     execute <<~SQL
       CREATE OR REPLACE FUNCTION pm_accessible_objects_for_operations(
@@ -140,11 +140,5 @@ class AccessibleObjectsForOperationsFunction < ActiveRecord::Migration[5.2]
 
   def down
     execute 'DROP FUNCTION IF EXISTS pm_accessible_objects_for_operations' if postgres?
-  end
-
-  private
-
-  def postgres?
-    ActiveRecord::Base.connection.class.name == 'ActiveRecord::ConnectionAdapters::PostgreSQLAdapter'
   end
 end

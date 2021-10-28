@@ -872,7 +872,7 @@ module PolicyMachineStorageAdapter
       end
 
       # Performance optimized function for PostgreSQL
-      if postgres? && options[:fields]&.one?
+      if PolicyMachineStorageAdapter.postgres? && options[:fields]&.one?
         return accessible_objects_for_operations_function(user_or_attribute.id, operations, options)
       end
 
@@ -1359,7 +1359,7 @@ module PolicyMachineStorageAdapter
     end
 
     def transaction_without_mergejoin(&block)
-      if PolicyMachineStorageAdapter::ActiveRecord::Assignment.connection.is_a? ::ActiveRecord::ConnectionAdapters::PostgreSQLAdapter
+      if PolicyMachineStorageAdapter.postgres?
         PolicyMachineStorageAdapter::ActiveRecord::Assignment.transaction do
           PolicyMachineStorageAdapter::ActiveRecord::Assignment.connection.execute("set local enable_mergejoin = false")
           yield
@@ -1368,9 +1368,9 @@ module PolicyMachineStorageAdapter
         yield
       end
     end
+  end
 
-    def postgres?
-      ::ActiveRecord::Base.connection.class.name == 'ActiveRecord::ConnectionAdapters::PostgreSQLAdapter'
-    end
+  def self.postgres?
+    ::ActiveRecord::Base.connection.class.name == 'ActiveRecord::ConnectionAdapters::PostgreSQLAdapter'
   end
 end unless active_record_unavailable

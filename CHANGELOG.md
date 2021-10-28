@@ -1,6 +1,6 @@
 # Changelog
 
-## 3.3.5
+## 3.4.0
 * Added a PostgreSQL function for `#accessible_objects_for_operations` which is performance optimized. Only supported
 for a single `field`.
 
