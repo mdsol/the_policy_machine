@@ -136,6 +136,7 @@ module PM
     # TODO: Move all overrides of self.all to the base class
     def self.all(pm_storage_adapter, options = {})
       method_name = "find_all_of_type_#{self.name.split('::').last}".underscore.to_sym
+      method_name = "find_all_of_type_#{name.split('::').last}".underscore.to_sym
       result = pm_storage_adapter.send(method_name, options)
       all_result = result.map do |stored_pe|
         convert_stored_pe_to_pe(stored_pe, pm_storage_adapter, self)
@@ -143,7 +144,6 @@ module PM
       all_result.define_singleton_method(:total_entries) { result.total_entries }
       all_result
     end
-
   end
 
   # A user in a policy machine.
@@ -155,6 +155,7 @@ module PM
     end
 
     protected
+
     def allowed_assignee_classes
       [UserAttribute]
     end
@@ -164,6 +165,7 @@ module PM
   class UserAttribute < PolicyElement
 
     protected
+
     def allowed_assignee_classes
       [UserAttribute, PolicyClass]
     end
@@ -181,6 +183,7 @@ module PM
     end
 
     protected
+
     def allowed_assignee_classes
       [ObjectAttribute, PolicyClass]
     end
@@ -188,8 +191,8 @@ module PM
 
   # An object in a policy machine.
   class Object < ObjectAttribute
-
     protected
+
     def allowed_assignee_classes
       [Object, ObjectAttribute]
     end
@@ -201,18 +204,43 @@ module PM
       if unique_identifier =~ /^~/ && !prohibition
         raise ArgumentError, "A non-prohibition operation cannot start with '~'"
       end
+
+      negation = "~#{unique_identifier}"
+      unless prohibition
+        find_or_create(
+          negation,
+          policy_machine_uuid,
+          pm_storage_adapter,
+          extra_attributes,
+          true
+        )
+      end
+
       new_pe = new(unique_identifier, policy_machine_uuid, pm_storage_adapter, nil, extra_attributes)
       new_pe.stored_pe = pm_storage_adapter.add_operation(unique_identifier, policy_machine_uuid, extra_attributes)
       new_pe
     end
 
-    def self.find_or_create(unique_identifier, policy_machine_uuid, pm_storage_adapter, extra_attributes = {}, prohibition = false)
-      op = pm_storage_adapter.find_all_of_type_operation(unique_identifier: unique_identifier, policy_machine_uuid: policy_machine_uuid).first
+    def self.find_or_create(unique_identifier, pm_uuid, pm_storage_adapter, extra_attributes = {}, prohibition = false)
+      op = pm_storage_adapter.find_all_of_type_operation(
+        unique_identifier: unique_identifier,
+        policy_machine_uuid: pm_uuid
+      ).first
       if op
         convert_stored_pe_to_pe(op, pm_storage_adapter, self)
       else
-        create(unique_identifier, policy_machine_uuid, pm_storage_adapter, extra_attributes, prohibition)
+        create(unique_identifier, pm_uuid, pm_storage_adapter, extra_attributes, prohibition)
       end
+    end
+
+    def self.find(unique_identifier, pm_uuid, pm_storage_adapter)
+      op = pm_storage_adapter.find_all_of_type_operation(
+        unique_identifier: unique_identifier,
+        policy_machine_uuid: pm_uuid
+      ).first
+      return unless op
+
+      convert_stored_pe_to_pe(op, pm_storage_adapter, self)
     end
 
     def self.prohibition?(unique_identifier)
@@ -224,7 +252,7 @@ module PM
     end
 
     def operation
-      unique_identifier.sub(/^~/,'')
+      unique_identifier.sub(/^~/, '')
     end
 
     def prohibition
@@ -258,23 +286,17 @@ module PM
 
   # A prohibition in a policy machine.
   class Prohibition < PolicyElement
-    def self.on(operation, extra_attributes = {})
+    def self.on(operation)
       negation = "~#{operation}"
       case operation
       when PM::Operation
-        PM::Operation.find!(
-          negation,
-          operation.policy_machine_uuid,
-          operation.pm_storage_adapter,
-          extra_attributes,
-          true
-        )
+        PM::Operation.find(negation, operation.policy_machine_uuid, operation.pm_storage_adapter)
       when Symbol
         negation.to_sym
       when String
         negation
       else
-        raise(ArgumentError, "operation must be an Operation, Symbol, or String.")
+        raise(ArgumentError, 'operation must be an Operation, Symbol, or String.')
       end
     end
   end
@@ -282,9 +304,9 @@ module PM
   # A policy class in a policy machine.
   class PolicyClass < PolicyElement
     protected
+
     def allowed_assignee_classes
       []
     end
   end
-
 end
