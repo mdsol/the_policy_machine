@@ -246,6 +246,12 @@ describe 'ActiveRecord' do
       end
 
       describe 'accessible_objects' do
+        before do
+          allow(PolicyMachineStorageAdapter).to receive(:postgres?).and_return(false)
+          expect_any_instance_of(PolicyMachineStorageAdapter::ActiveRecord)
+            .not_to receive(:accessible_objects_function)
+        end
+
         it 'returns objects accessible via the filtered attribute' do
           filters = { user_attributes: { color: 'purple' } }
 
@@ -374,6 +380,101 @@ describe 'ActiveRecord' do
               { unique_identifier: object_5.unique_identifier },
               { unique_identifier: object_6.unique_identifier }
             ])
+          end
+        end
+      end
+
+      describe 'accessible_objects_function' do
+        before do
+          expect_any_instance_of(PolicyMachineStorageAdapter::ActiveRecord)
+            .to receive(:accessible_objects_function)
+            .and_call_original
+        end
+
+        it 'returns objects accessible via the filtered attribute' do
+          filters = { user_attributes: { color: 'purple' } }
+
+          expect(
+            priv_pm.accessible_objects(
+              user_1,
+              create,
+              filters: filters,
+              key: :unique_identifier,
+              fields: [:unique_identifier]
+            ).map { |h| h[:unique_identifier] }
+          ).to match_array(['object_5', 'object_6'])
+        end
+
+        it 'does not return objects that are not accessible via the filtered attribute' do
+          filters = { user_attributes: { color: 'pink' } }
+
+          expect(
+            priv_pm.accessible_objects(
+              user_1,
+              create,
+              filters: filters,
+              fields: [:unique_identifier]
+            )
+          ).to be_empty
+        end
+
+        context 'prohibitions' do
+          let(:cant_create) { priv_pm.create_operation_set('cant_create') }
+
+          before do
+            priv_pm.add_assignment(cant_create, create.prohibition)
+            priv_pm.add_association(color_2, cant_create, object_5)
+          end
+
+          it 'does not return objects with prohibitions' do
+            filters = { user_attributes: { color: 'purple' } }
+
+            expect(
+              priv_pm.accessible_objects(
+                user_1,
+                create,
+                filters: filters,
+                key: :unique_identifier,
+                fields: [:unique_identifier]
+              ).map { |h| h[:unique_identifier] }
+            ).to_not include('object_5')
+          end
+        end
+
+        context 'direct only' do
+          before { priv_pm.add_association(color_1, creator, object_7) }
+
+          it 'only considers associations that go directly to objects' do
+            expect(priv_pm.accessible_objects(
+                user_1,
+                create,
+                direct_only: true,
+                fields: [:unique_identifier]
+              ).map { |h| h[:unique_identifier] }
+            ).to contain_exactly('object_7')
+          end
+
+          it 'returns an array' do
+            expect(priv_pm.accessible_objects(
+              user_1,
+              create,
+              direct_only: true,
+              fields: [:unique_identifier]
+            ).class).to eq(Array)
+          end
+        end
+
+        context 'includes' do
+          it 'returns only objects that match' do
+            expect(
+              priv_pm.accessible_objects(
+                user_1,
+                create,
+                key: :unique_identifier,
+                includes: '4',
+                fields: [:unique_identifier]
+              ).map { |h| h[:unique_identifier] }
+            ).to eq(['object_4'])
           end
         end
       end

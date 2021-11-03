@@ -803,6 +803,10 @@ module PolicyMachineStorageAdapter
     # Returns all objects the user has the given operation on
     # TODO: Support multiple policy classes here
     def accessible_objects(user_or_attribute, operation, options = {})
+      if PolicyMachineStorageAdapter.postgres? && options[:fields]&.one?
+        return accessible_objects_function(user_or_attribute.id, operation, options)
+      end
+
       candidates = objects_for_user_or_attribute_and_operation(user_or_attribute, operation, options)
 
       if options[:ignore_prohibitions] || !(prohibition = prohibition_for(operation))
@@ -871,7 +875,6 @@ module PolicyMachineStorageAdapter
         raise ArgumentError, 'Functionality for indirect objects is not yet implemented!'
       end
 
-      # Performance optimized function for PostgreSQL
       if PolicyMachineStorageAdapter.postgres? && options[:fields]&.one?
         return accessible_objects_for_operations_function(user_or_attribute.id, operations, options)
       end
@@ -1082,38 +1085,52 @@ module PolicyMachineStorageAdapter
       end
     end
 
+    # Performance optimized function for PostgreSQL
+    def accessible_objects_function(user_id, operation, options)
+      candidates = PolicyElement.accessible_objects(user_id, operation_identifier(operation), options)
+      prohibition = options[:ignore_prohibitions] ? nil : prohibition_for(operation)
+      return candidates unless prohibition
+
+      # Do not use the filter when checking prohibitions
+      preloaded_options = options.except(:filters).merge(ignore_prohibitions: true)
+      candidates - PolicyElement.accessible_objects(user_id, operation_identifier(prohibition), preloaded_options)
+    end
+
+    # Performance optimized function for PostgreSQL
     def accessible_objects_for_operations_function(user_id, operations, options)
       prohibition_names = []
 
       operation_names = operations.map do |o|
         name = operation_identifier(o)
-        # Store prohition name if not ignoring prohibitions
         prohibition_names << prohibition_identifier(name) unless options[:ignore_prohibitions]
         name
       end
 
       all_names = operation_names + prohibition_names
-      accessible_map = all_names.map { |o| [o, []] }.to_h
+      accessible_map = all_names.index_with([])
 
-      # Filtering should never apply to prohibitions. It is less efficient to run the function twice but still an
-      # improvement over many ad hoc ActiveRecord calls.
-      if options[:filters] && options[:ignore_prohibitions] != true
-        result = PolicyElement.accessible_objects_for_operations(user_id, operation_names, options)
-        accessible_map.merge!(result)
-        result = PolicyElement.accessible_objects_for_operations(user_id, prohibition_names, options.except(:filters))
-        accessible_map.merge!(result)
-      else
-        result = PolicyElement.accessible_objects_for_operations(user_id, all_names, options)
-        accessible_map.merge!(result)
-      end
+      postgres_result =
+        if options[:filters] && options[:ignore_prohibitions] != true
+          perms_map = PolicyElement.accessible_objects_for_operations(user_id, operation_names, options)
+          # Prohibitions should not have filtering
+          prohibs_map = PolicyElement.accessible_objects_for_operations(
+            user_id,
+            prohibition_names,
+            options.except(:filters)
+          )
+          perms_map.merge(prohibs_map)
+        else
+          PolicyElement.accessible_objects_for_operations(user_id, all_names, options)
+        end
+
+      accessible_map.merge!(postgres_result)
 
       return accessible_map if options[:ignore_prohibitions]
 
       operation_names.each do |operation_name|
         prohibition_name = prohibition_identifier(operation_name)
-        prohibited_objects = accessible_map[prohibition_name] || []
+        prohibited_objects = accessible_map.delete(prohibition_name) || []
         accessible_map[operation_name] -= prohibited_objects
-        accessible_map.delete(prohibition_name)
       end
 
       accessible_map

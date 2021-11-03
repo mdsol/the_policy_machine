@@ -2,7 +2,7 @@ class AccessibleObjectsForOperationsFunction < ActiveRecord::Migration[5.2]
   def up
     return unless PolicyMachineStorageAdapter.postgres?
 
-    execute <<~SQL
+    execute <<~SQL.squish
       CREATE OR REPLACE FUNCTION pm_accessible_objects_for_operations(
         user_id INT,
         operations _TEXT,
@@ -67,9 +67,9 @@ class AccessibleObjectsForOperationsFunction < ActiveRecord::Migration[5.2]
             filter_conditions := filter_conditions || filter_key || ' = ' || filter_value || ' AND ';
           END LOOP;
 
-          -- Chomp trailing AND
+          /* Chomp trailing AND */
           filter_conditions := left(filter_conditions, -4);
-          -- Replace double quotes
+          /* Replace double quotes */
           filter_conditions := replace(filter_conditions, '"', '''');
 
           EXECUTE format(
@@ -139,6 +139,6 @@ class AccessibleObjectsForOperationsFunction < ActiveRecord::Migration[5.2]
   end
 
   def down
-    execute 'DROP FUNCTION IF EXISTS pm_accessible_objects_for_operations' if postgres?
+    execute 'DROP FUNCTION IF EXISTS pm_accessible_objects_for_operations' if PolicyMachineStorageAdapter.postgres?
   end
 end

@@ -75,19 +75,34 @@ module PolicyMachineStorageAdapter
         connection.execute(sanitized_query)
       end
 
+      def self.accessible_objects(user_id, operation, options)
+        field = options[:fields].first
+        filters = options.dig(:filters, :user_attributes) || {}
+
+        query = sanitize_sql_for_assignment([
+          'SELECT * FROM pm_accessible_objects(?,?,?,?,?,?,?)',
+          user_id,
+          operation,
+          field,
+          options[:direct_only] || false,
+          JSON.dump(filters),
+          options[:key],
+          options[:includes]
+        ])
+
+        result = connection.execute(query).to_a
+        # Replace column name with expected field
+        result.each { |h| h.transform_keys! { |_| field } }
+      end
+
       def self.accessible_objects_for_operations(user_id, operation_names, options)
         field = options[:fields].first
         filters = options.dig(:filters, :user_attributes) || {}
 
-        query = <<~SQL.squish
-          SELECT *
-          FROM pm_accessible_objects_for_operations(?, ?, ?, ?)
-        SQL
-
-        sanitized_query = sanitize_sql_for_assignment([
-          query,
+        query = sanitize_sql_for_assignment([
+          'SELECT * FROM pm_accessible_objects_for_operations(?,?,?,?)',
           user_id,
-          ActiveRecord.array_to_string(operation_names),
+          PG::TextEncoder::Array.new.encode(operation_names),
           field,
           JSON.dump(filters)
         ])
@@ -96,17 +111,18 @@ module PolicyMachineStorageAdapter
         #   { 'unique_identifier' => 'op1', 'objects' => '{obj1,obj2,obj3}' },
         #   { 'unique_identifier' => 'op2', 'objects' => '{obj1,obj2,obj3}' },
         # ]
-        result = connection.execute(sanitized_query).to_a
+        result = connection.execute(query).to_a
 
         # {
         #    'op1' => [{ :field => 'obj1' }, { :field => 'obj2' }, { :field => 'obj3' }],
         #    'op2' => [{ :field => 'obj2' }, { :field => 'obj3' }, { :field => 'obj4' }],
         # }
-        result.map do |h|
-          objects = ActiveRecord.string_to_array(h['objects'])
-          value = objects.map { |o| { field => o }}
-          [h['unique_identifier'], value]
-        end.to_h
+        decoder = PG::TextDecoder::Array.new
+        result.each_with_object({}) do |result_hash, output|
+          objects = decoder.decode(result_hash['objects'])
+          key = result_hash['unique_identifier']
+          output[key] = objects.map { |o| { field => o }}
+        end
       end
     end
 
@@ -457,11 +473,6 @@ module PolicyMachineStorageAdapter
     # Convert array to '{element1,element2,element3}'
     def self.array_to_string(array)
       "{#{array.join(',')}}"
-    end
-
-    # Convert '{element1,element2,element3}' to array
-    def self.string_to_array(string)
-      string[1..-2].split(',')
     end
   end
 end
