@@ -1,4 +1,4 @@
-class AccessibleObjectsForOperationsFunction < ActiveRecord::Migration[5.2]
+class AccessibleObjectsFunction < ActiveRecord::Migration[5.2]
   def up
     return unless PolicyMachineStorageAdapter.postgres?
 
