@@ -399,7 +399,7 @@ describe 'ActiveRecord' do
                 create,
                 direct_only: true,
                 fields: [:unique_identifier]
-              ).map { |h| h[:unique_identifier] }
+              )
             ).to contain_exactly('object_7')
           end
 
@@ -728,14 +728,8 @@ describe 'ActiveRecord' do
             )
 
             expect(result.keys).to contain_exactly(create.to_s, paint.to_s)
-            expect(result[create.to_s]).to contain_exactly(
-              { unique_identifier: 'object_7' },
-              { unique_identifier: 'object_6' }
-            )
-            expect(result[paint.to_s]).to contain_exactly(
-              { unique_identifier: 'object_7' },
-              { unique_identifier: 'object_6' }
-            )
+            expect(result[create.to_s]).to contain_exactly('object_7', 'object_6')
+            expect(result[paint.to_s]).to contain_exactly('object_7', 'object_6')
           end
 
           it 'can handle string operations' do
@@ -747,14 +741,8 @@ describe 'ActiveRecord' do
             )
 
             expect(result.keys).to contain_exactly('create', 'paint')
-            expect(result[create.to_s]).to contain_exactly(
-                { unique_identifier: 'object_7' },
-                { unique_identifier: 'object_6' }
-              )
-              expect(result[paint.to_s]).to contain_exactly(
-                { unique_identifier: 'object_7' },
-                { unique_identifier: 'object_6' }
-              )
+            expect(result[create.to_s]).to contain_exactly('object_7', 'object_6')
+            expect(result[paint.to_s]).to contain_exactly('object_7', 'object_6')
           end
 
           it 'returns an empty list of objects for non-existent operations' do
@@ -766,10 +754,7 @@ describe 'ActiveRecord' do
             )
 
             expect(result.keys).to contain_exactly(create.to_s, 'zagnut')
-            expect(result[create.to_s]).to contain_exactly(
-              { unique_identifier: 'object_7' },
-              { unique_identifier: 'object_6' }
-            )
+            expect(result[create.to_s]).to contain_exactly('object_7', 'object_6')
             expect(result['zagnut']).to eq([])
           end
 
@@ -786,8 +771,8 @@ describe 'ActiveRecord' do
               )
 
               expect(result).to eq({
-                create.to_s => [{ unique_identifier: 'object_6' }],
-                paint.to_s => [{ unique_identifier: 'object_6' }],
+                create.to_s => ['object_6'],
+                paint.to_s => ['object_6'],
               })
             end
 
@@ -807,8 +792,8 @@ describe 'ActiveRecord' do
               )
 
               expect(result).to eq({
-                create.to_s => [{ unique_identifier: 'object_6' }],
-                paint.to_s => [{ unique_identifier: 'object_6' }],
+                create.to_s => ['object_6'],
+                paint.to_s => ['object_6'],
               })
             end
           end
@@ -831,11 +816,8 @@ describe 'ActiveRecord' do
               )
 
               expect(result.keys).to contain_exactly(create.to_s, paint.to_s)
-              expect(result[create.to_s]).to contain_exactly(unique_identifier: 'object_7')
-              expect(result[paint.to_s]).to contain_exactly(
-                { unique_identifier: 'object_6' },
-                { unique_identifier: 'object_7' }
-              )
+              expect(result[create.to_s]).to contain_exactly('object_7')
+              expect(result[paint.to_s]).to contain_exactly('object_6', 'object_7')
             end
 
             # prohibition applied via color_2 still blocks create on object_6,
@@ -851,7 +833,7 @@ describe 'ActiveRecord' do
 
               expect(result).to eq({
                 create.to_s => [],
-                paint.to_s => [{ unique_identifier: 'object_6' }],
+                paint.to_s => ['object_6'],
               })
             end
           end

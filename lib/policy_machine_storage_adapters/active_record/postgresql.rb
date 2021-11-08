@@ -94,14 +94,14 @@ module PolicyMachineStorageAdapter
         result = connection.execute(query).to_a
 
         # {
-        #    'op1' => [{ :field => 'obj1' }, { :field => 'obj2' }, { :field => 'obj3' }],
-        #    'op2' => [{ :field => 'obj2' }, { :field => 'obj3' }, { :field => 'obj4' }],
+        #    'op1' => ['obj1', 'obj2', 'obj3'],
+        #    'op2' => ['obj2', 'obj3', 'obj4'],
         # }
         decoder = PG::TextDecoder::Array.new
         result.each_with_object({}) do |result_hash, output|
-          objects = decoder.decode(result_hash['objects'])
           key = result_hash['unique_identifier']
-          output[key] = objects.map { |o| { field => o }}
+          objects = decoder.decode(result_hash['objects'])
+          output[key] = objects
         end
       end
     end
@@ -446,13 +446,6 @@ module PolicyMachineStorageAdapter
           scope.where("#{key} LIKE '%#{value.to_s.gsub(/([%_])/, '\\\\\0')}%'", )
         end
       end
-    end
-
-    private
-
-    # Convert array to '{element1,element2,element3}'
-    def self.array_to_string(array)
-      "{#{array.join(',')}}"
     end
   end
 end
