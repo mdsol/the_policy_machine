@@ -139,6 +139,6 @@ class AccessibleObjectsForOperationsFunction < ActiveRecord::Migration[5.2]
   end
 
   def down
-    execute 'DROP FUNCTION IF EXISTS pm_accessible_objects_for_operations' if PolicyMachineStorageAdapter.postgres?
+    execute 'DROP FUNCTION IF EXISTS pm_accessible_objects_for_operations'
   end
 end

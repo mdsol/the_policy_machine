@@ -803,7 +803,7 @@ module PolicyMachineStorageAdapter
     # Returns all objects the user has the given operation on
     # TODO: Support multiple policy classes here
     def accessible_objects(user_or_attribute, operation, options = {})
-      if PolicyMachineStorageAdapter.postgres? && options[:fields]&.one?
+      if PolicyMachineStorageAdapter.postgres? && options[:fields]&.one? && options[:direct_only]
         return accessible_objects_function(user_or_attribute.id, operation, options)
       end
 
@@ -1087,13 +1087,7 @@ module PolicyMachineStorageAdapter
 
     # Performance optimized function for PostgreSQL
     def accessible_objects_function(user_id, operation, options)
-      candidates = PolicyElement.accessible_objects(user_id, operation_identifier(operation), options)
-      prohibition = options[:ignore_prohibitions] ? nil : prohibition_for(operation)
-      return candidates unless prohibition
-
-      # Do not use the filter when checking prohibitions
-      preloaded_options = options.except(:filters).merge(ignore_prohibitions: true)
-      candidates - PolicyElement.accessible_objects(user_id, operation_identifier(prohibition), preloaded_options)
+      accessible_objects_for_operations_function(user_id, [operation], options).values.flatten
     end
 
     # Performance optimized function for PostgreSQL
