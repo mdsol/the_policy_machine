@@ -4,9 +4,6 @@
 * Added a PostgreSQL function for `#accessible_objects` and `#accessible_objects_for_operations` which are performance
 optimized. Only supported for a single `field`.
 
-– Execute `bundle exec rails generate the_policy_machine:accessible_objects` and rerun
-`db:migrate` to use these changes.
-
 – Execute `bundle exec rails generate the_policy_machine:accessible_objects_for_operations_function` and rerun
 `db:migrate` to use these changes.
 

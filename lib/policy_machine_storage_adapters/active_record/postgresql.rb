@@ -75,26 +75,6 @@ module PolicyMachineStorageAdapter
         connection.execute(sanitized_query)
       end
 
-      def self.accessible_objects(user_id, operation, options)
-        field = options[:fields].first
-        filters = options.dig(:filters, :user_attributes) || {}
-
-        query = sanitize_sql_for_assignment([
-          'SELECT * FROM pm_accessible_objects(?,?,?,?,?,?,?)',
-          user_id,
-          operation,
-          field,
-          options[:direct_only] || false,
-          JSON.dump(filters),
-          options[:key],
-          options[:includes]
-        ])
-
-        result = connection.execute(query).to_a
-        # Replace column name with expected field
-        result.each { |h| h.transform_keys! { |_| field } }
-      end
-
       def self.accessible_objects_for_operations(user_id, operation_names, options)
         field = options[:fields].first
         filters = options.dig(:filters, :user_attributes) || {}
