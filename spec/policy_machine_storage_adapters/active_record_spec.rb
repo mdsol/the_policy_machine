@@ -398,6 +398,7 @@ describe 'ActiveRecord' do
                 user_1,
                 create,
                 direct_only: true,
+                ignore_prohibitions: true,
                 fields: [:unique_identifier]
               )
             ).to contain_exactly('object_7')
@@ -408,6 +409,7 @@ describe 'ActiveRecord' do
               user_1,
               create,
               direct_only: true,
+              ignore_prohibitions: true,
               fields: [:unique_identifier]
             ).class).to eq(Array)
           end
@@ -724,6 +726,7 @@ describe 'ActiveRecord' do
               user_1,
               [create, paint],
               direct_only: true,
+              ignore_prohibitions: true,
               fields: [:unique_identifier]
             )
 
@@ -737,6 +740,7 @@ describe 'ActiveRecord' do
               user_1,
               ['create', 'paint'],
               direct_only: true,
+              ignore_prohibitions: true,
               fields: [:unique_identifier]
             )
 
@@ -750,6 +754,7 @@ describe 'ActiveRecord' do
               user_1,
               [create, 'zagnut'],
               direct_only: true,
+              ignore_prohibitions: true,
               fields: [:unique_identifier]
             )
 
@@ -767,6 +772,7 @@ describe 'ActiveRecord' do
                   user_attributes: { color: color_1.color }
                 },
                 direct_only: true,
+                ignore_prohibitions: true,
                 fields: [:unique_identifier]
               )
 
@@ -788,51 +794,12 @@ describe 'ActiveRecord' do
                   }
                 },
                 direct_only: true,
+                ignore_prohibitions: true,
                 fields: [:unique_identifier]
               )
 
               expect(result).to eq({
                 create.to_s => ['object_6'],
-                paint.to_s => ['object_6'],
-              })
-            end
-          end
-
-          context 'prohibitions' do
-            let(:cant_create) { priv_pm.create_operation_set('cant_create') }
-            let(:filters) { { user_attributes: { color: color_1.color } } }
-
-            before do
-              priv_pm.add_assignment(cant_create, create.prohibition)
-              priv_pm.add_association(color_2, cant_create, object_6)
-            end
-
-            it 'does not return objects with prohibitions' do
-              result = priv_pm.accessible_objects_for_operations(
-                user_1,
-                [create, paint],
-                direct_only: true,
-                fields: [:unique_identifier]
-              )
-
-              expect(result.keys).to contain_exactly(create.to_s, paint.to_s)
-              expect(result[create.to_s]).to contain_exactly('object_7')
-              expect(result[paint.to_s]).to contain_exactly('object_6', 'object_7')
-            end
-
-            # prohibition applied via color_2 still blocks create on object_6,
-            # even though we are filtering via color_1
-            it 'ignores filters for prohibitions' do
-              result = priv_pm.accessible_objects_for_operations(
-                user_1,
-                [create, paint],
-                filters: filters,
-                direct_only: true,
-                fields: [:unique_identifier]
-              )
-
-              expect(result).to eq({
-                create.to_s => [],
                 paint.to_s => ['object_6'],
               })
             end

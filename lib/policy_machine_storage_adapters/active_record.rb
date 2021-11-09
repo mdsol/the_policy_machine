@@ -803,7 +803,7 @@ module PolicyMachineStorageAdapter
     # Returns all objects the user has the given operation on
     # TODO: Support multiple policy classes here
     def accessible_objects(user_or_attribute, operation, options = {})
-      if PolicyMachineStorageAdapter.postgres? && options[:fields]&.one? && options[:direct_only]
+      if use_accessible_objects_function?(options)
         return accessible_objects_function(user_or_attribute.id, operation, options)
       end
 
@@ -875,7 +875,7 @@ module PolicyMachineStorageAdapter
         raise ArgumentError, 'Functionality for indirect objects is not yet implemented!'
       end
 
-      if PolicyMachineStorageAdapter.postgres? && options[:fields]&.one?
+      if use_accessible_objects_function?(options)
         return accessible_objects_for_operations_function(user_or_attribute.id, operations, options)
       end
 
@@ -1085,49 +1085,23 @@ module PolicyMachineStorageAdapter
       end
     end
 
+    def use_accessible_objects_function?(options)
+      PolicyMachineStorageAdapter.postgres? &&
+        options[:direct_only] &&
+        options[:ignore_prohibitions] &&
+        options[:fields]&.one?
+    end
+
     # Performance optimized function for PostgreSQL
     def accessible_objects_function(user_id, operation, options)
-      accessible_objects_for_operations_function(user_id, [operation], options).values.flatten
+      accessible_objects_for_operations_function(user_id, Array.wrap(operation), options).values.flatten
     end
 
     # Performance optimized function for PostgreSQL
     def accessible_objects_for_operations_function(user_id, operations, options)
-      prohibition_names = []
-
-      operation_names = operations.map do |o|
-        name = operation_identifier(o)
-        prohibition_names << prohibition_identifier(name) unless options[:ignore_prohibitions]
-        name
-      end
-
-      all_names = operation_names + prohibition_names
-      accessible_map = all_names.index_with([])
-
-      postgres_result =
-        if options[:filters] && options[:ignore_prohibitions] != true
-          perms_map = PolicyElement.accessible_objects_for_operations(user_id, operation_names, options)
-          # Prohibitions should not have filtering
-          prohibs_map = PolicyElement.accessible_objects_for_operations(
-            user_id,
-            prohibition_names,
-            options.except(:filters)
-          )
-          perms_map.merge(prohibs_map)
-        else
-          PolicyElement.accessible_objects_for_operations(user_id, all_names, options)
-        end
-
-      accessible_map.merge!(postgres_result)
-
-      return accessible_map if options[:ignore_prohibitions]
-
-      operation_names.each do |operation_name|
-        prohibition_name = prohibition_identifier(operation_name)
-        prohibited_objects = accessible_map.delete(prohibition_name) || []
-        accessible_map[operation_name] -= prohibited_objects
-      end
-
-      accessible_map
+      operation_names = operations.map { |o| operation_identifier(o) }
+      accessible_map = operation_names.index_with([])
+      accessible_map.merge(PolicyElement.accessible_objects_for_operations(user_id, operation_names, options))
     end
 
     def build_inclusion_scope(scope, key, value)

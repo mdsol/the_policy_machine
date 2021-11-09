@@ -75,6 +75,7 @@ module PolicyMachineStorageAdapter
         connection.execute(sanitized_query)
       end
 
+      # The PG function can only accept a single field for now.
       def self.accessible_objects_for_operations(user_id, operation_names, options)
         field = options[:fields].first
         filters = options.dig(:filters, :user_attributes) || {}
