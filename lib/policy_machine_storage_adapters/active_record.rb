@@ -1087,8 +1087,8 @@ module PolicyMachineStorageAdapter
 
     def use_accessible_objects_function?(options)
       PolicyMachineStorageAdapter.postgres? &&
-        options[:direct_only] &&
-        options[:ignore_prohibitions] &&
+        options[:direct_only] == true &&
+        options[:ignore_prohibitions] == true &&
         options[:fields]&.one?
     end
 
