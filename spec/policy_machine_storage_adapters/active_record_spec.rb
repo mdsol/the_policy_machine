@@ -246,6 +246,12 @@ describe 'ActiveRecord' do
       end
 
       describe 'accessible_objects' do
+        before do
+          allow_any_instance_of(PolicyMachineStorageAdapter::ActiveRecord)
+            .to receive(:use_accessible_objects_function?)
+            .and_return(false)
+        end
+
         it 'returns objects accessible via the filtered attribute' do
           filters = { user_attributes: { color: 'purple' } }
 
@@ -265,6 +271,18 @@ describe 'ActiveRecord' do
           expect(
             priv_pm.accessible_objects(user_1, create, filters: filters)
           ).to be_empty
+        end
+
+        it 'does not use a PostgreSQL function' do
+          expect_any_instance_of(PolicyMachineStorageAdapter::ActiveRecord)
+            .not_to receive(:accessible_objects_function)
+
+          priv_pm.accessible_objects(
+            user_1,
+            create,
+            direct_only: true,
+            ignore_prohibitions: true,
+            fields: [:id])
         end
 
         context 'prohibitions' do
@@ -378,6 +396,54 @@ describe 'ActiveRecord' do
         end
       end
 
+      describe 'accessible_objects_function' do
+        context 'direct only' do
+          before { priv_pm.add_association(color_1, creator, object_7) }
+
+          it 'only considers associations that go directly to objects' do
+            expect(priv_pm.accessible_objects(
+                user_1,
+                create,
+                direct_only: true,
+                ignore_prohibitions: true,
+                fields: [:unique_identifier]
+              )
+            ).to contain_exactly('object_7')
+          end
+
+          it 'returns an array' do
+            expect(priv_pm.accessible_objects(
+              user_1,
+              create,
+              direct_only: true,
+              ignore_prohibitions: true,
+              fields: [:unique_identifier]
+            ).class).to eq(Array)
+          end
+
+          it 'uses a PostgreSQL function' do
+            expect_any_instance_of(PolicyMachineStorageAdapter::ActiveRecord)
+              .to receive(:accessible_objects_function)
+
+            priv_pm.accessible_objects(
+              user_1,
+              create,
+              direct_only: true,
+              ignore_prohibitions: true,
+              fields: [:unique_identifier]
+            )
+          end
+        end
+
+        context 'not direct only' do
+          it 'it is not called' do
+            expect_any_instance_of(PolicyMachineStorageAdapter::ActiveRecord)
+              .not_to receive(:accessible_objects_function)
+            priv_pm.accessible_objects(user_1, create)
+          end
+        end
+      end
+
       describe 'all_operations_for_user_or_attr_and_objs_or_attrs' do
         let(:color_4) { priv_pm.create_user_attribute('color_4', color: 'blue') }
         let(:sketcher) { priv_pm.create_operation_set('sketcher') }
@@ -460,6 +526,25 @@ describe 'ActiveRecord' do
       end
 
       describe 'accessible_objects_for_operations' do
+        before do
+          allow_any_instance_of(PolicyMachineStorageAdapter::ActiveRecord)
+            .to receive(:use_accessible_objects_function?)
+            .and_return(false)
+        end
+
+        it 'does not use a PostgreSQL function' do
+          expect_any_instance_of(PolicyMachineStorageAdapter::ActiveRecord)
+            .not_to receive(:accessible_objects_for_operations_function)
+
+          result = priv_pm.accessible_objects_for_operations(
+            user_1,
+            [create, paint],
+            direct_only: true,
+            ignore_prohibitions: true,
+            fields: [:id]
+          )
+        end
+
         context 'direct only' do
           context 'when there are directly accessible objects' do
             before do
@@ -652,6 +737,112 @@ describe 'ActiveRecord' do
           it 'raises ArgumentError' do
             expect { priv_pm.accessible_objects_for_operations(user_1, [create, paint]) }
               .to raise_error(ArgumentError)
+          end
+        end
+      end
+
+      describe 'accessible_objects_for_operations_function' do
+        it 'uses a PostgreSQL function' do
+          expect_any_instance_of(PolicyMachineStorageAdapter::ActiveRecord)
+            .to receive(:accessible_objects_for_operations_function)
+
+          priv_pm.accessible_objects_for_operations(
+            user_1,
+            [create, paint],
+            direct_only: true,
+            ignore_prohibitions: true,
+            fields: [:unique_identifier]
+          )
+        end
+
+        context 'when there are directly accessible objects' do
+          before do
+            priv_pm.add_association(color_1, creator, object_6)
+            priv_pm.add_association(color_2, creator, object_7)
+          end
+
+          it 'returns objects accessible via each of multiple given operations' do
+            result = priv_pm.accessible_objects_for_operations(
+              user_1,
+              [create, paint],
+              direct_only: true,
+              ignore_prohibitions: true,
+              fields: [:unique_identifier]
+            )
+
+            expect(result.keys).to contain_exactly(create.to_s, paint.to_s)
+            expect(result[create.to_s]).to contain_exactly('object_7', 'object_6')
+            expect(result[paint.to_s]).to contain_exactly('object_7', 'object_6')
+          end
+
+          it 'can handle string operations' do
+            result = priv_pm.accessible_objects_for_operations(
+              user_1,
+              ['create', 'paint'],
+              direct_only: true,
+              ignore_prohibitions: true,
+              fields: [:unique_identifier]
+            )
+
+            expect(result.keys).to contain_exactly('create', 'paint')
+            expect(result[create.to_s]).to contain_exactly('object_7', 'object_6')
+            expect(result[paint.to_s]).to contain_exactly('object_7', 'object_6')
+          end
+
+          it 'returns an empty list of objects for non-existent operations' do
+            result = priv_pm.accessible_objects_for_operations(
+              user_1,
+              [create, 'zagnut'],
+              direct_only: true,
+              ignore_prohibitions: true,
+              fields: [:unique_identifier]
+            )
+
+            expect(result.keys).to contain_exactly(create.to_s, 'zagnut')
+            expect(result[create.to_s]).to contain_exactly('object_7', 'object_6')
+            expect(result['zagnut']).to eq([])
+          end
+
+          context 'filters' do
+            it 'works for a single filter' do
+              result = priv_pm.accessible_objects_for_operations(
+                user_1,
+                [create, paint],
+                filters: {
+                  user_attributes: { color: color_1.color }
+                },
+                direct_only: true,
+                ignore_prohibitions: true,
+                fields: [:unique_identifier]
+              )
+
+              expect(result).to eq({
+                create.to_s => ['object_6'],
+                paint.to_s => ['object_6'],
+              })
+            end
+
+            it 'works for multiple filters' do
+              result = priv_pm.accessible_objects_for_operations(
+                user_1,
+                [create, paint],
+                filters: {
+                  user_attributes: {
+                    color: color_1.color,
+                    unique_identifier: color_1.unique_identifier,
+                    id: color_1.id
+                  }
+                },
+                direct_only: true,
+                ignore_prohibitions: true,
+                fields: [:unique_identifier]
+              )
+
+              expect(result).to eq({
+                create.to_s => ['object_6'],
+                paint.to_s => ['object_6'],
+              })
+            end
           end
         end
       end

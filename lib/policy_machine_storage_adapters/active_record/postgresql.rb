@@ -74,6 +74,37 @@ module PolicyMachineStorageAdapter
         # ]
         connection.execute(sanitized_query)
       end
+
+      # The PG function can only accept a single field for now.
+      def self.accessible_objects_for_operations(user_id, operation_names, options)
+        field = options[:fields].first
+        filters = options.dig(:filters, :user_attributes) || {}
+
+        query = sanitize_sql_for_assignment([
+          'SELECT * FROM pm_accessible_objects_for_operations(?,?,?,?)',
+          user_id,
+          PG::TextEncoder::Array.new.encode(operation_names),
+          field,
+          JSON.dump(filters)
+        ])
+
+        # [
+        #   { 'unique_identifier' => 'op1', 'objects' => '{obj1,obj2,obj3}' },
+        #   { 'unique_identifier' => 'op2', 'objects' => '{obj1,obj2,obj3}' },
+        # ]
+        result = connection.execute(query).to_a
+
+        # {
+        #    'op1' => ['obj1', 'obj2', 'obj3'],
+        #    'op2' => ['obj2', 'obj3', 'obj4'],
+        # }
+        decoder = PG::TextDecoder::Array.new
+        result.each_with_object({}) do |result_hash, output|
+          key = result_hash['unique_identifier']
+          objects = decoder.decode(result_hash['objects'])
+          output[key] = objects
+        end
+      end
     end
 
     class PolicyElementAssociation

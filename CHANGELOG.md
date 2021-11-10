@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.0.0
+* Added a PostgreSQL function for `#accessible_objects` and `#accessible_objects_for_operations` which are performance
+optimized. Only supported for a single `field`, `direct_only`, and `ignore_prohibitions`.
+
+– Execute `bundle exec rails generate the_policy_machine:accessible_objects_for_operations_function` and rerun
+`db:migrate` to use these changes.
+
 ## 3.3.4
 * Added `fields` option to `PolicyMachineStorageAdapter::ActiveRecord` for `#accessible_objects` and
   `#accessible_objects_for_operations` to fetch only requested fields as a hash.

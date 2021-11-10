@@ -803,6 +803,10 @@ module PolicyMachineStorageAdapter
     # Returns all objects the user has the given operation on
     # TODO: Support multiple policy classes here
     def accessible_objects(user_or_attribute, operation, options = {})
+      if use_accessible_objects_function?(options)
+        return accessible_objects_function(user_or_attribute.id, operation, options)
+      end
+
       candidates = objects_for_user_or_attribute_and_operation(user_or_attribute, operation, options)
 
       if options[:ignore_prohibitions] || !(prohibition = prohibition_for(operation))
@@ -869,6 +873,10 @@ module PolicyMachineStorageAdapter
     def accessible_objects_for_operations(user_or_attribute, operations, options = {})
       unless options[:direct_only]
         raise ArgumentError, 'Functionality for indirect objects is not yet implemented!'
+      end
+
+      if use_accessible_objects_function?(options)
+        return accessible_objects_for_operations_function(user_or_attribute.id, operations, options)
       end
 
       # convert to operation names if operation instances given
@@ -1075,6 +1083,25 @@ module PolicyMachineStorageAdapter
       else
         objects.to_a
       end
+    end
+
+    def use_accessible_objects_function?(options)
+      PolicyMachineStorageAdapter.postgres? &&
+        options[:direct_only] == true &&
+        options[:ignore_prohibitions] == true &&
+        options[:fields]&.one?
+    end
+
+    # Performance optimized function for PostgreSQL
+    def accessible_objects_function(user_id, operation, options)
+      accessible_objects_for_operations_function(user_id, Array.wrap(operation), options).values.flatten
+    end
+
+    # Performance optimized function for PostgreSQL
+    def accessible_objects_for_operations_function(user_id, operations, options)
+      operation_names = operations.map { |o| operation_identifier(o) }
+      accessible_map = operation_names.index_with { [] }
+      accessible_map.merge(PolicyElement.accessible_objects_for_operations(user_id, operation_names, options))
     end
 
     def build_inclusion_scope(scope, key, value)
@@ -1317,7 +1344,7 @@ module PolicyMachineStorageAdapter
     end
 
     def transaction_without_mergejoin(&block)
-      if PolicyMachineStorageAdapter::ActiveRecord::Assignment.connection.is_a? ::ActiveRecord::ConnectionAdapters::PostgreSQLAdapter
+      if PolicyMachineStorageAdapter.postgres?
         PolicyMachineStorageAdapter::ActiveRecord::Assignment.transaction do
           PolicyMachineStorageAdapter::ActiveRecord::Assignment.connection.execute("set local enable_mergejoin = false")
           yield
@@ -1326,5 +1353,9 @@ module PolicyMachineStorageAdapter
         yield
       end
     end
+  end
+
+  def self.postgres?
+    ::ActiveRecord::Base.connection.class.name == 'ActiveRecord::ConnectionAdapters::PostgreSQLAdapter'
   end
 end unless active_record_unavailable
