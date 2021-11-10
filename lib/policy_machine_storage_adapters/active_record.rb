@@ -1100,7 +1100,7 @@ module PolicyMachineStorageAdapter
     # Performance optimized function for PostgreSQL
     def accessible_objects_for_operations_function(user_id, operations, options)
       operation_names = operations.map { |o| operation_identifier(o) }
-      accessible_map = operation_names.index_with([])
+      accessible_map = operation_names.index_with { [] }
       accessible_map.merge(PolicyElement.accessible_objects_for_operations(user_id, operation_names, options))
     end
 

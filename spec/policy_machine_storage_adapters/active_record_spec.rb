@@ -247,9 +247,9 @@ describe 'ActiveRecord' do
 
       describe 'accessible_objects' do
         before do
-          allow(PolicyMachineStorageAdapter).to receive(:postgres?).and_return(false)
-          expect_any_instance_of(PolicyMachineStorageAdapter::ActiveRecord)
-            .not_to receive(:accessible_objects_function)
+          allow_any_instance_of(PolicyMachineStorageAdapter::ActiveRecord)
+            .to receive(:use_accessible_objects_function?)
+            .and_return(false)
         end
 
         it 'returns objects accessible via the filtered attribute' do
@@ -271,6 +271,18 @@ describe 'ActiveRecord' do
           expect(
             priv_pm.accessible_objects(user_1, create, filters: filters)
           ).to be_empty
+        end
+
+        it 'does not use a PostgreSQL function' do
+          expect_any_instance_of(PolicyMachineStorageAdapter::ActiveRecord)
+            .not_to receive(:accessible_objects_function)
+
+          priv_pm.accessible_objects(
+            user_1,
+            create,
+            direct_only: true,
+            ignore_prohibitions: true,
+            fields: [:id])
         end
 
         context 'prohibitions' do
@@ -386,12 +398,7 @@ describe 'ActiveRecord' do
 
       describe 'accessible_objects_function' do
         context 'direct only' do
-          before do
-            priv_pm.add_association(color_1, creator, object_7)
-            expect_any_instance_of(PolicyMachineStorageAdapter::ActiveRecord)
-              .to receive(:accessible_objects_function)
-              .and_call_original
-          end
+          before { priv_pm.add_association(color_1, creator, object_7) }
 
           it 'only considers associations that go directly to objects' do
             expect(priv_pm.accessible_objects(
@@ -412,6 +419,19 @@ describe 'ActiveRecord' do
               ignore_prohibitions: true,
               fields: [:unique_identifier]
             ).class).to eq(Array)
+          end
+
+          it 'uses a PostgreSQL function' do
+            expect_any_instance_of(PolicyMachineStorageAdapter::ActiveRecord)
+              .to receive(:accessible_objects_function)
+
+            priv_pm.accessible_objects(
+              user_1,
+              create,
+              direct_only: true,
+              ignore_prohibitions: true,
+              fields: [:unique_identifier]
+            )
           end
         end
 
@@ -507,9 +527,22 @@ describe 'ActiveRecord' do
 
       describe 'accessible_objects_for_operations' do
         before do
-          allow(PolicyMachineStorageAdapter).to receive(:postgres?).and_return(false)
+          allow_any_instance_of(PolicyMachineStorageAdapter::ActiveRecord)
+            .to receive(:use_accessible_objects_function?)
+            .and_return(false)
+        end
+
+        it 'does not use a PostgreSQL function' do
           expect_any_instance_of(PolicyMachineStorageAdapter::ActiveRecord)
             .not_to receive(:accessible_objects_for_operations_function)
+
+          result = priv_pm.accessible_objects_for_operations(
+            user_1,
+            [create, paint],
+            direct_only: true,
+            ignore_prohibitions: true,
+            fields: [:id]
+          )
         end
 
         context 'direct only' do
@@ -709,10 +742,17 @@ describe 'ActiveRecord' do
       end
 
       describe 'accessible_objects_for_operations_function' do
-        before do
+        it 'uses a PostgreSQL function' do
           expect_any_instance_of(PolicyMachineStorageAdapter::ActiveRecord)
             .to receive(:accessible_objects_for_operations_function)
-            .and_call_original
+
+          priv_pm.accessible_objects_for_operations(
+            user_1,
+            [create, paint],
+            direct_only: true,
+            ignore_prohibitions: true,
+            fields: [:unique_identifier]
+          )
         end
 
         context 'when there are directly accessible objects' do
