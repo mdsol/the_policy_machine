@@ -1,5 +1,8 @@
 # Changelog
 
+## 4.0.1
+* Updated PostgreSQL function `pm_accessible_objects_for_operations` to ensure uniqueness of results
+
 ## 4.0.0
 * Added a PostgreSQL function for `#accessible_objects` and `#accessible_objects_for_operations` which are performance
 optimized. Only supported for a single `field`, `direct_only`, and `ignore_prohibitions`.
