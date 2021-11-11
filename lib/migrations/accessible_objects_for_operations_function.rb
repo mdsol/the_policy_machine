@@ -117,7 +117,7 @@ class AccessibleObjectsForOperationsFunction < ActiveRecord::Migration[5.2]
 
         RETURN QUERY EXECUTE
         format(
-          'SELECT os.unique_identifier, array_agg(pe.%I) AS objects ' ||
+          'SELECT os.unique_identifier, array_agg(DISTINCT pe.%I) AS objects ' ||
           'FROM ' ||
           '  t_operation_set_ids os_id ' ||
           '  JOIN t_operation_sets os ON os.operation_set_id = os_id.operation_set_id ' ||
