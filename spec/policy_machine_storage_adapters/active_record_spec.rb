@@ -742,6 +742,11 @@ describe 'ActiveRecord' do
       end
 
       describe 'accessible_objects_for_operations_function' do
+        before do
+          priv_pm.add_association(color_1, creator, object_6)
+          priv_pm.add_association(color_2, creator, object_7)
+        end
+
         it 'uses a PostgreSQL function' do
           expect_any_instance_of(PolicyMachineStorageAdapter::ActiveRecord)
             .to receive(:accessible_objects_for_operations_function)
@@ -755,94 +760,101 @@ describe 'ActiveRecord' do
           )
         end
 
-        context 'when there are directly accessible objects' do
-          before do
-            priv_pm.add_association(color_1, creator, object_6)
-            priv_pm.add_association(color_2, creator, object_7)
-          end
+        it 'returns objects accessible via each of multiple given operations' do
+          result = priv_pm.accessible_objects_for_operations(
+            user_1,
+            [create, paint],
+            direct_only: true,
+            ignore_prohibitions: true,
+            fields: [:unique_identifier]
+          )
 
-          it 'returns objects accessible via each of multiple given operations' do
+          expect(result.keys).to contain_exactly(create.to_s, paint.to_s)
+          expect(result[create.to_s]).to contain_exactly('object_7', 'object_6')
+          expect(result[paint.to_s]).to contain_exactly('object_7', 'object_6')
+        end
+
+        it 'can handle string operations' do
+          result = priv_pm.accessible_objects_for_operations(
+            user_1,
+            ['create', 'paint'],
+            direct_only: true,
+            ignore_prohibitions: true,
+            fields: [:unique_identifier]
+          )
+
+          expect(result.keys).to contain_exactly('create', 'paint')
+          expect(result[create.to_s]).to contain_exactly('object_7', 'object_6')
+          expect(result[paint.to_s]).to contain_exactly('object_7', 'object_6')
+        end
+
+        it 'returns an empty list of objects for non-existent operations' do
+          result = priv_pm.accessible_objects_for_operations(
+            user_1,
+            [create, 'zagnut'],
+            direct_only: true,
+            ignore_prohibitions: true,
+            fields: [:unique_identifier]
+          )
+
+          expect(result.keys).to contain_exactly(create.to_s, 'zagnut')
+          expect(result[create.to_s]).to contain_exactly('object_7', 'object_6')
+          expect(result['zagnut']).to eq([])
+        end
+
+        it 'returns a unique list of objects for each operation' do
+          result = priv_pm.accessible_objects_for_operations(
+            user_1,
+            [create, paint],
+            direct_only: true,
+            ignore_prohibitions: true,
+            fields: [:type]
+          )
+
+          expect(result.keys).to contain_exactly('create', 'paint')
+          expect(result[create.to_s]).to contain_exactly('PolicyMachineStorageAdapter::ActiveRecord::Object')
+          expect(result[paint.to_s]).to contain_exactly('PolicyMachineStorageAdapter::ActiveRecord::Object')
+        end
+
+        context 'filters' do
+          it 'works for a single filter' do
             result = priv_pm.accessible_objects_for_operations(
               user_1,
               [create, paint],
+              filters: {
+                user_attributes: { color: color_1.color }
+              },
               direct_only: true,
               ignore_prohibitions: true,
               fields: [:unique_identifier]
             )
 
-            expect(result.keys).to contain_exactly(create.to_s, paint.to_s)
-            expect(result[create.to_s]).to contain_exactly('object_7', 'object_6')
-            expect(result[paint.to_s]).to contain_exactly('object_7', 'object_6')
+            expect(result).to eq({
+              create.to_s => ['object_6'],
+              paint.to_s => ['object_6'],
+            })
           end
 
-          it 'can handle string operations' do
+          it 'works for multiple filters' do
             result = priv_pm.accessible_objects_for_operations(
               user_1,
-              ['create', 'paint'],
+              [create, paint],
+              filters: {
+                user_attributes: {
+                  color: color_1.color,
+                  unique_identifier: color_1.unique_identifier,
+                  id: color_1.id
+                }
+              },
               direct_only: true,
               ignore_prohibitions: true,
               fields: [:unique_identifier]
             )
 
-            expect(result.keys).to contain_exactly('create', 'paint')
-            expect(result[create.to_s]).to contain_exactly('object_7', 'object_6')
-            expect(result[paint.to_s]).to contain_exactly('object_7', 'object_6')
-          end
-
-          it 'returns an empty list of objects for non-existent operations' do
-            result = priv_pm.accessible_objects_for_operations(
-              user_1,
-              [create, 'zagnut'],
-              direct_only: true,
-              ignore_prohibitions: true,
-              fields: [:unique_identifier]
-            )
-
-            expect(result.keys).to contain_exactly(create.to_s, 'zagnut')
-            expect(result[create.to_s]).to contain_exactly('object_7', 'object_6')
-            expect(result['zagnut']).to eq([])
-          end
-
-          context 'filters' do
-            it 'works for a single filter' do
-              result = priv_pm.accessible_objects_for_operations(
-                user_1,
-                [create, paint],
-                filters: {
-                  user_attributes: { color: color_1.color }
-                },
-                direct_only: true,
-                ignore_prohibitions: true,
-                fields: [:unique_identifier]
-              )
-
-              expect(result).to eq({
-                create.to_s => ['object_6'],
-                paint.to_s => ['object_6'],
-              })
-            end
-
-            it 'works for multiple filters' do
-              result = priv_pm.accessible_objects_for_operations(
-                user_1,
-                [create, paint],
-                filters: {
-                  user_attributes: {
-                    color: color_1.color,
-                    unique_identifier: color_1.unique_identifier,
-                    id: color_1.id
-                  }
-                },
-                direct_only: true,
-                ignore_prohibitions: true,
-                fields: [:unique_identifier]
-              )
-
-              expect(result).to eq({
-                create.to_s => ['object_6'],
-                paint.to_s => ['object_6'],
-              })
-            end
+            expect(result).to eq({
+              create.to_s => ['object_6'],
+              paint.to_s => ['object_6'],
+            })
           end
         end
       end
