@@ -866,7 +866,7 @@ describe 'ActiveRecord' do
       describe 'accessible_objects_for_operations_cte' do
         before do
           allow(PolicyMachineStorageAdapter::ActiveRecord::PolicyElement)
-            .to receive(:readonly?).and_return(true)
+            .to receive(:replica?).and_return(true)
         end
 
         it_behaves_like 'a single query for accessible objects'

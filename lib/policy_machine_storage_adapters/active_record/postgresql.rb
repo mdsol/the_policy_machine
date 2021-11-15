@@ -81,7 +81,7 @@ module PolicyMachineStorageAdapter
         filters = options.dig(:filters, :user_attributes) || {}
 
         query =
-          if readonly?
+          if replica?
             sanitize_sql_for_assignment([
               accessible_objects_for_operations_cte(field, filters),
               user_id,
@@ -217,8 +217,8 @@ module PolicyMachineStorageAdapter
         condition.chomp('AND ') << ')'
       end
 
-      def self.readonly?
-        ::ActiveRecord::Base.connection_config[:replica] == true
+      def self.replica?
+        ::ActiveRecord::Base.connection_db_config.configuration_hash[:replica] == true
       end
     end
 
