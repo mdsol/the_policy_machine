@@ -1,10 +1,13 @@
 # Changelog
 
+## 4.0.2
+* Updated `accessible_objects_for_operations` code path to use a CTE when using a replica database.
+
 ## 4.0.1
-* Updated PostgreSQL function `pm_accessible_objects_for_operations` to ensure uniqueness of results
+* Updated PostgreSQL function `pm_accessible_objects_for_operations` to ensure uniqueness of results.
 
 ## 4.0.0
-* Added a PostgreSQL function for `#accessible_objects` and `#accessible_objects_for_operations` which are performance
+* Added a PostgreSQL function for `#accessible_objects` and `#accessible_objects_for_operations` which are performance.
 optimized. Only supported for a single `field`, `direct_only`, and `ignore_prohibitions`.
 
 – Execute `bundle exec rails generate the_policy_machine:accessible_objects_for_operations_function` and rerun

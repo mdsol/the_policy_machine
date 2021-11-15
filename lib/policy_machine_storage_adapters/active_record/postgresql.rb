@@ -80,13 +80,22 @@ module PolicyMachineStorageAdapter
         field = options[:fields].first
         filters = options.dig(:filters, :user_attributes) || {}
 
-        query = sanitize_sql_for_assignment([
-          'SELECT * FROM pm_accessible_objects_for_operations(?,?,?,?)',
-          user_id,
-          PG::TextEncoder::Array.new.encode(operation_names),
-          field,
-          JSON.dump(filters)
-        ])
+        query =
+          if readonly?
+            sanitize_sql_for_assignment([
+              accessible_objects_for_operations_cte(field, filters),
+              user_id,
+              operation_names
+            ])
+          else
+            sanitize_sql_for_assignment([
+              'SELECT * FROM pm_accessible_objects_for_operations(?,?,?,?)',
+              user_id,
+              PG::TextEncoder::Array.new.encode(operation_names),
+              field,
+              JSON.dump(filters)
+            ])
+          end
 
         # [
         #   { 'unique_identifier' => 'op1', 'objects' => '{obj1,obj2,obj3}' },
@@ -104,6 +113,112 @@ module PolicyMachineStorageAdapter
           objects = decoder.decode(result_hash['objects'])
           output[key] = objects
         end
+      end
+
+      private
+
+      # For replica database connections which do not support temporary tables.
+      # This is a little slower than the PG function but still quicker than the
+      # existing ActiveRecord code path.
+      def self.accessible_objects_for_operations_cte(field, filters)
+        <<~SQL.squish
+          SET LOCAL enable_mergejoin TO FALSE;
+
+          WITH RECURSIVE "user" AS (
+            SELECT *
+            FROM policy_elements
+            WHERE
+              id = ?
+          ),
+          user_attribute_ids AS (
+            (
+              SELECT
+                child_id,
+                parent_id
+              FROM assignments
+              WHERE parent_id = (SELECT id FROM "user")
+            )
+            UNION ALL
+            (
+              SELECT
+                a.child_id,
+                a.parent_id
+              FROM
+                assignments a
+                JOIN user_attribute_ids ua_id ON ua_id.child_id = a.parent_id
+            )
+          ),
+          operation_set_ids AS (
+            SELECT
+              operation_set_id,
+              object_attribute_id
+            FROM policy_element_associations
+            WHERE user_attribute_id IN (SELECT child_id FROM user_attribute_ids #{accessible_object_filters(filters)})
+          ),
+          accessible_operations AS (
+            (
+              SELECT
+                child_id,
+                parent_id AS operation_set_id
+              FROM assignments
+              WHERE parent_id IN (SELECT operation_set_id FROM operation_set_ids)
+            )
+            UNION ALL
+            (
+              SELECT
+                a.child_id,
+                op.operation_set_id AS operation_set_id
+              FROM
+                assignments a
+                JOIN accessible_operations op ON op.child_id = a.parent_id
+            )
+          ),
+          operation_sets AS (
+            SELECT DISTINCT ao.operation_set_id, ops.unique_identifier
+            FROM
+              accessible_operations ao
+              JOIN policy_elements ops ON ops.id = ao.child_id
+            WHERE
+              ops.unique_identifier IN (?)
+          ),
+          operation_objects AS (
+            SELECT
+              os.unique_identifier,
+              array_remove(array_agg(
+                (
+                  SELECT pe.#{connection.quote_column_name(field)}
+                  FROM policy_elements pe
+                  WHERE
+                    pe.id = os_id.object_attribute_id
+                    AND "type" = 'PolicyMachineStorageAdapter::ActiveRecord::Object'
+                )
+              ), NULL) AS uris
+            FROM
+              operation_set_ids os_id
+              JOIN operation_sets os ON os.operation_set_id = os_id.operation_set_id
+            GROUP BY os.unique_identifier
+          )
+          SELECT
+            unique_identifier,
+            ARRAY(SELECT DISTINCT o FROM UNNEST(uris) AS a(o)) as objects
+          FROM operation_objects;
+        SQL
+      end
+
+      def self.accessible_object_filters(filters)
+        return '' if filters.blank?
+
+        condition = 'WHERE child_id IN (SELECT id FROM policy_elements WHERE '
+
+        filters.each do |key, value|
+          condition << sanitize_sql_for_assignment(["#{connection.quote_column_name(key)} = ? AND ", value])
+        end
+
+        condition.chomp('AND ') << ')'
+      end
+
+      def self.readonly?
+        ::ActiveRecord::Base.connection_config[:replica] == true
       end
     end
 
