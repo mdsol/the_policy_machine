@@ -192,7 +192,7 @@ module PolicyMachineStorageAdapter
                     pe.id = os_id.object_attribute_id
                     AND "type" = 'PolicyMachineStorageAdapter::ActiveRecord::Object'
                 )
-              ), NULL) AS uris
+              ), NULL) AS objects
             FROM
               operation_set_ids os_id
               JOIN operation_sets os ON os.operation_set_id = os_id.operation_set_id
@@ -200,7 +200,7 @@ module PolicyMachineStorageAdapter
           )
           SELECT
             unique_identifier,
-            ARRAY(SELECT DISTINCT o FROM UNNEST(uris) AS a(o)) as objects
+            ARRAY(SELECT DISTINCT o FROM UNNEST(objects) AS a(o)) as objects
           FROM operation_objects;
         SQL
       end
