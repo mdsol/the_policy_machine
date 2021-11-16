@@ -68,6 +68,14 @@ module PolicyMachineStorageAdapter
         end
     end
 
+    def self.connection_db_config
+      if ::ActiveRecord::Base.respond_to?(:connection_db_config)
+        ::ActiveRecord::Base.connection_db_config.configuration_hash
+      else
+        ::ActiveRecord::Base.connection_config
+      end
+    end
+
     def self.buffering?
       @buffering
     end

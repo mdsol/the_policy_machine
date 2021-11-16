@@ -741,23 +741,10 @@ describe 'ActiveRecord' do
         end
       end
 
-      describe 'accessible_objects_for_operations_function' do
+      shared_examples 'a single query for accessible objects' do
         before do
           priv_pm.add_association(color_1, creator, object_6)
           priv_pm.add_association(color_2, creator, object_7)
-        end
-
-        it 'uses a PostgreSQL function' do
-          expect_any_instance_of(PolicyMachineStorageAdapter::ActiveRecord)
-            .to receive(:accessible_objects_for_operations_function)
-
-          priv_pm.accessible_objects_for_operations(
-            user_1,
-            [create, paint],
-            direct_only: true,
-            ignore_prohibitions: true,
-            fields: [:unique_identifier]
-          )
         end
 
         it 'returns objects accessible via each of multiple given operations' do
@@ -856,6 +843,46 @@ describe 'ActiveRecord' do
               paint.to_s => ['object_6'],
             })
           end
+        end
+      end
+
+      describe 'accessible_objects_for_operations_function' do
+        it_behaves_like 'a single query for accessible objects'
+
+        it 'uses a PostgreSQL function' do
+          expect_any_instance_of(PolicyMachineStorageAdapter::ActiveRecord)
+            .to receive(:accessible_objects_for_operations_function)
+
+          priv_pm.accessible_objects_for_operations(
+            user_1,
+            [create, paint],
+            direct_only: true,
+            ignore_prohibitions: true,
+            fields: [:unique_identifier]
+          )
+        end
+      end
+
+      describe 'accessible_objects_for_operations_cte' do
+        before do
+          allow(PolicyMachineStorageAdapter::ActiveRecord::PolicyElement)
+            .to receive(:replica?).and_return(true)
+        end
+
+        it_behaves_like 'a single query for accessible objects'
+
+        it 'uses a single CTE' do
+          expect(PolicyMachineStorageAdapter::ActiveRecord::PolicyElement)
+            .to receive(:accessible_objects_for_operations_cte)
+            .and_call_original
+
+          priv_pm.accessible_objects_for_operations(
+            user_1,
+            [create, paint],
+            direct_only: true,
+            ignore_prohibitions: true,
+            fields: [:unique_identifier]
+          )
         end
       end
 
