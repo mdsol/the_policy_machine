@@ -218,7 +218,7 @@ module PolicyMachineStorageAdapter
       end
 
       def self.replica?
-        ::ActiveRecord::Base.connection_db_config.configuration_hash[:replica] == true
+        ActiveRecord.db_config[:replica] == true
       end
     end
 
