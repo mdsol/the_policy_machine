@@ -1,15 +1,11 @@
 module PM
-
   # A generic policy element in a policy machine.
   # A policy element can be a user, user attribute, object, object attribute
   # or operation set.
   # This is an abstract base class and should not itself be instantiated.
   class PolicyElement
-    attr_accessor   :unique_identifier
-    attr_accessor   :policy_machine_uuid
-    attr_accessor   :stored_pe
-    attr_accessor   :extra_attributes
-    attr_reader     :pm_storage_adapter
+    attr_accessor :unique_identifier, :policy_machine_uuid, :stored_pe, :extra_attributes
+    attr_reader :pm_storage_adapter
 
     # Creates a new policy element with the given name and type.
     def initialize(unique_identifier, policy_machine_uuid, pm_storage_adapter, stored_pe = nil, extra_attributes = {})
@@ -22,29 +18,30 @@ module PM
 
     # Determines if self is connected to other node
     def connected?(other_pe)
-      pm_storage_adapter.connected?(self.stored_pe, other_pe.stored_pe)
+      pm_storage_adapter.connected?(stored_pe, other_pe.stored_pe)
     end
 
     # Determines if self is a logical link to other node
     def linked?(other_pe)
-      pm_storage_adapter.linked?(self.stored_pe, other_pe.stored_pe)
+      pm_storage_adapter.linked?(stored_pe, other_pe.stored_pe)
     end
 
     # Assigns self to destination policy element
     # This method is sensitive to the type of self and dst_policy_element
     def assign_to(dst_policy_element)
-      unless allowed_assignee_classes.any?{|aac| dst_policy_element.is_a?(aac)}
-        raise(ArgumentError, "expected dst_policy_element to be one of #{allowed_assignee_classes.to_s}; got #{dst_policy_element.class} instead.")
+      unless allowed_assignee_classes.any? { |aac| dst_policy_element.is_a?(aac) }
+        raise(ArgumentError,
+          "expected dst_policy_element to be one of #{allowed_assignee_classes}; got #{dst_policy_element.class} instead.")
       end
 
-      pm_storage_adapter.assign(self.stored_pe, dst_policy_element.stored_pe)
+      pm_storage_adapter.assign(stored_pe, dst_policy_element.stored_pe)
     end
 
     # Assigns self to destination policy element in a different policy machine
     # This is used for logical relationships outside of the policy machine formalism, such as the
     # relationship between a class of operable and a specific instance of it.
     def link_to(dst_policy_element)
-      pm_storage_adapter.link(self.stored_pe, dst_policy_element.stored_pe)
+      pm_storage_adapter.link(stored_pe, dst_policy_element.stored_pe)
     end
 
     # Removes an assignment from self to destination policy element where the
@@ -53,13 +50,13 @@ module PM
     # This is used for logical relationships outside of the policy machine formalism, such as the
     # relationship between a class of operable and a specific instance of it.
     def unlink(dst_policy_element)
-      pm_storage_adapter.unlink(self.stored_pe, dst_policy_element.stored_pe)
+      pm_storage_adapter.unlink(stored_pe, dst_policy_element.stored_pe)
     end
 
     # Removes assignment from self to destination policy element
     # Returns boolean indicating whether assignment was successfully removed.
     def unassign(dst_policy_element)
-      pm_storage_adapter.unassign(self.stored_pe, dst_policy_element.stored_pe)
+      pm_storage_adapter.unassign(stored_pe, dst_policy_element.stored_pe)
     end
 
     # Removes self and any assignments to or from self. Does not remove any other elements.
@@ -67,7 +64,7 @@ module PM
     def delete
       # If the stored ppe is not persisted, no need to delete it, but if buffering
       # all bets are off, and the storage adapter needs to handle the situation
-      if pm_storage_adapter.buffering? || (self.stored_pe && self.stored_pe.persisted)
+      if pm_storage_adapter.buffering? || stored_pe&.persisted
         pm_storage_adapter.delete(stored_pe)
         self.stored_pe = nil
         true
@@ -78,9 +75,9 @@ module PM
     # attributes not in the hash. Returns true if no errors occurred.
     def update(attr_hash)
       @extra_attributes.merge!(attr_hash)
-      #TODO: consider removing the persisted check to allow for buffered writes
-      if self.stored_pe && self.stored_pe.persisted
-        pm_storage_adapter.update(self.stored_pe, attr_hash)
+      # TODO: consider removing the persisted check to allow for buffered writes
+      if stored_pe&.persisted
+        pm_storage_adapter.update(stored_pe, attr_hash)
         true
       end
     end
@@ -96,10 +93,10 @@ module PM
     end
 
     # Returns true if self is identical to other and false otherwise.
-    def ==(other_pe)
-      self.class == other_pe.class &&
-      self.unique_identifier == other_pe.unique_identifier &&
-      self.policy_machine_uuid == other_pe.policy_machine_uuid
+    def ==(other)
+      self.class == other.class &&
+        unique_identifier == other.unique_identifier &&
+        policy_machine_uuid == other.policy_machine_uuid
     end
 
     # Delegates extra attribute reads to stored_pe
@@ -122,12 +119,12 @@ module PM
     protected
 
     def allowed_assignee_classes
-      raise "Must override this method in a subclass"
+      raise 'Must override this method in a subclass'
     end
 
     def self.create(unique_identifier, policy_machine_uuid, pm_storage_adapter, extra_attributes = {})
       new_pe = new(unique_identifier, policy_machine_uuid, pm_storage_adapter, nil, extra_attributes)
-      method_name = "add_#{self.name.split('::').last}".underscore.to_sym
+      method_name = "add_#{name.split('::').last}".underscore.to_sym
       new_pe.stored_pe = pm_storage_adapter.send(method_name, unique_identifier, policy_machine_uuid, extra_attributes)
       new_pe
     end
@@ -135,7 +132,7 @@ module PM
     # Returns all policy elements of a particular type (e.g. all users)
     # TODO: Move all overrides of self.all to the base class
     def self.all(pm_storage_adapter, options = {})
-      method_name = "find_all_of_type_#{self.name.split('::').last}".underscore.to_sym
+      method_name = "find_all_of_type_#{name.split('::').last}".underscore.to_sym
       result = pm_storage_adapter.send(method_name, options)
       all_result = result.map do |stored_pe|
         convert_stored_pe_to_pe(stored_pe, pm_storage_adapter, self)
@@ -143,7 +140,6 @@ module PM
       all_result.define_singleton_method(:total_entries) { result.total_entries }
       all_result
     end
-
   end
 
   # A user in a policy machine.
@@ -155,6 +151,7 @@ module PM
     end
 
     protected
+
     def allowed_assignee_classes
       [UserAttribute]
     end
@@ -162,8 +159,8 @@ module PM
 
   # A user attribute in a policy machine.
   class UserAttribute < PolicyElement
-
     protected
+
     def allowed_assignee_classes
       [UserAttribute, PolicyClass]
     end
@@ -181,6 +178,7 @@ module PM
     end
 
     protected
+
     def allowed_assignee_classes
       [ObjectAttribute, PolicyClass]
     end
@@ -188,8 +186,8 @@ module PM
 
   # An object in a policy machine.
   class Object < ObjectAttribute
-
     protected
+
     def allowed_assignee_classes
       [Object, ObjectAttribute]
     end
@@ -201,13 +199,15 @@ module PM
       if unique_identifier =~ /^~/ && !prohibition
         raise ArgumentError, "A non-prohibition operation cannot start with '~'"
       end
+
       new_pe = new(unique_identifier, policy_machine_uuid, pm_storage_adapter, nil, extra_attributes)
       new_pe.stored_pe = pm_storage_adapter.add_operation(unique_identifier, policy_machine_uuid, extra_attributes)
       new_pe
     end
 
     def self.find_or_create(unique_identifier, policy_machine_uuid, pm_storage_adapter, extra_attributes = {}, prohibition = false)
-      op = pm_storage_adapter.find_all_of_type_operation(unique_identifier: unique_identifier, policy_machine_uuid: policy_machine_uuid).first
+      op = pm_storage_adapter.find_all_of_type_operation(unique_identifier: unique_identifier,
+        policy_machine_uuid: policy_machine_uuid).first
       if op
         convert_stored_pe_to_pe(op, pm_storage_adapter, self)
       else
@@ -224,7 +224,7 @@ module PM
     end
 
     def operation
-      unique_identifier.sub(/^~/,'')
+      unique_identifier.sub(/^~/, '')
     end
 
     def prohibition
@@ -238,19 +238,19 @@ module PM
     # Return all associations in which this Operation is included
     # Associations are arrays of PM::Attributes.
     def associations
-      pm_storage_adapter.associations_with(self.stored_pe).map do |user_attribute, operation_set, object_attribute|
+      pm_storage_adapter.associations_with(stored_pe).map do |user_attribute, operation_set, object_attribute|
         PM::Association.new(user_attribute, operation_set, object_attribute, pm_storage_adapter)
       end
     end
 
     protected
+
     def allowed_assignee_classes
       []
     end
   end
 
   class OperationSet < PolicyElement
-
     def allowed_assignee_classes
       [OperationSet, Operation]
     end
@@ -274,7 +274,7 @@ module PM
       when String
         negation
       else
-        raise(ArgumentError, "operation must be an Operation, Symbol, or String.")
+        raise(ArgumentError, 'operation must be an Operation, Symbol, or String.')
       end
     end
   end
@@ -282,9 +282,9 @@ module PM
   # A policy class in a policy machine.
   class PolicyClass < PolicyElement
     protected
+
     def allowed_assignee_classes
       []
     end
   end
-
 end

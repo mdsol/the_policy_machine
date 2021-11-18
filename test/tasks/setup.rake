@@ -1,7 +1,7 @@
 namespace :pm do
   namespace :test do
     desc 'setup necessary scaffoliding for running policy machine specs'
-    task :prepare, [:db_type] do |t, args|
+    task :prepare, [:db_type] do |_t, args|
       Dir.chdir('./test') do
         db_type = args[:db_type] || 'postgresql'
         `rm -rf testapp`

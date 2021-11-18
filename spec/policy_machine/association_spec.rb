@@ -1,7 +1,6 @@
 require 'spec_helper'
 
 describe PM::Association do
-
   describe '#create' do
     before do
       @policy_machine = PolicyMachine.new
@@ -20,23 +19,36 @@ describe PM::Association do
     end
 
     it 'raises when the first argument is not a user attribute' do
-      expect{ PM::Association.create(@object_attribute, @operation_set, @object_attribute, @policy_machine.uuid, @policy_machine.policy_machine_storage_adapter) }.
-        to raise_error(ArgumentError, "user_attribute_pe must be a UserAttribute.")
+      expect do
+        PM::Association.create(@object_attribute, @operation_set, @object_attribute, @policy_machine.uuid,
+          @policy_machine.policy_machine_storage_adapter)
+      end
+        .to raise_error(ArgumentError, 'user_attribute_pe must be a UserAttribute.')
     end
 
     it 'raises when the first argument is not in given policy machine' do
-      expect{ PM::Association.create(@user_attribute, @operation_set, @object_attribute, "blah", @policy_machine.policy_machine_storage_adapter) }.
-        to raise_error(ArgumentError, "user_attribute_pe must be in policy machine with uuid blah")
+      expect do
+        PM::Association.create(@user_attribute, @operation_set, @object_attribute, 'blah',
+          @policy_machine.policy_machine_storage_adapter)
+      end
+        .to raise_error(ArgumentError, 'user_attribute_pe must be in policy machine with uuid blah')
     end
 
     it 'raises when the second argument is not an object attribute' do
-      expect{ PM::Association.create(@user_attribute, @operation_set, "abc", @policy_machine.uuid, @policy_machine.policy_machine_storage_adapter) }.
-        to raise_error(ArgumentError, "object_attribute_pe must be an ObjectAttribute.")
+      expect do
+        PM::Association.create(@user_attribute, @operation_set, 'abc', @policy_machine.uuid,
+          @policy_machine.policy_machine_storage_adapter)
+      end
+        .to raise_error(ArgumentError, 'object_attribute_pe must be an ObjectAttribute.')
     end
 
     it 'raises when the second argument is not in given policy machine' do
-      expect{ PM::Association.create(@user_attribute, @operation_set, @other_oa, @policy_machine.uuid, @policy_machine.policy_machine_storage_adapter) }.
-        to raise_error(ArgumentError, "object_attribute_pe must be in policy machine with uuid #{@policy_machine.uuid}")
+      expect do
+        PM::Association.create(@user_attribute, @operation_set, @other_oa, @policy_machine.uuid,
+          @policy_machine.policy_machine_storage_adapter)
+      end
+        .to raise_error(ArgumentError,
+          "object_attribute_pe must be in policy machine with uuid #{@policy_machine.uuid}")
     end
   end
 end

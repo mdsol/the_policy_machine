@@ -1,8 +1,8 @@
 # Policy Machines are directed acyclic graphs (DAG).  These shared examples describe the
 # API for these DAGs, which could be persisted in memory, in a graph database, etc.
-require_relative 'storage_adapter_helpers.rb'
+require_relative 'storage_adapter_helpers'
 
-shared_examples "a policy machine storage adapter" do
+shared_examples 'a policy machine storage adapter' do
   let(:policy_machine_storage_adapter) { described_class.new }
 
   PolicyMachine::POLICY_ELEMENT_TYPES.each do |pe_type|
@@ -36,36 +36,41 @@ shared_examples "a policy machine storage adapter" do
 
       context 'inclusions' do
         before do
-          policy_machine_storage_adapter.send("add_#{pe_type}", 'some_uuid1', 'some_policy_machine_uuid', tags: ['up', 'down'])
-          policy_machine_storage_adapter.send("add_#{pe_type}", 'some_uuid2', 'some_policy_machine_uuid', tags: ['up', 'strange'])
+          policy_machine_storage_adapter.send("add_#{pe_type}", 'some_uuid1', 'some_policy_machine_uuid',
+            tags: %w[up down])
+          policy_machine_storage_adapter.send("add_#{pe_type}", 'some_uuid2', 'some_policy_machine_uuid',
+            tags: %w[up strange])
         end
 
         xit 'requires an exact match on array attributes' do
-          expect(policy_machine_storage_adapter.send("find_all_of_type_#{pe_type}", tags: ['down', 'up'])).to be_empty
-          expect(policy_machine_storage_adapter.send("find_all_of_type_#{pe_type}", tags: ['up', 'down'])).to be_one
+          expect(policy_machine_storage_adapter.send("find_all_of_type_#{pe_type}", tags: %w[down up])).to be_empty
+          expect(policy_machine_storage_adapter.send("find_all_of_type_#{pe_type}", tags: %w[up down])).to be_one
         end
 
         it 'allows querying by checking whether a value is included in an array' do
-          expect(policy_machine_storage_adapter.send("find_all_of_type_#{pe_type}", tags: {include: 'down'})).to be_one
+          expect(policy_machine_storage_adapter.send("find_all_of_type_#{pe_type}",
+            tags: { include: 'down' })).to be_one
         end
 
         it 'allows querying by checking whether multiple values are all included in an array' do
-          expect(policy_machine_storage_adapter.send("find_all_of_type_#{pe_type}", tags: {include: ['down','up']})).to be_one
+          expect(policy_machine_storage_adapter.send("find_all_of_type_#{pe_type}",
+            tags: { include: %w[down up] })).to be_one
         end
 
         it 'performs substring matching' do
-          expect(policy_machine_storage_adapter.send("find_all_of_type_#{pe_type}", unique_identifier: {include: '1'})).to be_one
+          expect(policy_machine_storage_adapter.send("find_all_of_type_#{pe_type}",
+            unique_identifier: { include: '1' })).to be_one
         end
       end
 
       context 'case sensitivity' do
         before do
-          ['abcde', 'object1'].each do |name|
+          %w[abcde object1].each do |name|
             policy_machine_storage_adapter.add_object("#{name}_uuid", 'some_policy_machine_uuid', name: name)
           end
         end
 
-        around { |test| Kernel.silence_warnings{test.run} }
+        around { |test| Kernel.silence_warnings { test.run } }
 
         it 'finds with case sensitivity by default' do
           expect(policy_machine_storage_adapter.find_all_of_type_object(name: 'ABCDE')).to eq([])
@@ -73,18 +78,20 @@ shared_examples "a policy machine storage adapter" do
         end
 
         it 'finds without case sensitivity if the option is set to true' do
-          expect(policy_machine_storage_adapter.find_all_of_type_object(name: 'ABCDE', ignore_case: true).first.unique_identifier).to eq('abcde_uuid')
-          expect(policy_machine_storage_adapter.find_all_of_type_object(name: 'oBJECt1', ignore_case: true).first.unique_identifier).to eq('object1_uuid')
+          expect(policy_machine_storage_adapter.find_all_of_type_object(name: 'ABCDE',
+            ignore_case: true).first.unique_identifier).to eq('abcde_uuid')
+          expect(policy_machine_storage_adapter.find_all_of_type_object(name: 'oBJECt1',
+            ignore_case: true).first.unique_identifier).to eq('object1_uuid')
         end
 
         it 'finds without case sensitivity if passed an array containing the sort key' do
-          expect(policy_machine_storage_adapter.find_all_of_type_object(name: 'ABCDE', ignore_case: [:name]).first.unique_identifier).to eq('abcde_uuid')
+          expect(policy_machine_storage_adapter.find_all_of_type_object(name: 'ABCDE',
+            ignore_case: [:name]).first.unique_identifier).to eq('abcde_uuid')
         end
 
         it 'finds with case sensitivity if passed an array not containing the sort key' do
           expect(policy_machine_storage_adapter.find_all_of_type_object(name: 'ABCDE', ignore_case: [:color])).to eq([])
         end
-
       end
     end
   end
@@ -113,11 +120,11 @@ shared_examples "a policy machine storage adapter" do
 
     context 'source or destination node is not of the Node type return by add_' do
       it 'raises for source' do
-        expect{ policy_machine_storage_adapter.assign(2, @dst) }.to raise_error(ArgumentError)
+        expect { policy_machine_storage_adapter.assign(2, @dst) }.to raise_error(ArgumentError)
       end
 
       it 'raises for destination' do
-        expect{ policy_machine_storage_adapter.assign(@src, "") }.to raise_error(ArgumentError)
+        expect { policy_machine_storage_adapter.assign(@src, '') }.to raise_error(ArgumentError)
       end
     end
   end
@@ -149,11 +156,11 @@ shared_examples "a policy machine storage adapter" do
 
     context 'source or destination node is not of the Node type return by add_node' do
       it 'raises for source' do
-        expect{ policy_machine_storage_adapter.connected?("", @dst) }.to raise_error(ArgumentError)
+        expect { policy_machine_storage_adapter.connected?('', @dst) }.to raise_error(ArgumentError)
       end
 
       it 'raises for destination' do
-        expect{ policy_machine_storage_adapter.connected?(@src, 6) }.to raise_error(ArgumentError)
+        expect { policy_machine_storage_adapter.connected?(@src, 6) }.to raise_error(ArgumentError)
       end
     end
   end
@@ -221,11 +228,11 @@ shared_examples "a policy machine storage adapter" do
 
     context 'source or destination node is not of the Node type return by add_node' do
       it 'raises for source' do
-        expect{ policy_machine_storage_adapter.unassign(6, @dst) }.to raise_error(ArgumentError)
+        expect { policy_machine_storage_adapter.unassign(6, @dst) }.to raise_error(ArgumentError)
       end
 
       it 'raises for destination' do
-        expect{ policy_machine_storage_adapter.unassign(false, @dst) }.to raise_error(ArgumentError)
+        expect { policy_machine_storage_adapter.unassign(false, @dst) }.to raise_error(ArgumentError)
       end
     end
   end
@@ -267,7 +274,7 @@ shared_examples "a policy machine storage adapter" do
       expect(assocs_with_r[0][2]).to eq @oa
 
       assocs_with_w = policy_machine_storage_adapter.associations_with(@w)
-      assocs_with_w.size == 1
+      expect(assocs_with_w.size).to eq 1
       expect(assocs_with_w[0][0]).to eq @ua
       expect(assocs_with_r[0][1]).to eq @reader_writer
       expect(assocs_with_r[0][2]).to eq @oa
@@ -280,7 +287,7 @@ shared_examples "a policy machine storage adapter" do
       policy_machine_storage_adapter.add_association(@ua, @reader_writer, @oa)
       policy_machine_storage_adapter.add_association(@ua, @reader, @oa)
       assocs_with_r = policy_machine_storage_adapter.associations_with(@r)
-      assocs_with_r.size == 1
+      expect(assocs_with_r.size).to eq 1
       expect(assocs_with_r[0][0]).to eq @ua
       expect(assocs_with_r[0][1].to_a).to contain_exactly(@r)
       expect(assocs_with_r[0][2]).to eq @oa
@@ -313,7 +320,7 @@ shared_examples "a policy machine storage adapter" do
       policy_machine_storage_adapter.add_association(@ua2, @writer_editor, @oa)
       assocs_with_w = policy_machine_storage_adapter.associations_with(@w)
 
-      assocs_with_w.size == 2
+      expect(assocs_with_w.size).to eq 2
       expect(assocs_with_w[0][0]).to eq @ua
       expect(assocs_with_w[0][1]).to eq @writer
       expect(assocs_with_w[0][2]).to eq @oa
@@ -349,7 +356,7 @@ shared_examples "a policy machine storage adapter" do
 
   describe '#transaction' do
     it 'executes the block' do
-      if_implements(policy_machine_storage_adapter, :transaction){}
+      if_implements(policy_machine_storage_adapter, :transaction) {}
       policy_machine_storage_adapter.transaction do
         @oa = policy_machine_storage_adapter.add_object_attribute('some_oa', 'some_policy_machine_uuid1')
         @pc1 = policy_machine_storage_adapter.add_policy_class('some_pc1', 'some_policy_machine_uuid1')
@@ -359,7 +366,7 @@ shared_examples "a policy machine storage adapter" do
     end
 
     it 'rolls back the block on error' do
-      if_implements(policy_machine_storage_adapter, :transaction){}
+      if_implements(policy_machine_storage_adapter, :transaction) {}
       @oa = policy_machine_storage_adapter.add_object_attribute('some_oa', 'some_policy_machine_uuid1')
       @pc1 = policy_machine_storage_adapter.add_policy_class('some_pc1', 'some_policy_machine_uuid1')
       policy_machine_storage_adapter.assign(@oa, @pc1)

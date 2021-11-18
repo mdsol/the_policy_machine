@@ -9,8 +9,8 @@ def assert_pm_privilege_expectations(actual_privileges, expected_privileges)
 
     found_actual_priv = actual_privileges.find do |priv|
       priv[0].unique_identifier == u_id &&
-      priv[1].unique_identifier == op_id &&
-      priv[2].unique_identifier == obj_id
+        priv[1].unique_identifier == op_id &&
+        priv[2].unique_identifier == obj_id
     end
 
     pp("expected to find #{[u_id, op_id, obj_id]}") if found_actual_priv.nil?
@@ -26,10 +26,13 @@ def assert_pm_scoped_privilege_expectations
   users_or_attributes = policy_machine.users | policy_machine.user_attributes
   objects_or_attributes = policy_machine.objects | policy_machine.object_attributes
   users_or_attributes.product(objects_or_attributes) do |u, o|
-    expected_scoped_privileges = policy_machine.operations.reject(&:prohibition?).grep(->op{policy_machine.is_privilege?(u, op.unique_identifier, o)}) do |op|
+    expected_scoped_privileges = policy_machine.operations.reject(&:prohibition?).grep(->(op) {
+                                                                                         policy_machine.is_privilege?(
+                                                                                           u, op.unique_identifier, o
+                                                                                         )
+                                                                                       }) do |op|
       [u, op, o]
     end
-    expect(policy_machine.scoped_privileges(u,o)).to match_array(expected_scoped_privileges)
+    expect(policy_machine.scoped_privileges(u, o)).to match_array(expected_scoped_privileges)
   end
-
 end

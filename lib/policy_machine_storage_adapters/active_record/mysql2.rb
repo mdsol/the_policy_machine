@@ -1,7 +1,6 @@
 module PolicyMachineStorageAdapter
   class ActiveRecord
     class Assignment < ::ActiveRecord::Base
-
       class TransitiveClosure < ::ActiveRecord::Base
         self.table_name = 'transitive_closure'
         # needs ancestor_id, descendant_id columns
@@ -69,13 +68,10 @@ module PolicyMachineStorageAdapter
     end
 
     class Adapter
-
       # Support substring searching
-      def self.apply_include_condition(scope: , key: , value: , klass: )
-        scope.where("#{key} LIKE '%#{value.to_s.gsub(/([%_])/, '\\\\\0')}%'", )
+      def self.apply_include_condition(scope:, key:, value:, klass:)
+        scope.where("#{key} LIKE '%#{value.to_s.gsub(/([%_])/, '\\\\\0')}%'")
       end
-
     end
-
   end
 end

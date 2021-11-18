@@ -1,5 +1,8 @@
 # Changelog
 
+## 4.0.3
+* Code cleanups.
+
 ## 4.0.2
 * Updated `accessible_objects_for_operations` code path to use a CTE when using a replica database.
 

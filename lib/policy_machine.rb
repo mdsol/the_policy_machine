@@ -1,4 +1,3 @@
-# coding: utf-8
 require 'policy_machine/policy_element'
 require 'policy_machine/association'
 require 'policy_machine/warn_once'
@@ -8,14 +7,15 @@ require 'set'
 require 'will_paginate/array'
 
 # require all adapters
-Dir.glob(File.dirname(File.absolute_path(__FILE__)) + '/policy_machine_storage_adapters/*.rb').each{ |f| require f }
+Dir.glob("#{File.dirname(File.absolute_path(__FILE__))}/policy_machine_storage_adapters/*.rb").sort.each do |f|
+  require f
+end
 
 class PolicyMachine
-  POLICY_ELEMENT_TYPES = %w(user user_attribute object object_attribute operation operation_set policy_class)
+  POLICY_ELEMENT_TYPES = %w[user user_attribute object object_attribute operation operation_set policy_class].freeze
 
   attr_accessor :name
-  attr_reader   :uuid
-  attr_reader   :policy_machine_storage_adapter
+  attr_reader :uuid, :policy_machine_storage_adapter
 
   def initialize(options = {})
     @name = (options[:name] || options['name'] || 'default_policy_machine').to_s.strip
@@ -23,7 +23,7 @@ class PolicyMachine
     policy_machine_storage_adapter_class = options[:storage_adapter] || options['storage_adapter'] || ::PolicyMachineStorageAdapter::InMemory
     @policy_machine_storage_adapter = policy_machine_storage_adapter_class.new
 
-    raise(ArgumentError, "uuid cannot be blank") if @uuid.empty?
+    raise(ArgumentError, 'uuid cannot be blank') if @uuid.empty?
   end
 
   ##
@@ -78,7 +78,8 @@ class PolicyMachine
     assert_policy_element_in_machine(object_attribute_pe)
     assert_policy_element_in_machine(operation_set)
 
-    PM::Association.create(user_attribute_pe, operation_set, object_attribute_pe, @uuid, @policy_machine_storage_adapter)
+    PM::Association.create(user_attribute_pe, operation_set, object_attribute_pe, @uuid,
+      @policy_machine_storage_adapter)
   end
 
   ##
@@ -91,15 +92,18 @@ class PolicyMachine
   # TODO: Parallelize the two component checks
   def is_privilege?(user_or_attribute, operation, object_or_attribute, options = {})
     is_privilege_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute, options) &&
-      (options[:ignore_prohibitions] || !is_privilege_ignoring_prohibitions?(user_or_attribute, PM::Prohibition.on(operation), object_or_attribute, options))
+      (options[:ignore_prohibitions] || !is_privilege_ignoring_prohibitions?(user_or_attribute,
+        PM::Prohibition.on(operation), object_or_attribute, options))
   end
 
   ##
   # Can we derive a privilege given a set of filters?
   def is_privilege_with_filters?(user_or_attribute, operation, object_or_attribute, filters: {}, options: {})
     # Check that the privilege can be derived given the set of filters, but do not filter the check for prohibitions
-    is_privilege_ignoring_prohibitions_with_filters?(user_or_attribute, operation, object_or_attribute, filters: filters, options: options) &&
-       (options[:ignore_prohibitions] || !is_privilege_ignoring_prohibitions?(user_or_attribute, PM::Prohibition.on(operation), object_or_attribute, options))
+    is_privilege_ignoring_prohibitions_with_filters?(user_or_attribute, operation, object_or_attribute,
+      filters: filters, options: options) &&
+      (options[:ignore_prohibitions] || !is_privilege_ignoring_prohibitions?(user_or_attribute,
+        PM::Prohibition.on(operation), object_or_attribute, options))
   end
 
   ##
@@ -107,7 +111,8 @@ class PolicyMachine
   def is_privilege_ignoring_prohibitions_with_filters?(user_or_attribute, operation, object_or_attribute, filters: {}, options: {})
     assert_privilege_parameters!(user_or_attribute, operation, object_or_attribute)
 
-    policy_machine_storage_adapter.is_filtered_privilege?(user_or_attribute, operation, object_or_attribute, filters: filters, options: options)
+    policy_machine_storage_adapter.is_filtered_privilege?(user_or_attribute, operation, object_or_attribute,
+      filters: filters, options: options)
   end
 
   ##
@@ -117,12 +122,16 @@ class PolicyMachine
     assert_privilege_parameters!(user_or_attribute, operation, object_or_attribute)
 
     if options.empty? && policy_machine_storage_adapter.respond_to?(:is_privilege?)
-      privilege = [user_or_attribute, operation, object_or_attribute].map { |obj| obj.respond_to?(:stored_pe) ? obj.stored_pe : obj }
+      privilege = [user_or_attribute, operation, object_or_attribute].map do |obj|
+        obj.respond_to?(:stored_pe) ? obj.stored_pe : obj
+      end
       return policy_machine_storage_adapter.is_privilege?(*privilege)
     end
 
     if options[:filters] && policy_machine_storage_adapter.respond_to?(:is_privilege_with_filters?)
-      privilege = [user_or_attribute, operation, object_or_attribute].map { |obj| obj.respond_to?(:stored_pe) ? obj.stored_pe : obj }
+      privilege = [user_or_attribute, operation, object_or_attribute].map do |obj|
+        obj.respond_to?(:stored_pe) ? obj.stored_pe : obj
+      end
       return policy_machine_storage_adapter.is_privilege_with_filters?(*privilege, filters: options[:filters])
     end
 
@@ -133,9 +142,16 @@ class PolicyMachine
     # Try to get associations to check from options
     associations = options[:associations] || options['associations']
     if associations
-      raise(ArgumentError, "expected options[:associations] to be an Array; got #{associations.class}") unless associations.is_a?(Array)
-      raise(ArgumentError, "options[:associations] cannot be empty") if associations.empty?
-      raise(ArgumentError, "expected each element of options[:associations] to be a PM::Association") unless associations.all?{|a| a.is_a?(PM::Association)}
+      unless associations.is_a?(Array)
+        raise(ArgumentError,
+          "expected options[:associations] to be an Array; got #{associations.class}")
+      end
+      raise(ArgumentError, 'options[:associations] cannot be empty') if associations.empty?
+
+      unless associations.all?(PM::Association)
+        raise(ArgumentError,
+          'expected each element of options[:associations] to be a PM::Association')
+      end
 
       associations.keep_if do |association|
         association.operation_set.connected?(operation)
@@ -149,8 +165,10 @@ class PolicyMachine
     in_user_attribute = options[:in_user_attribute] || options['in_user_attribute']
     if in_user_attribute
       unless in_user_attribute.is_a?(PM::UserAttribute)
-        raise(ArgumentError, "expected options[:in_user_attribute] to be a PM::UserAttribute; got #{in_user_attribute.class}")
+        raise(ArgumentError,
+          "expected options[:in_user_attribute] to be a PM::UserAttribute; got #{in_user_attribute.class}")
       end
+
       if user_or_attribute.connected?(in_user_attribute)
         user_or_attribute = in_user_attribute
       else
@@ -162,8 +180,10 @@ class PolicyMachine
     in_object_attribute = options[:in_object_attribute] || options['in_object_attribute']
     if in_object_attribute
       unless in_object_attribute.is_a?(PM::ObjectAttribute)
-        raise(ArgumentError, "expected options[:in_object_attribute] to be a PM::ObjectAttribute; got #{in_object_attribute.class}")
+        raise(ArgumentError,
+          "expected options[:in_object_attribute] to be a PM::ObjectAttribute; got #{in_object_attribute.class}")
       end
+
       if object_or_attribute.connected?(in_object_attribute)
         object_or_attribute = in_object_attribute
       else
@@ -175,7 +195,8 @@ class PolicyMachine
     if policy_classes_containing_object.empty?
       is_privilege_single_policy_class(user_or_attribute, object_or_attribute, associations)
     else
-      is_privilege_multiple_policy_classes(user_or_attribute, object_or_attribute, associations, policy_classes_containing_object)
+      is_privilege_multiple_policy_classes(user_or_attribute, object_or_attribute, associations,
+        policy_classes_containing_object)
     end
   end
 
@@ -186,7 +207,7 @@ class PolicyMachine
   #
   # TODO:  might make privilege a class of its own
   def privileges
-    users.reduce([]) do |memo, user|
+    users.each_with_object([]) do |user, memo|
       operations.reject(&:prohibition?).each do |operation|
         objects.each do |object|
           if is_privilege?(user, operation, object)
@@ -194,7 +215,6 @@ class PolicyMachine
           end
         end
       end
-      memo
     end
   end
 
@@ -208,13 +228,15 @@ class PolicyMachine
     # Get an initial set of privileges and prohibitions without filtering. Prohibition checks should be
     # filter-agnostic since prohibitions are meant to be blocking.
     options_without_filters = options.except(:filters)
-    privs_and_prohibs = get_all_scoped_privileges_and_prohibitions(user_or_attribute, object_or_attribute, options_without_filters)
+    privs_and_prohibs = get_all_scoped_privileges_and_prohibitions(user_or_attribute, object_or_attribute,
+      options_without_filters)
 
-    prohibitions, privileges = privs_and_prohibs.partition { |_,op,_| op.prohibition? }
+    prohibitions, privileges = privs_and_prohibs.partition { |_, op, _| op.prohibition? }
 
     if options[:filters]
       # Replace unfiltered privileges with the privileges derived from a given set of filters
-      privileges = policy_machine_storage_adapter.scoped_privileges(user_or_attribute.stored_pe, object_or_attribute.stored_pe, options).map do |op|
+      privileges = policy_machine_storage_adapter.scoped_privileges(user_or_attribute.stored_pe,
+        object_or_attribute.stored_pe, options).map do |op|
         operation = PM::Operation.convert_stored_pe_to_pe(op, policy_machine_storage_adapter, PM::Operation)
         [user_or_attribute, operation, object_or_attribute]
       end
@@ -225,15 +247,16 @@ class PolicyMachine
     elsif options[:include_prohibitions]
       privileges | prohibitions
     else
-      prohibited_operations = prohibitions.map { |_,prohibition,_| prohibition.operation }
-      privileges.reject { |_,op,_| prohibited_operations.include?(op.unique_identifier) }
+      prohibited_operations = prohibitions.map { |_, prohibition, _| prohibition.operation }
+      privileges.reject { |_, op, _| prohibited_operations.include?(op.unique_identifier) }
     end
   end
 
   ##
   # Search for and iterate over a collection in batches
   def batch_find(type:, query: {}, config: {}, &blk)
-    return to_enum(__callee__, type: type, query: query, config: config) unless block_given?
+    return to_enum(__callee__, type: type, query: query, config: config) unless blk
+
     pm_class = "PM::#{type.to_s.camelize}".constantize
     if policy_machine_storage_adapter.respond_to?(:batch_find)
       policy_machine_storage_adapter.batch_find(type, query, config) do |batch|
@@ -255,8 +278,8 @@ class PolicyMachine
 
   ##
   # Search for and iterate over a collection of specified attributes in batches
-  def batch_pluck(type:, query: {}, fields:, config: {}, &blk)
-    return to_enum(__callee__, type: type, query: query, fields: fields, config: config) unless block_given?
+  def batch_pluck(type:, fields:, query: {}, config: {}, &blk)
+    return to_enum(__callee__, type: type, query: query, fields: fields, config: config) unless blk
 
     # If the storage adapter implements batch_pluck, delegate
     if policy_machine_storage_adapter.respond_to?(:batch_pluck)
@@ -271,9 +294,8 @@ class PolicyMachine
 
   def convert_pe_to_fields(pe, fields)
     extras = pe.extra_attributes
-    attrs = fields.reduce({}) do |attributes, field|
+    attrs = fields.each_with_object({}) do |field, attributes|
       attributes[field] = extras.include?(field) ? extras[field] : pe.public_send(field.to_sym)
-      attributes
     end
   end
 
@@ -295,9 +317,11 @@ class PolicyMachine
   def all_operations_for_user_or_attr_and_objs_or_attrs(user_or_attribute, object_attribute_ids, options = {})
     unless policy_machine_storage_adapter.respond_to?(:all_operations_for_user_or_attr_and_objs_or_attrs)
       adapter = policy_machine_storage_adapter.class
-      raise NoMethodError, "all_operations_for_user_or_attr_and_objs_or_attrs is not implemented for storage adapter #{adapter}"
+      raise NoMethodError,
+        "all_operations_for_user_or_attr_and_objs_or_attrs is not implemented for storage adapter #{adapter}"
     end
-    policy_machine_storage_adapter.all_operations_for_user_or_attr_and_objs_or_attrs(user_or_attribute, object_attribute_ids, options)
+    policy_machine_storage_adapter.all_operations_for_user_or_attr_and_objs_or_attrs(user_or_attribute,
+      object_attribute_ids, options)
   end
 
   def accessible_objects_for_operations(user_or_attribute, operations, options = {})
@@ -317,7 +341,7 @@ class PolicyMachine
         options
       )
     else
-      raise NoMethodError, "accessible_ancestor_objects is not implemented for storage adapter " \
+      raise NoMethodError, 'accessible_ancestor_objects is not implemented for storage adapter ' \
                            "#{policy_machine_storage_adapter.class}."
     end
   end
@@ -326,7 +350,7 @@ class PolicyMachine
     if policy_machine_storage_adapter.respond_to?(:associations_filtered_by_operation)
       policy_machine_storage_adapter.associations_filtered_by_operation(associations, operation)
     else
-      raise NoMethodError, "associations_filtered_by_operation is not implemented for storage adapter " \
+      raise NoMethodError, 'associations_filtered_by_operation is not implemented for storage adapter ' \
                            "#{policy_machine_storage_adapter.class}."
     end
   end
@@ -338,6 +362,7 @@ class PolicyMachine
     unless user.is_a?(PM::User)
       raise(ArgumentError, "Expected a PM::User, got a #{user.class}")
     end
+
     assert_policy_element_in_machine(user)
     user.user_attributes(@policy_machine_storage_adapter)
   end
@@ -406,27 +431,30 @@ class PolicyMachine
   # Raise unless the given parameters are valid types
   def assert_privilege_parameters!(user_or_attribute, operation, object_or_attribute)
     unless user_or_attribute.is_a?(PM::User) || user_or_attribute.is_a?(PM::UserAttribute)
-      raise(ArgumentError, "user_attribute_pe must be a User or UserAttribute.")
+      raise(ArgumentError, 'user_attribute_pe must be a User or UserAttribute.')
     end
 
     unless [PM::Operation, Symbol, String].any? { |allowed_type| operation.is_a?(allowed_type) }
-      raise(ArgumentError, "operation must be an Operation, Symbol, or String.")
+      raise(ArgumentError, 'operation must be an Operation, Symbol, or String.')
     end
 
     unless object_or_attribute.is_a?(PM::Object) || object_or_attribute.is_a?(PM::ObjectAttribute)
-      raise(ArgumentError, "object_or_attribute must either be an Object or ObjectAttribute.")
+      raise(ArgumentError, 'object_or_attribute must either be an Object or ObjectAttribute.')
     end
   end
 
   # Retrieves all privileges and prohibitions for the given user or attribute on the object or attribute scope
   def get_all_scoped_privileges_and_prohibitions(user_or_attribute, object_or_attribute, options = {})
     if policy_machine_storage_adapter.respond_to?(:scoped_privileges)
-      policy_machine_storage_adapter.scoped_privileges(user_or_attribute.stored_pe, object_or_attribute.stored_pe, options).map do |op|
+      policy_machine_storage_adapter.scoped_privileges(user_or_attribute.stored_pe, object_or_attribute.stored_pe,
+        options).map do |op|
         operation = PM::Operation.convert_stored_pe_to_pe(op, policy_machine_storage_adapter, PM::Operation)
         [user_or_attribute, operation, object_or_attribute]
       end
     else
-      operations.grep(->operation{is_privilege_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute)}) do |op|
+      operations.grep(->(operation) {
+                        is_privilege_ignoring_prohibitions?(user_or_attribute, operation, object_or_attribute)
+                      }) do |op|
         [user_or_attribute, op, object_or_attribute]
       end
     end
@@ -437,15 +465,16 @@ class PolicyMachine
     unless arg_pe.is_a?(PM::PolicyElement)
       raise(ArgumentError, "arg must each be a kind of PolicyElement; got #{arg_pe.class.name} instead")
     end
-    unless arg_pe.policy_machine_uuid == self.uuid
-      raise(ArgumentError, "#{arg_pe.unique_identifier} is not in policy machine with uuid #{self.uuid}")
+    unless arg_pe.policy_machine_uuid == uuid
+      raise(ArgumentError, "#{arg_pe.unique_identifier} is not in policy machine with uuid #{uuid}")
     end
   end
 
   # Raise unless the policy elements are policy elements in different machines.
   def assert_different_machines(pe, another_pe)
     if !pe.is_a?(PM::PolicyElement) || !another_pe.is_a?(PM::PolicyElement)
-      raise(ArgumentError, "args must each be a kind of PolicyElement; got a #{pe.class.name} and #{another_pe.class.name} instead")
+      raise(ArgumentError,
+        "args must each be a kind of PolicyElement; got a #{pe.class.name} and #{another_pe.class.name} instead")
     elsif pe.policy_machine_uuid == another_pe.policy_machine_uuid
       raise(ArgumentError, "#{pe.unique_identifier} and #{another_pe.unique_identifier} are in the same policy machine")
     end
@@ -471,8 +500,8 @@ class PolicyMachine
     policy_classes_containing_object.all? do |pc|
       associations.any? do |assoc|
         user_or_attribute.connected?(assoc.user_attribute) &&
-        object_or_attribute.connected?(assoc.object_attribute) &&
-        assoc.object_attribute.connected?(pc)
+          object_or_attribute.connected?(assoc.object_attribute) &&
+          assoc.object_attribute.connected?(pc)
       end
     end
   end

@@ -1,0 +1,27 @@
+inherit_from: .rubocop_todo.yml
+
+inherit_gem:
+  rubocop-mdsol: rubocop.yml
+
+require:
+  - rubocop-performance
+
+AllCops:
+  Exclude:
+    - test/testapp/**/*
+
+Gemspec/RequireMFA:
+  Enabled: false
+
+Layout/ArgumentAlignment:
+  EnforcedStyle: with_fixed_indentation
+
+Layout/FirstHashElementIndentation:
+  EnforcedStyle: consistent
+
+Style/FrozenStringLiteralComment:
+  Enabled: false
+
+Style/StringLiterals:
+  Enabled: true
+  EnforcedStyle: single_quotes

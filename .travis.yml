@@ -1,29 +1,37 @@
-dist: xenial
+dist: focal
 language: ruby
 cache: bundler
 
-addons:
-  postgresql: "11"
-  apt:
-    packages:
-    - postgresql-11
-    - postgresql-client-11
+rvm:
+  - 2.6
+  - 2.7
+  - 3.0
 
 env:
   global:
-  - PGPORT=5433
-  - PGUSER=travis
+    - BUNDLE_JOBS=4
 
 services:
   - postgresql
 
-bundler_args: --jobs=1 --retry=3
-
 before_install:
-  - gem install bundler -v 2.1.2
+  - gem update --system --force -N > /dev/null && echo "Rubygems version $(gem --version)"
+  - gem install bundler --force -N && bundle --version
+
+install:
+  - bundle install
 
 before_script:
   - bundle exec rake pm:test:prepare
 
 script:
+  - bundle exec rubocop
   - bundle exec rspec
+
+deploy:
+  edge: true # opt in to dpl v2
+  gem: policy_machine
+  provider: rubygems
+  on:
+    tags: true
+    condition: $TRAVIS_RUBY_VERSION == 3.0

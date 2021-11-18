@@ -1,7 +1,6 @@
 require 'set'
 
 class Warn
-
   @displayed_warnings = Set.new
 
   def self.once(string, *interpolated_values)
@@ -10,5 +9,4 @@ class Warn
       warn(string)
     end
   end
-
 end

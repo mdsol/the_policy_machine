@@ -1,7 +1,6 @@
 module PolicyMachineStorageAdapter
   class ActiveRecord
     class PolicyElement
-
       # given a list of operation set ids
       # return row hashes of operation_set_id, unique_identifier pairs
       # representing all operations contained by the given operation set ids
@@ -38,7 +37,7 @@ module PolicyMachineStorageAdapter
         sanitize_arg = [query, operation_set_ids]
 
         if operation_names
-          query << "WHERE ops.unique_identifier IN (?)"
+          query << 'WHERE ops.unique_identifier IN (?)'
           sanitize_arg << operation_names
         else
           type = PolicyMachineStorageAdapter::ActiveRecord.class_for_type('operation').name
@@ -114,8 +113,6 @@ module PolicyMachineStorageAdapter
           output[key] = objects
         end
       end
-
-      private
 
       # For replica database connections which do not support temporary tables.
       # This is a little slower than the PG function but still quicker than the
@@ -414,7 +411,7 @@ module PolicyMachineStorageAdapter
             (
               SELECT parent_id, child_id
               FROM assignments
-              WHERE #{sanitize_sql_for_conditions(["child_id IN (:root_ids)", root_ids: root_element_ids])}
+              WHERE #{sanitize_sql_for_conditions(["child_id IN (:root_ids)", { root_ids: root_element_ids }])}
             )
             UNION ALL
             (
@@ -442,7 +439,7 @@ module PolicyMachineStorageAdapter
             (
               SELECT parent_id, child_id, ARRAY[parent_id] AS parents
               FROM assignments
-              WHERE #{sanitize_sql_for_conditions(["parent_id IN (:opset_ids)", opset_ids: operation_set_ids])}
+              WHERE #{sanitize_sql_for_conditions(["parent_id IN (:opset_ids)", { opset_ids: operation_set_ids }])}
             )
             UNION ALL
             (
@@ -457,14 +454,12 @@ module PolicyMachineStorageAdapter
           FROM assignments_recursive
           JOIN policy_elements
           ON policy_elements.id = assignments_recursive.child_id
-          WHERE #{sanitize_sql_for_conditions(["policy_elements.unique_identifier=:op_id", op_id: operation_id])}
+          WHERE #{sanitize_sql_for_conditions(["policy_elements.unique_identifier=:op_id", { op_id: operation_id }])}
           AND type = 'PolicyMachineStorageAdapter::ActiveRecord::Operation'
         SQL
 
         PolicyElement.connection.exec_query(query).rows.flatten.map(&:to_i)
       end
-
-      private
 
       def self.ancestors_of_query
         <<-SQL
@@ -492,7 +487,6 @@ module PolicyMachineStorageAdapter
     end
 
     class LogicalLink < ::ActiveRecord::Base
-
       belongs_to :link_parent, class_name: 'PolicyElement', foreign_key: :link_parent_id
       belongs_to :link_child, class_name: 'PolicyElement', foreign_key: :link_child_id
 
@@ -555,11 +549,11 @@ module PolicyMachineStorageAdapter
 
     class Adapter
       # Support substring searching and Postgres Array membership
-      def self.apply_include_condition(scope: , key: , value: , klass: )
+      def self.apply_include_condition(scope:, key:, value:, klass:)
         if klass.columns_hash[key.to_s].array
           [*value].reduce(scope) { |rel, val| rel.where("? = ANY(#{key})", val) }
         else
-          scope.where("#{key} LIKE '%#{value.to_s.gsub(/([%_])/, '\\\\\0')}%'", )
+          scope.where("#{key} LIKE '%#{value.to_s.gsub(/([%_])/, '\\\\\0')}%'")
         end
       end
     end

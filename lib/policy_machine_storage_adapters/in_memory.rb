@@ -5,8 +5,7 @@ require 'policy_machine'
 
 module PolicyMachineStorageAdapter
   class InMemory
-
-    POLICY_ELEMENT_TYPES = %w(user user_attribute object object_attribute operation operation_set policy_class)
+    POLICY_ELEMENT_TYPES = %w[user user_attribute object object_attribute operation operation_set policy_class].freeze
 
     def buffering?
       false
@@ -34,21 +33,28 @@ module PolicyMachineStorageAdapter
       define_method("find_all_of_type_#{pe_type}") do |options = {}|
         conditions = options.slice!(:per_page, :page, :ignore_case).merge(pe_type: pe_type)
         elements = policy_elements.select do |pe|
-          conditions.all? do |k,v|
+          conditions.all? do |k, v|
             if v.nil?
-              !pe.respond_to?(k) || pe.send(k) == nil
+              !pe.respond_to?(k) || pe.send(k).nil?
             elsif v.is_a?(Hash) && v.keys == [:include]
-              pe.respond_to?(k) && pe.send(k).respond_to?(:include?) && [*v[:include]].all?{|val| pe.send(k).include?(val)}
+              pe.respond_to?(k) && pe.send(k).respond_to?(:include?) && [*v[:include]].all? do |val|
+                pe.send(k).include?(val)
+              end
             else
               pe.respond_to?(k) &&
-                ((pe.send(k).is_a?(String) && v.is_a?(String) && ignore_case_applies?(options[:ignore_case], k)) ? pe.send(k).downcase == v.downcase : pe.send(k) == v)
+                (if pe.send(k).is_a?(String) && v.is_a?(String) && ignore_case_applies?(options[:ignore_case],
+                  k)
+                   pe.send(k).casecmp(v).zero?
+                 else
+                   pe.send(k) == v
+                 end)
             end
           end
         end
 
         # TODO: Refactor pagination block into another method and make find_all method smaller
         if options[:per_page]
-          page = options[:page] ? options[:page] : 1
+          page = options[:page] || 1
           paginated_elements = elements.paginate(options.slice(:per_page, :page))
         else
           paginated_elements = elements
@@ -68,7 +74,9 @@ module PolicyMachineStorageAdapter
 
     # Allow ignore_case to be a boolean, string, symbol, or array of symbols or strings
     def ignore_case_applies?(ignore_case, key)
-      ignore_case == true || ignore_case.to_s == key || ( ignore_case.respond_to?(:any?) && ignore_case.any?{ |k| k.to_s == key.to_s} )
+      ignore_case == true || ignore_case.to_s == key || (ignore_case.respond_to?(:any?) && ignore_case.any? do |k|
+                                                           k.to_s == key.to_s
+                                                         end)
     end
 
     ##
@@ -105,7 +113,7 @@ module PolicyMachineStorageAdapter
       return true if src == dst
 
       distances = dijkstra(src, dst)
-      distances.nil? ? false : true
+      !distances.nil?
     end
 
     ##
@@ -127,7 +135,7 @@ module PolicyMachineStorageAdapter
       assert_valid_policy_element(src)
       assert_valid_policy_element(dst)
 
-      assignment = assignments.find{|assgn| assgn[0] == src && assgn[1] == dst}
+      assignment = assignments.find { |assgn| assgn[0] == src && assgn[1] == dst }
       if assignment
         assignments.delete(assignment)
         true
@@ -143,7 +151,7 @@ module PolicyMachineStorageAdapter
       assert_persisted_policy_element(src)
       assert_persisted_policy_element(dst)
 
-      #link = links.find{ |l| l[0] == src && l[1] == dst }
+      # link = links.find{ |l| l[0] == src && l[1] == dst }
       link = links.find { |l| l == [src, dst] }
       if link
         links.delete(link)
@@ -157,9 +165,9 @@ module PolicyMachineStorageAdapter
     # Remove a persisted policy element
     #
     def delete(element)
-      assignments.delete_if{ |assgn| assgn.include?(element) }
-      links.delete_if{ |link| link.include?(element) }
-      associations.delete_if { |_,assoc| assoc.include?(element) }
+      assignments.delete_if { |assgn| assgn.include?(element) }
+      links.delete_if { |link| link.include?(element) }
+      associations.delete_if { |_, assoc| assoc.include?(element) }
       policy_elements.delete(element)
     end
 
@@ -172,7 +180,7 @@ module PolicyMachineStorageAdapter
     ##
     # Determine if the given node is in the policy machine or not.
     def element_in_machine?(pe)
-      policy_elements.member?( pe )
+      policy_elements.member?(pe)
     end
 
     ##
@@ -234,7 +242,7 @@ module PolicyMachineStorageAdapter
       instance_variables.each do |var|
         value = instance_variable_get(var)
 
-        if (value.respond_to?(:dup))
+        if value.respond_to?(:dup)
           old_state.instance_variable_set(var, value.dup)
         end
       end
@@ -252,119 +260,124 @@ module PolicyMachineStorageAdapter
 
     private
 
-      # Raise argument error if argument is not suitable for consumption in
-      # public methods.
-      def assert_valid_policy_element(arg)
-        assert_persisted_policy_element(arg)
-        assert_in_machine(arg)
+    # Raise argument error if argument is not suitable for consumption in
+    # public methods.
+    def assert_valid_policy_element(arg)
+      assert_persisted_policy_element(arg)
+      assert_in_machine(arg)
+    end
+
+    def assert_persisted_policy_element(arg)
+      unless arg.is_a?(PersistedPolicyElement)
+        raise(ArgumentError,
+          "arg must be a PersistedPolicyElement; got #{arg.class.name}")
       end
+    end
 
-      def assert_persisted_policy_element(arg)
-        raise(ArgumentError, "arg must be a PersistedPolicyElement; got #{arg.class.name}") unless arg.is_a?(PersistedPolicyElement)
+    def assert_in_machine(arg)
+      raise(ArgumentError, 'arg must be persisted') unless element_in_machine?(arg)
+    end
+
+    # The policy elements in the persisted policy machine.
+    def policy_elements
+      @policy_elements ||= []
+    end
+
+    # The policy element assignments in the persisted policy machine.
+    def assignments
+      @assignments ||= []
+    end
+
+    # The policy element links in the persisted policy machine.
+    def links
+      @links ||= []
+    end
+
+    # All persisted associations
+    def associations
+      @associations ||= {}
+    end
+
+    def dijkstra(src, dst = nil)
+      nodes = policy_elements
+
+      distances = {}
+      previouses = {}
+      nodes.each do |vertex|
+        distances[vertex] = nil # Infinity
+        previouses[vertex] = nil
       end
+      distances[src] = 0
+      vertices = nodes.clone
+      until vertices.empty?
+        nearest_vertex = vertices.reduce do |a, b|
+          next b unless distances[a]
+          next a unless distances[b]
+          next a if distances[a] < distances[b]
 
-      def assert_in_machine(arg)
-        raise(ArgumentError, "arg must be persisted") unless element_in_machine?(arg)
-      end
-
-      # The policy elements in the persisted policy machine.
-      def policy_elements
-        @policy_elements ||= []
-      end
-
-      # The policy element assignments in the persisted policy machine.
-      def assignments
-        @assignments ||= []
-      end
-
-      # The policy element links in the persisted policy machine.
-      def links
-        @links ||= []
-      end
-
-      # All persisted associations
-      def associations
-        @associations ||= {}
-      end
-
-      def dijkstra(src, dst = nil)
-        nodes = policy_elements
-
-        distances = {}
-        previouses = {}
-        nodes.each do |vertex|
-          distances[vertex] = nil # Infinity
-          previouses[vertex] = nil
+          b
         end
-        distances[src] = 0
-        vertices = nodes.clone
-        until vertices.empty?
-          nearest_vertex = vertices.reduce do |a, b|
-            next b unless distances[a]
-            next a unless distances[b]
-            next a if distances[a] < distances[b]
-            b
-          end
-          break unless distances[nearest_vertex] # Infinity
-          if dst and nearest_vertex == dst
-            return distances[dst]
-          end
-          neighbors = neighbors(nearest_vertex)
-          neighbors.each do |vertex|
-            alt = distances[nearest_vertex] + 1
-            if distances[vertex].nil? or alt < distances[vertex]
-              distances[vertex] = alt
-              previouses[vertices] = nearest_vertex
-              # decrease-key v in Q # ???
-            end
-          end
-          vertices.delete nearest_vertex
+        break unless distances[nearest_vertex] # Infinity
+        if dst && (nearest_vertex == dst)
+          return distances[dst]
         end
 
-        return nil
-      end
+        neighbors = neighbors(nearest_vertex)
+        neighbors.each do |vertex|
+          alt = distances[nearest_vertex] + 1
+          next unless distances[vertex].nil? || (alt < distances[vertex])
 
-      # Find all nodes which are directly connected to
-      # +node+
-      def neighbors(pe)
-        neighbors = []
-        assignments.each do |assignment|
-          neighbors.push assignment[1] if assignment[0] == pe
+          distances[vertex] = alt
+          previouses[vertices] = nearest_vertex
+          # decrease-key v in Q # ???
         end
-        return neighbors.uniq
+        vertices.delete nearest_vertex
       end
 
-      # Returns an array of self and the linked children
-      def self_and_children(pe)
-        links.reduce([]) do |memo, ca|
-          memo.concat self_and_children(ca[1]) if ca[0] == pe
-          memo
-        end << pe
+      nil
+    end
+
+    # Find all nodes which are directly connected to
+    # +node+
+    def neighbors(pe)
+      neighbors = []
+      assignments.each do |assignment|
+        neighbors.push assignment[1] if assignment[0] == pe
       end
+      neighbors.uniq
+    end
 
-      # Class to represent policy elements
-      class PersistedPolicyElement
-        attr_accessor :persisted
-        attr_reader   :unique_identifier, :policy_machine_uuid, :pe_type, :extra_attributes
+    # Returns an array of self and the linked children
+    def self_and_children(pe)
+      links.each_with_object([]) do |ca, memo|
+        memo.concat self_and_children(ca[1]) if ca[0] == pe
+      end << pe
+    end
 
-        # Ensure that attr keys are strings
-        def initialize(unique_identifier, policy_machine_uuid, pe_type, extra_attributes)
-          @unique_identifier = unique_identifier
-          @policy_machine_uuid = policy_machine_uuid
-          @pe_type = pe_type
-          @persisted = false
-          @extra_attributes = extra_attributes
-          extra_attributes.each do |key, value|
-            define_singleton_method key, lambda {@extra_attributes[key]}
-          end
+    # Class to represent policy elements
+    class PersistedPolicyElement
+      attr_accessor :persisted
+      attr_reader   :unique_identifier, :policy_machine_uuid, :pe_type, :extra_attributes
+
+      # Ensure that attr keys are strings
+      def initialize(unique_identifier, policy_machine_uuid, pe_type, extra_attributes)
+        @unique_identifier = unique_identifier
+        @policy_machine_uuid = policy_machine_uuid
+        @pe_type = pe_type
+        @persisted = false
+        @extra_attributes = extra_attributes
+        extra_attributes.each do |key, _value|
+          define_singleton_method key, -> { @extra_attributes[key] }
         end
-
-        def ==(other)
-          return false unless other.is_a?(PersistedPolicyElement)
-          self.unique_identifier == other.unique_identifier &&
-            self.policy_machine_uuid == other.policy_machine_uuid &&
-            self.pe_type == other.pe_type
-        end
       end
+
+      def ==(other)
+        return false unless other.is_a?(PersistedPolicyElement)
+
+        unique_identifier == other.unique_identifier &&
+          policy_machine_uuid == other.policy_machine_uuid &&
+          pe_type == other.pe_type
+      end
+    end
   end
 end

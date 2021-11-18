@@ -7,7 +7,7 @@ class AddLogicalLinksTable < ActiveRecord::Migration[5.2]
       t.string :link_child_policy_machine_uuid, null: false
     end
 
-    add_index :logical_links, [:link_parent_id, :link_child_id], unique: true
+    add_index :logical_links, %i[link_parent_id link_child_id], unique: true
     add_index :logical_links, [:link_child_id]
   end
 end
