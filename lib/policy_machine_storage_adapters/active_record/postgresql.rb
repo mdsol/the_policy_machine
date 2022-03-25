@@ -24,25 +24,23 @@ module PolicyMachineStorageAdapter
                 assignments.parent_id,
                 accessible_operations.operation_set_id AS operation_set_id
               FROM assignments
-              INNER JOIN accessible_operations
-                ON accessible_operations.child_id = assignments.parent_id
+              JOIN accessible_operations ON accessible_operations.child_id = assignments.parent_id
             )
           )
-
           SELECT DISTINCT accessible_operations.operation_set_id, ops.unique_identifier
           FROM accessible_operations
-          JOIN policy_elements ops
-            ON ops.id = accessible_operations.child_id
+          JOIN policy_elements ops ON ops.id = accessible_operations.child_id
+          WHERE ops.id IN (SELECT child_id FROM accessible_operations)
         SQL
 
         sanitize_arg = [query, operation_set_ids]
 
         if operation_names
-          query << "WHERE ops.unique_identifier IN (?)"
+          query << "AND ops.unique_identifier IN (?)"
           sanitize_arg << operation_names
         else
           type = PolicyMachineStorageAdapter::ActiveRecord.class_for_type('operation').name
-          query << "WHERE ops.type = '#{type}'"
+          query << "AND ops.type = '#{type}'"
         end
 
         sanitized_query = sanitize_sql_for_assignment(sanitize_arg)

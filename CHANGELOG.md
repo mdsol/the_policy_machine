@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.0.3
+* Updated PostgreSQL `operations_for_operation_sets` CTE to pre-aggregate `accessible_operations` before joining to
+`policy_elements` for performance optimizations.
+
 ## 4.0.2
 * Updated `accessible_objects_for_operations` code path to use a CTE when using a replica database.
 
