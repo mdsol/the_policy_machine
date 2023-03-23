@@ -19,7 +19,7 @@ class PolicyMachine
   def initialize(options = {})
     @name = (options[:name] || options['name'] || 'default_policy_machine').to_s.strip
     @uuid = (options[:uuid] || options['uuid'] || SecureRandom.uuid).to_s.strip
-    policy_machine_storage_adapter_class = options[:storage_adapter] || options['storage_adapter'] || ::PolicyMachineStorageAdapter::InMemory
+    policy_machine_storage_adapter_class = options[:storage_adapter] || options['storage_adapter']
     @policy_machine_storage_adapter = policy_machine_storage_adapter_class.new
 
     raise(ArgumentError, "uuid cannot be blank") if @uuid.empty?
