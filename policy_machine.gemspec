@@ -15,7 +15,6 @@ Gem::Specification.new do |s|
 
   s.add_dependency('activesupport')
   s.add_dependency('activerecord') #TODO optional dependency when not using active record adapter
-  s.add_dependency('will_paginate')
   s.add_dependency('bootsnap')
   s.add_dependency('listen')
 

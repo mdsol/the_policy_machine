@@ -141,7 +141,6 @@ module PolicyMachineStorageAdapter
     end
 
     class ApplicationRecord < ::ActiveRecord::Base
-      require 'will_paginate/active_record'
       self.abstract_class = true
     end
 
