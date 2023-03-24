@@ -8,6 +8,7 @@ require 'policy_machine/warn_once'
 
 begin
   require 'active_record'
+  require 'kaminari'
 rescue LoadError
   active_record_unavailable = true
 end
@@ -1209,7 +1210,7 @@ module PolicyMachineStorageAdapter
     def paginate_scope(scope:, options:)
       if options[:per_page]
         page = options[:page] || 1
-        scope = scope.order(:id).paginate(page: page, per_page: options[:per_page])
+        scope = scope.order(:id).page(page).per(options[:per_page])
       end
       scope
     end
