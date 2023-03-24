@@ -1,5 +1,8 @@
 # Changelog
 
+## 4.0.4
+* Replaced `will_paginate` with `kaminari`.
+
 ## 4.0.3
 * Updated PostgreSQL `operations_for_operation_sets` CTE to pre-aggregate `accessible_operations` before joining to
 `policy_elements` for performance optimizations.
