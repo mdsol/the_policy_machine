@@ -31,6 +31,10 @@ shared_examples "a policy machine" do
       end
     end
 
+    it 'defaults to in-memory storage adapter' do
+      expect(PolicyMachine.new.policy_machine_storage_adapter).to be_a(::PolicyMachineStorageAdapter::InMemory)
+    end
+
     it 'allows user to set storage adapter' do
       ['storage_adapter', :storage_adapter].each do |key|
         storage_adapter = PolicyMachine.new(key => ::PolicyMachineStorageAdapter::Neography).policy_machine_storage_adapter
