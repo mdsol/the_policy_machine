@@ -1,4 +1,5 @@
 require 'policy_machine'
+require 'kaminari'
 
 # This class stores policy elements in memory and
 # exposes required operations for managing/querying these elements.
@@ -29,7 +30,7 @@ module PolicyMachineStorageAdapter
       end
 
       # Find all policy elements of type pe_type
-      # The results are paginated via will_paginate using the pagination params in the params hash
+      # The results are paginated via kaminari using the pagination params in the params hash
       # The find is case insensitive to the conditions
       define_method("find_all_of_type_#{pe_type}") do |options = {}|
         conditions = options.slice!(:per_page, :page, :ignore_case).merge(pe_type: pe_type)
@@ -49,7 +50,7 @@ module PolicyMachineStorageAdapter
         # TODO: Refactor pagination block into another method and make find_all method smaller
         if options[:per_page]
           page = options[:page] ? options[:page] : 1
-          paginated_elements = elements.paginate(options.slice(:per_page, :page))
+          paginated_elements = Kaminari.paginate_array(elements).page(page).per(options[:per_page])
         else
           paginated_elements = elements
         end
