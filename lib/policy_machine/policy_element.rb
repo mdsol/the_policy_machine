@@ -103,9 +103,9 @@ module PM
     end
 
     # Delegates extra attribute reads to stored_pe
-    def method_missing(meth, *args)
+    def method_missing(meth, *args, **kwargs)
       if stored_pe.respond_to?(meth)
-        stored_pe.send(meth, *args)
+        stored_pe.send(meth, *args, **kwargs)
       else
         super
       end

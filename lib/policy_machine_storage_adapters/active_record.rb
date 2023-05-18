@@ -164,10 +164,10 @@ module PolicyMachineStorageAdapter
 
       active_record_serialize :extra_attributes, JSON
 
-      def method_missing(meth, *args, &block)
+      def method_missing(meth, *args, **kwargs, &block)
         store_attributes
         if respond_to?(meth)
-          send(meth, *args)
+          send(meth, *args, **kwargs)
         elsif meth.to_s[-1] == '='
           @extra_attributes_hash[meth.to_s.chop] = args.first
         else
