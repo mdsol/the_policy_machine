@@ -1,5 +1,8 @@
 # Changelog
 
+## 4.0.5
+* Support ruby 3.
+
 ## 4.0.4
 * Replaced `will_paginate` with `kaminari`.
 
