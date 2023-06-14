@@ -1667,7 +1667,7 @@ describe 'ActiveRecord' do
 
         it 'applies multiple filters if they are supplied' do
           args = { fields: [:unique_identifier], filters: { unique_identifier: 'user_attr_1', color: 'green' } }
-          expect(user_1.pluck_from_descendants(args)).to contain_exactly({ unique_identifier: 'user_attr_1' })
+          expect(user_1.pluck_from_descendants(**args)).to contain_exactly({ unique_identifier: 'user_attr_1' })
         end
 
         it 'returns appropriate results when filters apply to no descendants' do
@@ -1765,7 +1765,7 @@ describe 'ActiveRecord' do
 
         it 'applies multiple filters if they are supplied' do
           args = { fields: [:unique_identifier], filters: { unique_identifier: 'user_1', color: 'blue' } }
-          expect(user_attr_1.pluck_from_ancestors(args)).to contain_exactly(unique_identifier: 'user_1')
+          expect(user_attr_1.pluck_from_ancestors(**args)).to contain_exactly(unique_identifier: 'user_1')
         end
 
         it 'returns appropriate results when filters apply to no ancestors' do
@@ -1846,13 +1846,13 @@ describe 'ActiveRecord' do
         it 'applies a single filter if one is supplied' do
           plucked_results = HashWithIndifferentAccess.new(user_attr_7: [], user_attr_8: [], user_attr_9: [])
           params = { fields: [:unique_identifier], filters: { color: 'silver'} }
-          expect(user_attr_1.pluck_ancestor_tree(params)).to eq(plucked_results)
+          expect(user_attr_1.pluck_ancestor_tree(**params)).to eq(plucked_results)
         end
 
         it 'applies multiple filters if they are supplied' do
           plucked_results = HashWithIndifferentAccess.new('user_attr_9': [])
           params = { fields: [:unique_identifier], filters: { color: 'silver', unique_identifier: 'user_attr_9' } }
-          expect(user_attr_1.pluck_ancestor_tree(params)).to eq(plucked_results)
+          expect(user_attr_1.pluck_ancestor_tree(**params)).to eq(plucked_results)
         end
 
         it 'returns appropriate results when filters apply to ancestors that have no ancestors themselves' do
@@ -1861,18 +1861,18 @@ describe 'ActiveRecord' do
 
           plucked_results = HashWithIndifferentAccess.new(user_attr_10: [])
           params = { fields: [:unique_identifier], filters: { color: 'indigo'} }
-          expect(user_attr_1.pluck_ancestor_tree(params)).to eq(plucked_results)
+          expect(user_attr_1.pluck_ancestor_tree(**params)).to eq(plucked_results)
         end
 
         it 'returns appropriate results when filters apply to ancestors but not their ancestors' do
           plucked_results = HashWithIndifferentAccess.new(user_attr_4: [], user_attr_5: [], user_attr_6: [])
           params = { fields: [:unique_identifier], filters: { color: 'gold'} }
-          expect(user_attr_1.pluck_ancestor_tree(params)).to eq(plucked_results)
+          expect(user_attr_1.pluck_ancestor_tree(**params)).to eq(plucked_results)
         end
 
         it 'returns appropriate results when filters apply to no ancestors' do
           params = { fields: [:unique_identifier], filters: { color: 'obsidian'} }
-          expect(user_attr_1.pluck_ancestor_tree(params)).to match_array({})
+          expect(user_attr_1.pluck_ancestor_tree(**params)).to match_array({})
         end
       end
     end
@@ -1965,7 +1965,7 @@ describe 'ActiveRecord' do
 
         it 'applies multiple filters if they are supplied' do
           args = { fields: [:unique_identifier], filters: { unique_identifier: 'user_1', color: 'blue' } }
-          expect(user_attr_1.pluck_from_parents(args)).to contain_exactly({ unique_identifier: 'user_1' })
+          expect(user_attr_1.pluck_from_parents(**args)).to contain_exactly({ unique_identifier: 'user_1' })
         end
 
         it 'returns appropriate results when filters apply to no parents' do
@@ -2033,7 +2033,7 @@ describe 'ActiveRecord' do
 
         it 'applies multiple filters if they are supplied' do
           args = { fields: [:unique_identifier], filters: { unique_identifier: 'user_attr_1', color: 'green' } }
-          expect(user_1.pluck_from_children(args)).to contain_exactly({ unique_identifier: 'user_attr_1' })
+          expect(user_1.pluck_from_children(**args)).to contain_exactly({ unique_identifier: 'user_attr_1' })
         end
 
         it 'returns appropriate results when filters apply to no children' do
@@ -2103,7 +2103,7 @@ describe 'ActiveRecord' do
 
         it 'applies multiple filters if they are supplied' do
           args = { fields: [:unique_identifier], filters: { unique_identifier: 'pm2_operation_1', color: 'red' } }
-          expect(pm3_user_attr.pluck_from_link_parents(args)).to contain_exactly({ unique_identifier: 'pm2_operation_1' })
+          expect(pm3_user_attr.pluck_from_link_parents(**args)).to contain_exactly({ unique_identifier: 'pm2_operation_1' })
         end
 
         it 'returns appropriate results when filters apply to no link_parents' do
@@ -2175,7 +2175,7 @@ describe 'ActiveRecord' do
 
         it 'applies multiple filters if they are supplied' do
           args = { fields: [:unique_identifier], filters: { unique_identifier: 'pm2_user', color: 'blue' } }
-          expect(user_1.pluck_from_link_children(args)).to contain_exactly({ unique_identifier: 'pm2_user' })
+          expect(user_1.pluck_from_link_children(**args)).to contain_exactly({ unique_identifier: 'pm2_user' })
         end
 
         it 'returns appropriate results when filters apply to no link_children' do
