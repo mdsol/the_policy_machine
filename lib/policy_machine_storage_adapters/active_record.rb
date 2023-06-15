@@ -164,10 +164,10 @@ module PolicyMachineStorageAdapter
 
       active_record_serialize :extra_attributes, JSON
 
-      def method_missing(meth, *args, &block)
+      def method_missing(meth, *args, **kwargs, &block)
         store_attributes
         if respond_to?(meth)
-          send(meth, *args)
+          send(meth, *args, **kwargs)
         elsif meth.to_s[-1] == '='
           @extra_attributes_hash[meth.to_s.chop] = args.first
         else
@@ -797,12 +797,12 @@ module PolicyMachineStorageAdapter
     end
 
     def batch_find(policy_object, query = {}, config = {}, &blk)
-      method("find_all_of_type_#{policy_object}").call(query).find_in_batches(config, &blk)
+      method("find_all_of_type_#{policy_object}").call(query).find_in_batches(**config, &blk)
     end
 
     def batch_pluck(policy_object, query: {}, fields:, config: {}, &blk)
       raise(ArgumentError, "must provide fields to pluck") unless fields.present?
-      method("pluck_all_of_type_#{policy_object}").call(fields: fields, options: query).find_in_batches(config) do |batch|
+      method("pluck_all_of_type_#{policy_object}").call(fields: fields, options: query).find_in_batches(**config) do |batch|
         yield batch.map { |elt| elt.attributes.symbolize_keys }
       end
     end

@@ -246,7 +246,7 @@ class PolicyMachine
 
   def pluck(type:, fields:, options:)
     if policy_machine_storage_adapter.respond_to?(:pluck)
-      policy_machine_storage_adapter.send(:pluck, { type: type, fields: fields, options: options })
+      policy_machine_storage_adapter.send(:pluck, **{ type: type, fields: fields, options: options })
     else
       raise "Method 'pluck' is not implemented for storage adapter #{policy_machine_storage_adapter.class}"
     end
