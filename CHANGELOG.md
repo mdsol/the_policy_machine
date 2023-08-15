@@ -1,5 +1,8 @@
 # Changelog
 
+## 4.0.6
+* Fallback to empty hash when extra_attributes are not set.
+
 ## 4.0.5
 * Support ruby 3.
 
