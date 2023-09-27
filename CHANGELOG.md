@@ -1,5 +1,8 @@
 # Changelog
 
+## 4.0.7
+* Allow prohibition operations to be created without workaround.
+
 ## 4.0.6
 * Fallback to empty hash when extra_attributes are not set.
 
