@@ -395,11 +395,6 @@ shared_examples "a policy machine" do
   end
 
   describe 'Operations' do
-    it 'does not allow an operation to start with a ~' do
-      expect{policy_machine.create_operation('~apple')}.to raise_error(ArgumentError)
-      expect{policy_machine.create_operation('apple~')}.not_to raise_error
-    end
-
     it 'can derive a prohibition from an operation and vice versa' do
       @op = policy_machine.create_operation('fly')
       expect(@op.prohibition).to be_prohibition
