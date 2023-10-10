@@ -1,5 +1,9 @@
 # Changelog
 
+## 4.1.0
+* Support Rails 7.1
+* Drop support for Rails < 7
+
 ## 4.0.7
 * Allow prohibition operations to be created without workaround.
 
