@@ -724,7 +724,6 @@ module PolicyMachineStorageAdapter
       assocs = PolicyElementAssociation.where(operation_set_id: operation_sets.pluck(:id))
 
       assocs.map do |assoc|
-        assoc.send(:clear_association_cache) #TODO Either do this better (touch through HABTM on bulk insert?) or dont do this?
         [assoc.user_attribute, assoc.operation_set, assoc.object_attribute]
       end
     end
