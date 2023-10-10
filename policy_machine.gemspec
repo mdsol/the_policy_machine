@@ -14,7 +14,7 @@ Gem::Specification.new do |s|
   s.require_paths = ["lib"]
 
   s.add_dependency('activesupport')
-  s.add_dependency('activerecord') #TODO optional dependency when not using active record adapter
+  s.add_dependency('activerecord', '~> 7.1') #TODO optional dependency when not using active record adapter
   s.add_dependency('bootsnap')
   s.add_dependency('kaminari')
   s.add_dependency('listen')
@@ -32,6 +32,6 @@ Gem::Specification.new do |s|
   s.add_development_dependency('pry-nav')
   s.add_development_dependency('byebug')
   s.add_development_dependency('neography', '~> 1.1')
-  s.add_development_dependency('database_cleaner')
-  s.add_development_dependency('rails', '~> 6.1')
+  s.add_development_dependency('database_cleaner', '~> 2')
+  s.add_development_dependency('rails', '~> 7.1')
 end

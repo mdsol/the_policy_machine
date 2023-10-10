@@ -162,7 +162,7 @@ module PolicyMachineStorageAdapter
 
       attr_accessor :extra_attributes_hash
 
-      active_record_serialize :extra_attributes, JSON
+      active_record_serialize :extra_attributes, coder: JSON
 
       def method_missing(meth, *args, **kwargs, &block)
         store_attributes
