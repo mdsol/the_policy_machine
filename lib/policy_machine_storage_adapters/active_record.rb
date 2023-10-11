@@ -162,7 +162,7 @@ module PolicyMachineStorageAdapter
 
       attr_accessor :extra_attributes_hash
 
-      active_record_serialize :extra_attributes, JSON
+      active_record_serialize :extra_attributes, coder: JSON
 
       def method_missing(meth, *args, **kwargs, &block)
         store_attributes
@@ -724,7 +724,6 @@ module PolicyMachineStorageAdapter
       assocs = PolicyElementAssociation.where(operation_set_id: operation_sets.pluck(:id))
 
       assocs.map do |assoc|
-        assoc.send(:clear_association_cache) #TODO Either do this better (touch through HABTM on bulk insert?) or dont do this?
         [assoc.user_attribute, assoc.operation_set, assoc.object_attribute]
       end
     end
