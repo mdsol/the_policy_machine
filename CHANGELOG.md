@@ -1,5 +1,8 @@
 # Changelog
 
+## 4.1.1
+* Updated PostgreSQL `operations_for_operation_sets` to guarantee disable mergejoin
+
 ## 4.1.0
 * Support Rails 7.1
 * Drop support for Rails < 7.1
