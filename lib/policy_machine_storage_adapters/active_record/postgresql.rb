@@ -70,7 +70,10 @@ module PolicyMachineStorageAdapter
         #   { 'operation_set_id' => 789, 'unique_identifier' => 'operation2' },
         #   { 'operation_set_id' => 789, 'unique_identifier' => 'operation3' },
         # ]
-        connection.execute(sanitized_query)
+        connection.transaction do
+          connection.execute('SET LOCAL enable_mergejoin TO FALSE')
+          connection.execute(sanitized_query)
+        end
       end
 
       # The PG function can only accept a single field for now.
