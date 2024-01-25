@@ -8,6 +8,8 @@ module PolicyMachineStorageAdapter
       # optionally can give a list of operation names to filter by
       def self.operations_for_operation_sets(operation_set_ids, operation_names = nil)
         query = <<~SQL
+          SET LOCAL enable_mergejoin TO FALSE;
+
           WITH RECURSIVE accessible_operations AS (
             (
               SELECT
@@ -36,11 +38,11 @@ module PolicyMachineStorageAdapter
         sanitize_arg = [query, operation_set_ids]
 
         if operation_names
-          query << "AND ops.unique_identifier IN (?)"
+          query << "AND ops.unique_identifier IN (?);"
           sanitize_arg << operation_names
         else
           type = PolicyMachineStorageAdapter::ActiveRecord.class_for_type('operation').name
-          query << "AND ops.type = '#{type}'"
+          query << "AND ops.type = '#{type}';"
         end
 
         sanitized_query = sanitize_sql_for_assignment(sanitize_arg)
@@ -70,7 +72,9 @@ module PolicyMachineStorageAdapter
         #   { 'operation_set_id' => 789, 'unique_identifier' => 'operation2' },
         #   { 'operation_set_id' => 789, 'unique_identifier' => 'operation3' },
         # ]
-        connection.execute(sanitized_query)
+        connection.transaction do
+          connection.execute(sanitized_query)
+        end
       end
 
       # The PG function can only accept a single field for now.
