@@ -7,10 +7,21 @@ module PolicyMachineStorageAdapter
       # representing all operations contained by the given operation set ids
       # optionally can give a list of operation names to filter by
       def self.operations_for_operation_sets(operation_set_ids, operation_names = nil)
+        query_args = [operation_set_ids]
+
+        operation_predicate =
+          if operation_names
+            query_args.append(operation_names)
+            'unique_identifier IN (?)'
+          else
+            query_args.append(PolicyMachineStorageAdapter::ActiveRecord.class_for_type('operation').name)
+            '"type" = ?'
+          end
+
         query = <<~SQL
           SET LOCAL enable_mergejoin TO FALSE;
 
-          WITH RECURSIVE accessible_operations AS (
+          WITH RECURSIVE accessible_operations AS MATERIALIZED (
             (
               SELECT
                 child_id,
@@ -28,23 +39,24 @@ module PolicyMachineStorageAdapter
               FROM assignments
               JOIN accessible_operations ON accessible_operations.child_id = assignments.parent_id
             )
+          ), operations AS MATERIALIZED (
+            SELECT
+              id,
+              unique_identifier
+            FROM policy_elements
+            WHERE
+              id IN (SELECT child_id FROM accessible_operations)
+              AND #{operation_predicate}
           )
-          SELECT DISTINCT accessible_operations.operation_set_id, ops.unique_identifier
-          FROM accessible_operations
-          JOIN policy_elements ops ON ops.id = accessible_operations.child_id
-          WHERE ops.id IN (SELECT child_id FROM accessible_operations)
+          SELECT DISTINCT
+            ao.operation_set_id,
+            ops.unique_identifier
+          FROM operations ops
+          JOIN accessible_operations ao
+            on ao.child_id = ops.id
         SQL
 
-        sanitize_arg = [query, operation_set_ids]
-
-        if operation_names
-          query << "AND ops.unique_identifier IN (?);"
-          sanitize_arg << operation_names
-        else
-          type = PolicyMachineStorageAdapter::ActiveRecord.class_for_type('operation').name
-          query << "AND ops.type = '#{type}';"
-        end
-
+        sanitize_arg = [query] + query_args
         sanitized_query = sanitize_sql_for_assignment(sanitize_arg)
 
         # gives pairs of (opset_id, operation) representing all operations contained by an operation set

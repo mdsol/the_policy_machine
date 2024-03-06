@@ -1,5 +1,8 @@
 # Changelog
 
+## 4.1.2
+* Updated PostgreSQL `operations_for_operation_sets` with performance improvements
+
 ## 4.1.1
 * Updated PostgreSQL `operations_for_operation_sets` to guarantee disable mergejoin
 
