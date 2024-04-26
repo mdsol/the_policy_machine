@@ -15,6 +15,7 @@ namespace :pm do
         `bundle exec rails generate the_policy_machine:add_logical_links_table -f`
         `bundle exec rails generate the_policy_machine:update_policy_element_associations_table -f`
         `bundle exec rails generate the_policy_machine:accessible_objects_for_operations_function -f`
+        `bundle exec rails generate the_policy_machine:update_accessible_objects_filter_performance -f`
         FileUtils.cp('../add_test_columns_migration.rb', './db/migrate/99999999999999_add_test_columns.rb')
 
         `bundle exec rake db:create db:migrate`
