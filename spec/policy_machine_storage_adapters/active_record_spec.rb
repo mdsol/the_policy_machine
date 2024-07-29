@@ -536,7 +536,7 @@ describe 'ActiveRecord' do
           expect_any_instance_of(PolicyMachineStorageAdapter::ActiveRecord)
             .not_to receive(:accessible_objects_for_operations_function)
 
-          result = priv_pm.accessible_objects_for_operations(
+          priv_pm.accessible_objects_for_operations(
             user_1,
             [create, paint],
             direct_only: true,
@@ -850,8 +850,14 @@ describe 'ActiveRecord' do
         it_behaves_like 'a single query for accessible objects'
 
         it 'uses a PostgreSQL function' do
-          expect_any_instance_of(PolicyMachineStorageAdapter::ActiveRecord)
-            .to receive(:accessible_objects_for_operations_function)
+          allow(PolicyMachineStorageAdapter::ActiveRecord::PolicyElement)
+            .to receive(:accessible_objects_for_operations_query)
+            .and_call_original
+
+          expected_query = "SELECT * FROM pm_accessible_objects_for_operations(#{user_1.id},'{create,paint}','unique_identifier','{}')"
+          expect(PolicyMachineStorageAdapter::ActiveRecord::PolicyElement)
+            .to receive(:accessible_objects_for_operations_query)
+            .and_return(expected_query)
 
           priv_pm.accessible_objects_for_operations(
             user_1,
@@ -859,6 +865,30 @@ describe 'ActiveRecord' do
             direct_only: true,
             ignore_prohibitions: true,
             fields: [:unique_identifier]
+          )
+        end
+      end
+
+      describe 'accessible_objects_for_operations_function_cte' do
+        it_behaves_like 'a single query for accessible objects'
+
+        it 'uses a PostgreSQL function with CTE query' do
+          allow(PolicyMachineStorageAdapter::ActiveRecord::PolicyElement)
+            .to receive(:accessible_objects_for_operations_query)
+            .and_call_original
+
+          expected_query = "SELECT * FROM pm_accessible_objects_for_operations_cte(#{user_1.id},'{create,paint}','unique_identifier','{}')"
+          expect(PolicyMachineStorageAdapter::ActiveRecord::PolicyElement)
+            .to receive(:accessible_objects_for_operations_query)
+            .and_return(expected_query)
+
+          priv_pm.accessible_objects_for_operations(
+            user_1,
+            [create, paint],
+            direct_only: true,
+            ignore_prohibitions: true,
+            fields: [:unique_identifier],
+            use_cte: true
           )
         end
       end

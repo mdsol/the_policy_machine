@@ -91,25 +91,11 @@ module PolicyMachineStorageAdapter
 
       # The PG function can only accept a single field for now.
       def self.accessible_objects_for_operations(user_id, operation_names, options)
-        field = options[:fields].first
-        filters = options.dig(:filters, :user_attributes) || {}
-
-        query =
-          if replica?
-            sanitize_sql_for_assignment([
-              accessible_objects_for_operations_cte(field, filters),
-              user_id,
-              operation_names
-            ])
-          else
-            sanitize_sql_for_assignment([
-              'SELECT * FROM pm_accessible_objects_for_operations(?,?,?,?)',
-              user_id,
-              PG::TextEncoder::Array.new.encode(operation_names),
-              field,
-              JSON.dump(filters)
-            ])
-          end
+        query = accessible_objects_for_operations_query(
+          user_id,
+          operation_names,
+          options
+        )
 
         # [
         #   { 'unique_identifier' => 'op1', 'objects' => '{obj1,obj2,obj3}' },
@@ -130,6 +116,39 @@ module PolicyMachineStorageAdapter
       end
 
       private
+
+      def self.accessible_objects_for_operations_query(
+        user_id,
+        operation_names,
+        options
+      )
+        field = options[:fields].first
+        filters = options.dig(:filters, :user_attributes) || {}
+
+        if replica?
+          # Don't want to replace this yet until after experiment
+          sanitize_sql_for_assignment([
+            accessible_objects_for_operations_cte(field, filters),
+            user_id,
+            operation_names
+          ])
+        else
+          function_name =
+            if options[:use_cte]
+              'pm_accessible_objects_for_operations_cte'
+            else
+              'pm_accessible_objects_for_operations'
+            end
+
+          sanitize_sql_for_assignment([
+            "SELECT * FROM #{function_name}(?,?,?,?)",
+            user_id,
+            PG::TextEncoder::Array.new.encode(operation_names),
+            field,
+            JSON.dump(filters)
+          ])
+        end
+      end
 
       # For replica database connections which do not support temporary tables.
       # This is a little slower than the PG function but still quicker than the

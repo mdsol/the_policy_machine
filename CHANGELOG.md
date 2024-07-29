@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.1.4
+* Included `accessible_objects_for_operations_function_cte` for read replicas which cannot create temp tables
+
+– Execute `bundle exec rails generate the_policy_machine:accessible_objects_for_operations_function_cte` and rerun
+`db:migrate` to use these changes.
+
 ## 4.1.3
 * Updated `accessible_objects_for_operations_function` for better filter performance
 
