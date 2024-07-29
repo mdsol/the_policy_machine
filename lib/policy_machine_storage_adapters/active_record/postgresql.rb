@@ -125,7 +125,15 @@ module PolicyMachineStorageAdapter
         field = options[:fields].first
         filters = options.dig(:filters, :user_attributes) || {}
 
-        if replica?
+        if options[:use_cte]
+          sanitize_sql_for_assignment([
+            'SELECT * FROM pm_accessible_objects_for_operations_cte(?,?,?,?)',
+            user_id,
+            PG::TextEncoder::Array.new.encode(operation_names),
+            field,
+            JSON.dump(filters)
+          ])
+        elsif replica?
           # Don't want to replace this yet until after experiment
           sanitize_sql_for_assignment([
             accessible_objects_for_operations_cte(field, filters),
@@ -133,15 +141,8 @@ module PolicyMachineStorageAdapter
             operation_names
           ])
         else
-          function_name =
-            if options[:use_cte]
-              'pm_accessible_objects_for_operations_cte'
-            else
-              'pm_accessible_objects_for_operations'
-            end
-
           sanitize_sql_for_assignment([
-            "SELECT * FROM #{function_name}(?,?,?,?)",
+            'SELECT * FROM pm_accessible_objects_for_operations(?,?,?,?)',
             user_id,
             PG::TextEncoder::Array.new.encode(operation_names),
             field,
