@@ -11,7 +11,6 @@ module PolicyMachineStorageAdapter
 
       after_create :add_to_transitive_closure
       after_destroy :remove_from_transitive_closure
-      attr_accessible :child_id, :parent_id
       # needs parent_id, child_id columns
       belongs_to :parent, class_name: :PolicyElement
       belongs_to :child, class_name: :PolicyElement
@@ -46,8 +45,8 @@ module PolicyMachineStorageAdapter
       def remove_from_transitive_closure
         parents_ancestors = connection.execute("Select ancestor_id from transitive_closure where descendant_id=#{parent_id}")
         childs_descendants = connection.execute("Select descendant_id from transitive_closure where ancestor_id=#{child_id}")
-        parents_ancestors = parents_ancestors.to_a.<<(parent_id).join(',')
-        childs_descendants = childs_descendants.to_a.<<(child_id).join(',')
+        parents_ancestors = parents_ancestors.rows.flatten.<<(parent_id).join(',')
+        childs_descendants = childs_descendants.rows.flatten.<<(child_id).join(',')
 
         connection.execute("Delete from transitive_closure where
           ancestor_id in (#{parents_ancestors}) and

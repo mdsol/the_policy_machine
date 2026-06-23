@@ -40,41 +40,12 @@ module PolicyMachineStorageAdapter
     def self.db_config
       return @_db_config if @_db_config
 
-      ar_configs = PolicyElement.configurations
-
-      # ActiveRecord < 6.0
-      unless ar_configs.respond_to?(:configs_for)
-        @_db_config = ar_configs[Rails.env].symbolize_keys
-        return @_db_config
-      end
-
-      config = begin
-        # ActiveRecord >= 6.1:
-        # there is a deprecation warning for using kwarg 'spec_name'
-        # so try the new 'name' kwarg first
-        ar_configs.configs_for(env_name: Rails.env, name: 'primary')
-      rescue ArgumentError
-        # ActiveRecord == 6.0:
-        # the kwarg is called 'spec_name'
-        ar_configs.configs_for(env_name: Rails.env, spec_name: 'primary')
-      end
-
-      @_db_config =
-        # AR 6.1 also emits a warning that `.config` is deprecated
-        # and `.configuration_hash` is The New Way
-        if config.respond_to?(:configuration_hash)
-          config.configuration_hash
-        else
-          config.config.symbolize_keys
-        end
+      config = PolicyElement.configurations.configs_for(env_name: Rails.env, name: 'primary')
+      @_db_config = config.configuration_hash
     end
 
     def self.connection_db_config
-      if ::ActiveRecord::Base.respond_to?(:connection_db_config)
-        ::ActiveRecord::Base.connection_db_config.configuration_hash
-      else
-        ::ActiveRecord::Base.connection_config
-      end
+      ::ActiveRecord::Base.connection_db_config.configuration_hash
     end
 
     def self.buffering?
@@ -286,7 +257,7 @@ module PolicyMachineStorageAdapter
 
       def self.serialize(store:, name:, serializer: nil)
         # Use the passed serializer if present, otherwise use Rails' default serialization
-        active_record_serialize store, serializer if serializer
+        active_record_serialize store, coder: serializer if serializer
 
         store_accessor store, name
       end
@@ -1363,6 +1334,6 @@ module PolicyMachineStorageAdapter
   end
 
   def self.postgres?
-    ::ActiveRecord::Base.connection.class.name == 'ActiveRecord::ConnectionAdapters::PostgreSQLAdapter'
+    ::ActiveRecord::Base.connection_db_config.adapter == 'postgresql'
   end
 end unless active_record_unavailable
