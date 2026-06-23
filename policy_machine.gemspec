@@ -10,7 +10,6 @@ Gem::Specification.new do |s|
   s.homepage    = 'https://github.com/mdsol/the_policy_machine'
   s.license     = 'MIT'
   s.files         = `git ls-files`.split("\n")
-  s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
   s.require_paths = ["lib"]
 
   s.add_dependency('activesupport')
