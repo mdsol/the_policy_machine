@@ -1,0 +1,16 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+spec:
+  type: library
+  lifecycle: production
+  owner: ejinotti@mdsol.com
+metadata:
+  json_schema: https://github.com/mdsol/platform-standards/tree/main/schemas/v1alpha1.schema.json
+  name: the_policy_machine
+  title: The Policy Machine
+  description: A ruby implementation of the Policy Machine authorization formalism.
+  teams:
+    - number: 16
+  people:
+    - role: technical owner
+      email: ejinotti@mdsol.com
