@@ -2285,7 +2285,9 @@ describe 'ActiveRecord' do
               obj = policy_machine.send("create_#{type}", SecureRandom.uuid)
 
               sql = "SELECT extra_attributes FROM policy_elements WHERE id = #{obj.id}"
-              result = ActiveRecord::Base.connection.execute(sql)
+              result = ActiveRecord::Base.with_connection do |connection|
+                connection.execute(sql)
+              end
               database_entry = result[0]["extra_attributes"]
 
               expect(database_entry).to eq('{}')

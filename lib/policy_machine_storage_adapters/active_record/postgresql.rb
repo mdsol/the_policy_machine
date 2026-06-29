@@ -428,7 +428,7 @@ module PolicyMachineStorageAdapter
             (
               SELECT parent_id, child_id
               FROM assignments
-              WHERE #{sanitize_sql_for_conditions(["child_id IN (:root_ids)", root_ids: root_element_ids])}
+              WHERE #{sanitize_sql(["child_id IN (:root_ids)", root_ids: root_element_ids])}
             )
             UNION ALL
             (
@@ -456,7 +456,7 @@ module PolicyMachineStorageAdapter
             (
               SELECT parent_id, child_id, ARRAY[parent_id] AS parents
               FROM assignments
-              WHERE #{sanitize_sql_for_conditions(["parent_id IN (:opset_ids)", opset_ids: operation_set_ids])}
+              WHERE #{sanitize_sql(["parent_id IN (:opset_ids)", opset_ids: operation_set_ids])}
             )
             UNION ALL
             (
@@ -471,7 +471,7 @@ module PolicyMachineStorageAdapter
           FROM assignments_recursive
           JOIN policy_elements
           ON policy_elements.id = assignments_recursive.child_id
-          WHERE #{sanitize_sql_for_conditions(["policy_elements.unique_identifier=:op_id", op_id: operation_id])}
+          WHERE #{sanitize_sql(["policy_elements.unique_identifier=:op_id", op_id: operation_id])}
           AND type = 'PolicyMachineStorageAdapter::ActiveRecord::Operation'
         SQL
 

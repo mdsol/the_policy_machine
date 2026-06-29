@@ -1,5 +1,17 @@
 # Changelog
 
+## 4.2.0
+* Support Rails 8.1
+* Drop support for Rails < 7.1
+* Remove deprecated `attr_accessible` from MySQL2 adapter
+* Replace deprecated `sanitize_sql_for_conditions` with `sanitize_sql`
+* Fix `postgres?` detection to use `connection_db_config` instead of deprecated `ActiveRecord::Base.connection.class.name`
+* Fix `serialize` to use keyword argument `coder:` as required by Rails 8.0+
+* Fix `connection.execute` result handling in MySQL2 adapter for `ActiveRecord::Result` compatibility
+* Remove legacy ActiveRecord < 6.1 code paths from `db_config` and `connection_db_config`
+* Remove deprecated `test_files` from gemspec
+* Widen `activerecord-import` dependency to `>= 1.0`
+
 ## 4.1.3
 * Updated `accessible_objects_for_operations_function` for better filter performance
 
